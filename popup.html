@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizGenie</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- الرأس مع الشعار الافتراضي الموحد وشارة الخادم النشط -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-box">
+          <img src="icons/icon48.png" alt="QuizGenie" class="brand-logo-img">
+        </div>
+        <div class="brand-info">
+          <h1>QuizGenie</h1>
+          <span class="brand-tag">مساعد حل الاختبارات والأسئلة والواجبات</span>
+        </div>
+      </div>
+      <div class="free-badge">
+        <span class="pulse-dot"></span>
+        <span id="headerServerBadge">الخادم المجاني</span>
+      </div>
+    </header>
+
+    <!-- شريط عرض الخادم النشط الحالي (خيار للعرض والإعلام فقط ولا يمكن الضغط عليه) -->
+    <div class="active-server-display-card" id="activeServerDisplayCard" aria-readonly="true">
+      <div class="display-card-content">
+        <div class="display-card-icon-wrap" id="displayServerIcon">
+          🌐
+        </div>
+        <div class="display-card-info">
+          <span class="display-card-label">الخادم النشط المختار حالياً:</span>
+          <span class="display-card-name" id="displayServerName">الخادم المجاني (بدون مفتاح)</span>
+        </div>
+      </div>
+      <div class="display-card-badge" id="displayServerBadgeTag">
+        <span class="display-dot"></span>
+        <span id="displayServerBadgeText">نشط</span>
+      </div>
+    </div>
+
+    <!-- زر يقفل ويفعل الأداة بالكامل (الزر الرئيسي) -->
+    <section class="master-power-section">
+      <button id="masterToggleBtn" class="master-btn power-on" type="button">
+        <div class="btn-icon-wrapper">
+          <span id="powerIcon" class="power-icon">🟢</span>
+        </div>
+        <div class="btn-content">
+          <span id="powerMainText" class="power-title">الأداة مفعلة وشغالة</span>
+          <span id="powerSubText" class="power-hint">انقر هنا لإيقاف الأداة بالكامل</span>
+        </div>
+        <div class="status-indicator-pill active" id="powerIndicatorPill">
+          شغالة
+        </div>
+      </button>
+    </section>
+
+    <!-- مجموعة القوائم المنسدلة المرتبة فوق بعض (Accordion Lists) لتسهيل الاستخدام -->
+    <div class="accordion-container">
+
+      <!-- القائمة 1: خوادم الذكاء الاصطناعي الثلاثة -->
+      <div class="accordion-item open item-servers" id="accItemServers">
+        <div class="accordion-header" data-target="accItemServers">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-servers">🖥️</span>
+            <div class="accordion-text">
+              <span class="accordion-title">خوادم الذكاء الاصطناعي</span>
+              <span class="accordion-subtitle">6 خوادم: ديب سيك، جروك، جوجل، شات جي بي تي، ومجاني</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge server-badge-color" id="accServerBadge">🌐 مجاني</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="section-label-row">
+            <span class="section-label">اختر الخادم النشط:</span>
+            <span class="section-badge server-status-badge" id="activeServerBadge">🌐 الخادم المجاني</span>
+          </div>
+          <p class="section-subhint">تفعيل أي خادم يقفل الخوادم الأخرى تلقائياً:</p>
+
+          <div class="server-cards-container">
+            <!-- الخادم 1: الخادم المجاني -->
+            <div class="server-card card-free active" id="serverCardFree" data-server="free">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">🌐 الخادم المجاني</span>
+                </div>
+                <span class="server-tag tag-free">تلقائي بدون مفتاح</span>
+              </div>
+              <p class="server-desc">
+                مجاني 100% ويعمل فوراً وبدون أي تسجيل أو مفاتيح، مناسب للحل المباشر.
+              </p>
+              <div class="server-test-row">
+                <button type="button" class="btn-check-key btn-check-free" id="testFreeBtn">🔍 فحص اتصال الخادم المجاني</button>
+              </div>
+              <div id="freeStatusBox" class="key-status-box hidden"></div>
+            </div>
+
+            <!-- الخادم 2: الخادم المجاني الاحتياطي -->
+            <div class="server-card card-free-backup" id="serverCardFreeBackup" data-server="free_backup">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">🛡️ الخادم المجاني الاحتياطي</span>
+                </div>
+                <span class="server-tag tag-backup">بديل فوري تلقائي</span>
+              </div>
+              <p class="server-desc">
+                خادم بديل فوري يعمل تلقائياً وبدون أي مفاتيح عند انشغال الخادم المجاني الأول.
+              </p>
+              <div class="server-test-row">
+                <button type="button" class="btn-check-key btn-check-free-backup" id="testFreeBackupBtn">🔍 فحص اتصال الخادم الاحتياطي</button>
+              </div>
+              <div id="freeBackupStatusBox" class="key-status-box hidden"></div>
+            </div>
+
+            <!-- الخادم 3: خادم ديب سيك (DeepSeek R1) -->
+            <div class="server-card card-deepseek" id="serverCardDeepSeek" data-server="deepseek">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">🧠 خادم ديب سيك (DeepSeek R1)</span>
+                </div>
+                <span class="server-tag tag-deepseek">تفكير استنتاجي خارق</span>
+              </div>
+              <p class="server-desc">
+                أقوى نموذج تفكير استنتاجي لحل الرياضيات والمعادلات والمسائل المعقدة، يعمل مجاناً ويدعم المفاتيح الخاصة.
+              </p>
+              <div class="server-key-field" id="deepseekField">
+                <div class="input-with-action">
+                  <input type="password" id="deepseekKeyInput" placeholder="مفتاح DeepSeek اختياري (يبدأ بـ sk-...)" />
+                  <button type="button" class="btn-save-key btn-save-deepseek" id="saveDeepseekKeyBtn">حفظ المفتاح</button>
+                </div>
+                <div class="server-test-row">
+                  <button type="button" class="btn-check-key btn-check-deepseek" id="testDeepseekBtn">🔍 فحص وصلاحية المفتاح</button>
+                  <a href="https://platform.deepseek.com" target="_blank" class="api-help-link link-deepseek">
+                    🔗 حساب DeepSeek (مجاني)
+                  </a>
+                </div>
+                <div id="deepseekStatusBox" class="key-status-box hidden"></div>
+              </div>
+            </div>
+
+            <!-- الخادم 4: خادم جروك فائق السرعة (Groq Llama 3.3) -->
+            <div class="server-card card-groq" id="serverCardGroq" data-server="groq">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">⚡ خادم جروك فائق السرعة (Groq Llama 3.3)</span>
+                </div>
+                <span class="server-tag tag-groq">الأسرع عالمياً (0.1s)</span>
+              </div>
+              <p class="server-desc">
+                أسرع استجابة في العالم عبر رقائق LPU الفائقة، يحل السؤال فوراً ويعمل مجاناً ويدعم المفاتيح الخاصة.
+              </p>
+              <div class="server-key-field" id="groqField">
+                <div class="input-with-action">
+                  <input type="password" id="groqKeyInput" placeholder="مفتاح Groq اختياري (يبدأ بـ gsk_...)" />
+                  <button type="button" class="btn-save-key btn-save-groq" id="saveGroqKeyBtn">حفظ المفتاح</button>
+                </div>
+                <div class="server-test-row">
+                  <button type="button" class="btn-check-key btn-check-groq" id="testGroqBtn">🔍 فحص وصلاحية المفتاح</button>
+                  <a href="https://console.groq.com/keys" target="_blank" class="api-help-link link-groq">
+                    🔗 استخراج مفتاح مجاني
+                  </a>
+                </div>
+                <div id="groqStatusBox" class="key-status-box hidden"></div>
+              </div>
+            </div>
+
+            <!-- الخادم 2: الخادم الآخر (Gemini الصاروخي من Google) -->
+            <div class="server-card card-gemini" id="serverCardGemini" data-server="gemini">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">⚡ الخادم الآخر (جوجل Gemini)</span>
+                </div>
+                <span class="server-tag tag-turbo">صاروخي (0.5 ثانية)</span>
+              </div>
+              <p class="server-desc">
+                فائق السرعة ويحل السؤال في أقل من نصف ثانية وبدون أي انتظار أو حدود نهائياً. مجاني رسمي من جوجل.
+              </p>
+              <div class="server-key-field" id="geminiField">
+                <div class="input-with-action">
+                  <input type="password" id="geminiKeyInput" placeholder="الصق مفتاح Gemini هنا (يبدأ بـ AIza...)" />
+                  <button type="button" class="btn-save-key btn-save-gemini" id="saveGeminiKeyBtn">حفظ المفتاح</button>
+                </div>
+                <div class="server-test-row">
+                  <button type="button" class="btn-check-key btn-check-gemini" id="testGeminiBtn">🔍 فحص وصلاحية المفتاح</button>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-help-link link-gemini">
+                    🔗 استخراج مفتاح مجاني
+                  </a>
+                </div>
+                <div id="geminiStatusBox" class="key-status-box hidden"></div>
+              </div>
+            </div>
+
+            <!-- الخادم 3: خادم شات جي بي تي (ChatGPT / OpenAI) -->
+            <div class="server-card card-openai" id="serverCardOpenAI" data-server="openai">
+              <div class="server-header">
+                <div class="server-title-group">
+                  <span class="server-radio-dot"></span>
+                  <span class="server-title">🤖 خادم شات جي بي تي (ChatGPT)</span>
+                </div>
+                <span class="server-tag tag-smart">الأعلى ذكاءً</span>
+              </div>
+              <p class="server-desc">
+                الأقوى في تحليل المسائل المعقدة، والرياضيات، والقدرات، ويعتمد على نموذج GPT-4o-mini الذكي.
+              </p>
+              <div class="server-key-field" id="openaiField">
+                <div class="input-with-action">
+                  <input type="password" id="openaiKeyInput" placeholder="الصق مفتاح OpenAI هنا (يبدأ بـ sk-...)" />
+                  <button type="button" class="btn-save-key btn-save-openai" id="saveOpenaiKeyBtn">حفظ المفتاح</button>
+                </div>
+                <div class="server-test-row">
+                  <button type="button" class="btn-check-key btn-check-openai" id="testOpenaiBtn">🔍 فحص وصلاحية المفتاح</button>
+                  <a href="https://platform.openai.com/api-keys" target="_blank" class="api-help-link link-openai">
+                    🔗 استخراج المفتاح من حسابك
+                  </a>
+                </div>
+                <div id="openaiStatusBox" class="key-status-box hidden"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- القائمة 2: المادة الدراسية للاختبار والواجب -->
+      <div class="accordion-item item-subjects" id="accItemSubjects">
+        <div class="accordion-header" data-target="accItemSubjects">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-subjects">📚</span>
+            <div class="accordion-text">
+              <span class="accordion-title">المادة الدراسية</span>
+              <span class="accordion-subtitle">تخصص الذكاء الاصطناعي في مادتك</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge subject-badge-color" id="accSubjectBadge">🌟 عام</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="section-label-row">
+            <span class="section-label">اختر المادة الدراسية:</span>
+            <span class="section-badge subject-badge" id="currentSubjectBadge">🌟 عام / تلقائي</span>
+          </div>
+          <p class="section-subhint">حدد مادتك ليحل الذكاء الاصطناعي كمعلم متخصص فيها:</p>
+
+          <div class="quick-subject-pills">
+            <button type="button" class="subject-pill active" data-subject="general">🌟 عام</button>
+            <button type="button" class="subject-pill" data-subject="math">📐 رياضيات</button>
+            <button type="button" class="subject-pill" data-subject="science">🧪 علوم</button>
+            <button type="button" class="subject-pill" data-subject="social">🌍 اجتماعيات</button>
+            <button type="button" class="subject-pill" data-subject="arabic">📖 لغة عربية</button>
+            <button type="button" class="subject-pill" data-subject="islamic">🕌 إسلاميات</button>
+            <button type="button" class="subject-pill" data-subject="qudrat">🎯 قدرات</button>
+          </div>
+
+          <div class="select-wrapper">
+            <select id="allSubjectsSelect" class="custom-select-dropdown">
+              <option value="general" selected>🌟 عام / كشف تلقائي لكافة المواد</option>
+              <optgroup label="المواد العلمية">
+                <option value="math">📐 الرياضيات (جبر، هندسة، تفاضل، تكامل)</option>
+                <option value="science">🧪 العلوم العامة (ابتدائي ومتوسط)</option>
+                <option value="physics">⚛️ الفيزياء (قوانين الحركة، الطاقة، الكهرباء)</option>
+                <option value="chemistry">⚗️ الكيمياء (تفاعلات، معادلات، جدول دوري)</option>
+                <option value="biology">🧬 الأحياء (علم الأحياء، خلايا، وراثة)</option>
+                <option value="computer">💻 الحاسب والتقنية الرقمية والبرمجة</option>
+              </optgroup>
+              <optgroup label="المواد الأدبية والاجتماعية">
+                <option value="social">🌍 الدراسات الاجتماعية والمواطنة (اجتماعيات)</option>
+                <option value="history">📜 التاريخ والحضارة</option>
+                <option value="geography">🗺️ الجغرافيا والخرائط</option>
+                <option value="arabic">📖 اللغة العربية (نحو، إعراب، صرف، بلاغة، أدب)</option>
+                <option value="philosophy">🧠 التفكير الناقد والفلسفة والمنطق</option>
+              </optgroup>
+              <optgroup label="العلوم الشرعية والإسلامية">
+                <option value="islamic">🕌 الدراسات الإسلامية (توحيد، فقه، تفسير، حديث)</option>
+              </optgroup>
+              <optgroup label="اختبارات قياس والجامعات">
+                <option value="qudrat">🎯 اختبار القدرات العامة (الكمي واللفظي)</option>
+                <option value="tahsili">🏆 الاختبار التحصيلي (علمي وأدبي)</option>
+                <option value="english">🇬🇧 اللغة الإنجليزية وقواعدها (Grammar)</option>
+                <option value="business">📊 إدارة الأعمال والاقتصاد والمحاسبة</option>
+                <option value="law">⚖️ القانون والأنظمة والعلوم السياسية</option>
+                <option value="medical">🩺 العلوم الطبية والصحية والتمريض</option>
+              </optgroup>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- القائمة 3: لغة ترجمة الإجابة (أكثر من 30 لغة) -->
+      <div class="accordion-item item-languages" id="accItemLanguages">
+        <div class="accordion-header" data-target="accItemLanguages">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-languages">🌐</span>
+            <div class="accordion-text">
+              <span class="accordion-title">لغة الإجابة والترجمة</span>
+              <span class="accordion-subtitle">دعم أكثر من 30 لغة عالمية</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge lang-badge-color" id="accLangBadge">🇸🇦 العربية</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="section-label-row">
+            <span class="section-label">لغة الشرح والترجمة:</span>
+            <span class="section-badge" id="currentLangBadge">🇸🇦 العربية</span>
+          </div>
+          <p class="section-subhint">إذا كان اختبارك بلغة أجنبية، اختر لغتك لتحصل على الحل مترجماً فوراً:</p>
+
+          <div class="quick-lang-pills">
+            <button type="button" class="lang-pill active" data-lang="ar">🇸🇦 العربية</button>
+            <button type="button" class="lang-pill" data-lang="same">🌐 لغة السؤال</button>
+            <button type="button" class="lang-pill" data-lang="en">🇬🇧 English</button>
+            <button type="button" class="lang-pill" data-lang="es">🇪🇸 Español</button>
+            <button type="button" class="lang-pill" data-lang="fr">🇫🇷 Français</button>
+          </div>
+
+          <div class="select-wrapper">
+            <select id="allLangsSelect" class="custom-select-dropdown select-languages">
+              <option value="ar" selected>🇸🇦 العربية (Arabic)</option>
+              <option value="same">🌐 نفس لغة السؤال الأصلية (Original)</option>
+              <option value="en">🇬🇧 الإنجليزية (English)</option>
+              <option value="es">🇪🇸 الإسبانية / المكسيكية (Spanish)</option>
+              <option value="fr">🇫🇷 الفرنسية (French)</option>
+              <option value="de">🇩🇪 الألمانية (German)</option>
+              <option value="zh">🇨🇳 الصينية (Chinese)</option>
+              <option value="ja">🇯🇵 اليابانية (Japanese)</option>
+              <option value="ko">🇰🇷 الكورية (Korean)</option>
+              <option value="ru">🇷🇺 الروسية (Russian)</option>
+              <option value="tr">🇹🇷 التركية (Turkish)</option>
+              <option value="it">🇮🇹 الإيطالية (Italian)</option>
+              <option value="pt">🇵🇹 البرتغالية (Portuguese)</option>
+              <option value="hi">🇮🇳 الهندية (Hindi)</option>
+              <option value="ur">🇵🇰 الأردية (Urdu)</option>
+              <option value="id">🇮🇩 الإندونيسية (Indonesian)</option>
+              <option value="fa">🇮🇷 الفارسية (Persian)</option>
+              <option value="pl">🇵🇱 البولندية (Polish)</option>
+              <option value="nl">🇳🇱 الهولندية (Dutch)</option>
+              <option value="sv">🇸🇪 السويدية (Swedish)</option>
+              <option value="el">🇬🇷 اليونانية (Greek)</option>
+              <option value="he">🇮🇱 العبرية (Hebrew)</option>
+              <option value="tl">🇵🇭 الفلبينية (Tagalog)</option>
+              <option value="vi">🇻🇳 الفيتنامية (Vietnamese)</option>
+              <option value="th">🇹🇭 التايلاندية (Thai)</option>
+              <option value="ms">🇲🇾 الماليزية (Malay)</option>
+              <option value="bn">🇧🇩 البنغالية (Bengali)</option>
+              <option value="uk">🇺🇦 الأوكرانية (Ukrainian)</option>
+              <option value="ro">🇷🇴 الرومانية (Romanian)</option>
+              <option value="cs">🇨🇿 التشيكية (Czech)</option>
+              <option value="hu">🇭🇺 المجرية (Hungarian)</option>
+              <option value="da">🇩🇰 الدنماركية (Danish)</option>
+              <option value="fi">🇫🇮 الفنلندية (Finnish)</option>
+              <option value="no">🇳🇴 النرويجية (Norwegian)</option>
+              <option value="sw">🇰🇪 السواحلية (Swahili)</option>
+              <option value="la">🏛️ اللاتينية (Latin)</option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- القائمة 4: خيارات الحل والإعدادات (نمط الإجابة والزر العائم) -->
+      <div class="accordion-item item-settings" id="accItemSettings">
+        <div class="accordion-header" data-target="accItemSettings">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-settings">⚙️</span>
+            <div class="accordion-text">
+              <span class="accordion-title">طريقة الحل والإعدادات</span>
+              <span class="accordion-subtitle">نوع الإجابة وميزة الزر العائم</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge mode-badge-color" id="accModeBadge">⚡ بدون فلسفة</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <!-- زر الزر العائم في الصفحات -->
+          <div class="feature-toggle-card">
+            <div class="feature-info">
+              <div class="feature-title-row">
+                <img src="icons/icon48.png" alt="FAB Icon" class="mini-feature-icon">
+                <span class="feature-title">الزر العائم عند التظليل</span>
+              </div>
+              <span class="feature-hint">إظهار أيقونة الحل السريع تلقائياً عند تحديد أي نص في الصفحة</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="fabToggleInput" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- خيارات نوع الإجابة المطلوبة -->
+          <div class="modes-grid">
+            <button type="button" class="mode-card mode-card-concise active" id="modeConciseBtn" data-mode="concise">
+              <div class="mode-header">
+                <span class="mode-badge-icon">⚡</span>
+                <span class="mode-name">الإجابة بدون فلسفة</span>
+              </div>
+              <p class="mode-desc">رمز الخيار والحل المباشر فوراً بأقل كلمات لتوفير وقت الاختبار</p>
+            </button>
+
+            <button type="button" class="mode-card mode-card-detailed" id="modeDetailedBtn" data-mode="detailed">
+              <div class="mode-header">
+                <span class="mode-badge-icon">📖</span>
+                <span class="mode-name">الإجابة المفصلة</span>
+              </div>
+              <p class="mode-desc">الحل المباشر أولاً يليه شرح ونقاط تحليل مفصلة لفهم السؤال</p>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- القائمة 5: تجربة وحل فوري للسؤال من داخل الإضافة -->
+      <div class="accordion-item item-solver" id="accItemQuickSolver">
+        <div class="accordion-header" data-target="accItemQuickSolver">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-solver">⚡</span>
+            <div class="accordion-text">
+              <span class="accordion-title">تجربة وحل فوري للسؤال</span>
+              <span class="accordion-subtitle">اكتب أو الصق سؤالك لتجربته هنا</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge solver-badge-color">جرّب الآن</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="input-wrapper">
+            <textarea id="quickQuestionInput" class="input-solver-text" placeholder="اكتب أو الصق سؤال اختبارك أو واجبك هنا لتجربة الحل فوراً..." rows="2"></textarea>
+          </div>
+
+          <div class="solver-actions">
+            <button id="solveConciseBtn" class="action-btn btn-concise" type="button">
+              <span>⚡</span>
+              <span>الإجابة بدون فلسفة</span>
+            </button>
+            <button id="solveDetailedBtn" class="action-btn btn-detailed" type="button">
+              <span>📖</span>
+              <span>الإجابة المفصلة</span>
+            </button>
+          </div>
+
+          <!-- صندوق عرض الإجابة -->
+          <div id="quickResultBox" class="result-box hidden">
+            <div class="result-header">
+              <span class="result-title" id="resultTitle">الإجابة:</span>
+              <button id="copyResultBtn" class="copy-btn" type="button">نسخ</button>
+            </div>
+            <div id="resultContent" class="result-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- القائمة 6: نبذة ودليل استخدام الأداة -->
+      <div class="accordion-item item-about" id="accItemAbout">
+        <div class="accordion-header" data-target="accItemAbout">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-about">💡</span>
+            <div class="accordion-text">
+              <span class="accordion-title">نبذة ودليل استخدام الأداة</span>
+              <span class="accordion-subtitle">فائدتها في الاختبارات والواجبات</span>
+            </div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-badge info-badge-color">دليل الأداة</span>
+            <span class="accordion-chevron">▾</span>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="about-block">
+            <h4>🎯 ما هي فائدة الأداة؟</h4>
+            <p>أداة ذكية مصممة لمساعدة الطلاب في حل الاختبارات، الامتحانات التجريبية، والواجبات في كافة المواد (رياضيات، علوم، اجتماعيات، لغة عربية، إلخ) بسرعة فائقة ودقة متناهية دون الحاجة لفتح نوافذ أخرى أو النسخ واللصق.</p>
+          </div>
+
+          <div class="about-block">
+            <h4>⚡ الخوادم الثلاثة المستقلة:</h4>
+            <ul>
+              <li><strong>الخادم المجاني:</strong> تلقائي بدون مفتاح ويعمل مباشرة 100% مجاناً.</li>
+              <li><strong>الخادم الآخر (Gemini):</strong> فائق السرعة من جوجل ويحل بأقل من 0.5 ثانية بدون انتظار نهائياً.</li>
+              <li><strong>خادم شات جي بي تي (ChatGPT):</strong> الأعلى دقة في المسائل المعقدة والقدرات والرياضيات.</li>
+            </ul>
+          </div>
+
+          <div class="about-block">
+            <h4>📚 ميزة اختيار المادة الدراسية:</h4>
+            <p>تستطيع اختيار مادتك (علوم، اجتماعيات، رياضيات، نحو، فيزياء، قدرات، إلخ)، ليحل الذكاء الاصطناعي كمعلم متخصص في مادتك وقوانينها بدقة عالية.</p>
+          </div>
+
+          <div class="about-block">
+            <h4>🌐 دعم أكثر من 30 لغة عالمية:</h4>
+            <p>سواء كان اختبارك باللغة <strong>الإنجليزية</strong> أو <strong>الإسبانية</strong> أو <strong>الفرنسية</strong>، ستقوم الأداة فوراً باستخراج رمز الخيار الصحيح وترجمة الحل للغة التي اخترتها.</p>
+          </div>
+
+          <div class="about-block">
+            <h4>⚡ وضعي الحل الذكي:</h4>
+            <ul>
+              <li><strong>الإجابة بدون فلسفة:</strong> يعطيك رمز الإجابة الصحيحة مباشرة (مثل A أو B) بدون كلام إضافي لكسب الوقت الحرج.</li>
+              <li><strong>الإجابة المفصلة:</strong> يعطيك الحل المباشر أولاً ثم يشرح خطوات الحل بالتفصيل.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- تذييل إرشادي -->
+    <footer class="footer">
+      <p>💡 حدد أي سؤال في صفحة الاختبار واضغط أيقونة الشعار لحل السؤال مباشرة.</p>
+    </footer>
+
+    <!-- زر نبذة القديم كاحتياط مخفي لتفادي أي أخطاء برمجية -->
+    <div style="display:none;">
+      <button id="openAboutBtn" type="button"></button>
+      <div id="aboutModal" class="hidden">
+        <button id="closeAboutBtn" type="button"></button>
+        <button id="modalDoneBtn" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
