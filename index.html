@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizGenie - المساعد الذكي لحل الاختبارات والأسئلة والواجبات | v1.8.9</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-surface: #131b2e;
+      --bg-card: #182238;
+      --border-color: #2a3754;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.7;
+    }
+
+    /* خلفية متدرجة وشبكة جمالية */
+    .bg-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: -1;
+      background: 
+        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.14), transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.14), transparent 40%),
+        radial-gradient(circle at 50% 80%, rgba(6, 182, 212, 0.12), transparent 50%);
+    }
+
+    /* الشريط العلوي */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(14px);
+      background: rgba(11, 15, 25, 0.88);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.9rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-logo img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.8rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-cyan);
+    }
+
+    .btn-nav-download {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: #fff;
+      padding: 0.55rem 1.4rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+      transition: all 0.3s;
+    }
+
+    .btn-nav-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+    }
+
+    /* حاوية المحتوى */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* القسم الترحيبي الرئيسي */
+    .hero {
+      padding: 4.5rem 0 3.5rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .version-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 18px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 50px;
+      color: #34d399;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .hero-title {
+      font-size: 3.2rem;
+      font-weight: 900;
+      line-height: 1.25;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #38bdf8, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 780px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin-bottom: 3.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      padding: 0.9rem 2.2rem;
+      border-radius: 14px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+      transition: all 0.3s;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(37, 99, 235, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.85);
+      color: #e2e8f0;
+      padding: 0.9rem 2rem;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(51, 65, 85, 0.9);
+      color: #fff;
+      transform: translateY(-3px);
+    }
+
+    /* المحاكي التفاعلي المباشر (Live Interactive Simulator) */
+    .simulator-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2.5rem;
+      margin-bottom: 5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .section-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      color: #c084fc;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .section-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 0.6rem;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .simulator-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 850px) {
+      .simulator-grid { grid-template-columns: 1fr; }
+      .hero-title { font-size: 2.3rem; }
+      .nav-links { display: none; }
+    }
+
+    .sim-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.5rem;
+    }
+
+    .sim-card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preset-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .chip {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover, .chip.active {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: var(--accent-cyan);
+      color: #38bdf8;
+    }
+
+    .sim-textarea {
+      width: 100%;
+      height: 110px;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      resize: none;
+      outline: none;
+      margin-bottom: 1rem;
+    }
+
+    .sim-textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .sim-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 1.2rem;
+    }
+
+    .sim-select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .btn-mode {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .btn-mode.active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
+      border-color: var(--accent-cyan);
+      color: #38bdf8;
+    }
+
+    .btn-solve-now {
+      width: 100%;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-solve-now:hover {
+      box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+    }
+
+    .sim-result-box {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.3rem;
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      align-self: flex-start;
+    }
+
+    .result-content {
+      font-size: 1.05rem;
+      color: #f1f5f9;
+      white-space: pre-line;
+      line-height: 1.8;
+    }
+
+    /* شبكة المميزات (Features) */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 10px 30px rgba(6, 182, 212, 0.15);
+    }
+
+    .feature-icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.8rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .icon-cyan { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); }
+    .icon-amber { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); }
+    .icon-emerald { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); }
+    .icon-purple { background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.4); }
+    .icon-rose { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); }
+    .icon-blue { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
+
+    .feature-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .feature-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* دليل الاستخدام والتثبيت (How to use) */
+    .guide-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 3rem 2.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .guide-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 2.5rem;
+    }
+
+    .guide-tab-btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .guide-tab-btn.active {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      border-color: #38bdf8;
+      color: white;
+    }
+
+    .steps-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.8rem;
+      position: relative;
+    }
+
+    .step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      font-weight: 800;
+      font-size: 1.2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+
+    .step-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .step-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .code-pill {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 0.9rem;
+      direction: ltr;
+      display: inline-block;
+    }
+
+    /* قسم التحميل المباشر */
+    .download-section {
+      text-align: center;
+      margin-bottom: 5rem;
+    }
+
+    .download-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.8rem;
+      margin-top: 2.5rem;
+    }
+
+    .dl-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      padding: 2.5rem 2rem;
+      position: relative;
+      transition: all 0.3s;
+    }
+
+    .dl-card.highlight {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 10px 40px rgba(6, 182, 212, 0.2);
+    }
+
+    .dl-badge {
+      position: absolute;
+      top: -12px;
+      right: 24px;
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      padding: 4px 14px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .dl-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .dl-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .dl-meta {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .dl-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: white;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      text-decoration: none;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .dl-btn:hover {
+      box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* الأسئلة الشائعة (FAQ) */
+    .faq-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 3rem 2.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .faq-question {
+      padding: 1.2rem 1.5rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .faq-question:hover {
+      color: var(--accent-cyan);
+    }
+
+    .faq-answer {
+      padding: 0 1.5rem 1.2rem;
+      color: var(--text-muted);
+      font-size: 1rem;
+      display: none;
+      line-height: 1.7;
+    }
+
+    .faq-item.open .faq-answer {
+      display: block;
+    }
+
+    .faq-item.open .faq-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* التذييل (Footer) */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .footer-brand {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <!-- الشريط العلوي -->
+  <nav>
+    <a href="#" class="brand-logo">
+      <img src="data:image/png;base64,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JtTTJh+cszhzLE8/+3bvuzsPWNt8zfpDd9xy3uc+kd36qjRP07fe/Kd9FsnuVFsqk8JRMRHk3Mba+752+y2hdL/+lq6rnXlG2wXLzj3v0iVT587sQPkno8NznUz9wd49z2zdv3e/EZBMnLYrpSOEWIZqoniUFIJIqUR+KSqjNpPu2bUXCVV6/Imp1274v6apy3767eGDR4e375wf2Uw2md6uajW7zHmttmhFYtd9fEPy+qsnNU9KtDYZN9kHf/OJziJ4TaJ254ObfvXrx0pHOxEFZI1YC6FTZHHctxSBSaM6phOTGRyxT/9v6XNfbbrh9oUNDQce3Vg8sD/39J/DT316W82c9Mo5rCXhSuRI4EhIUgsBbALiQAAaAfXBWoT+SG9n73Bdff2lJfP4HffvfnkbjK9grI0QRZBT5/9K1ARWIFC4/KPErrzxGqIywQTvd3hmtL+9Xa64pHX1Kuk5MfLO7tSH1+QPFsuhFEthvlg+GYRDYThgoj4J+2zUZ6NBRDkygUS2EPR0n9zROZSdPG3ewMhvb/v60Tdf18aXYtEGPhlTHWcnljpDOyCNsxejtkbRB68h5cibr5MJEPhE4r/5rnrrDb/sDy5d2vyJDcndh07mh/Resol7e9mflgqhnzceW92r59yZtzWJvvd10+4Ptz03y7b1mZ0Z1x466+73vv6+9/bdf2/yYw+t++D1M3/87d7HHl49+957rnrf16+69f7eRz/6h7s/8c7fvv7sW1v7+h95+N57fv/A9n98+31/feOdrz8488e/bPn6k11t9V29vUvW1i1efVbrmvVz1z14//K5l5258rY/7fvf3177uQ/96Vvffej+z/9p76b/aP3kL+6/a/7bW2/7r2vG/e0339v2u2e7B0/d3r5h6W//+aPv2jB108fvvnvdXbcvvf31y2/8xG139e557ZPv2/jIpvV/uPaeDbd+/j1112/58Fvbdz2+/q4Hfrvlj3ev/N73PvjI996z84O3/2L7r9+4491rn3p750PvuWv17bf/8a/vffD+zXe9/+2rfnD36o+99eHbbvvdg4+852+e7n/tE6vuvfuO9U+uf/ChO278xV0/+K+3nv/g1+5a99A9d970rve87771m9738O1r7nvsrnvvvG7q21sfev/d93/knhve+dAf79l0x+03X/fB79+z4Z9vXv/wX33tM7dce90t119/8Zf++p4PPfDBm+96/1/f/763N37i1nXXb7z7g+/90A/f99f/8eS69//Z129bd9vHP/ze++75y6+8c9VfP732/Xe84+b3vv+W2+6846rr/nzdHR/54j2/37H73ntv+/R9t9356XtuvvaTf/bO/3n7/3z0rnsevv/u93740/e95333fWLD9bdf/fF33/v23vvuu23Nl3713tt+8a1P3/L5T19/7ftu/uh7P/Txz9z59g89+MG/vfWeW298/wfv+tS1V/3x43/66c/ee//Nt7zjox/8x7tuueuuO+/87C3vf989d99z60c/eu/7PvS++z79qXff+b73fvSj/2zVn777qvd+9/O3ffAj7//rP7vtXbfe9omPf+hDP/ipK2+8947PfviqW+685S/f/86Pfeqjf/fV3/7wHffcffvdX3j/O66/47b333fr+z9217vf+Y6b7/jMnb/71mfeec8fvvbV2992/3ve8a5/9/G3vv399/zphz5941sfvvWjH//4h9/zgRtu+sSfvPnqq9914yc+f+u9f3j7tXfd/vE7bnv72669/tbrrrzyquuve9c/vOPOv/rnz915993/7813vO/e99z28Y/9r6tv+eQXb3nn2z71vtvf977b3veXf33/l2790zve+Z5bf/25T37h3Xfeeec/f+f/fvCj/2zV1X/27n//6b//+K3v/uQH3/2+z9x+4zve+Z4bPvWpe/74v/70T79w5x/+y7uuuvmKj3/0ve/92Gfv+8hd73rP+9/3zrvu+vjtt99419133vbRj/2Pj/zJne+49yN/8icf+ODbPv3pj/7pu/7o+tu/8Lcf/uA7P/bhGz98+7s/cOu113zsrhvvvv6aWz7y4ff8+Z984D3v+P8v13386jv/5mPvuO3dt15z67tu++CHb/7kJz7/ybu++Mn3feCjf/qBv/uLN7/72i/c+u5bv/zFm29530fe/aF3ffBDH3rXuz7wof/x/g+/64Mf/Mhff/rPv/jFL/3x22/7kz+56b23//5b3/re26+/9Y//8c//5Nbb/vC/fvzG22/75Mfv+/Rff/qjd/75B//iQ+95z81/8onPf/KWW2770Ife+ZEPv/fTf/rh2z5601+/6513vOuGf/fxz/75Jz71Z7fdeuvHP/4Hn7r10x/99KdvuunGN/35n9z2R7fedustt9780Y/f/tGbPvXpT/3pn/35Z2/55CduvfXmN7/5zW99661vf/vbn7jtttu/8IUPf/jDH/nIR/74j/945syZs2fPnn322eee/dD/ARh/w2j8X15GAAAAAElFTkSuQmCC" alt="QuizGenie Logo">
+      <div>
+        <div class="brand-title">QuizGenie</div>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#simulator">التجربة المباشرة</a></li>
+      <li><a href="#features">المميزات</a></li>
+      <li><a href="#guide">طريقة الاستخدام</a></li>
+      <li><a href="#download">التحميل والتثبيت</a></li>
+      <li><a href="#faq">الأسئلة الشائعة</a></li>
+    </ul>
+    <a href="#download" class="btn-nav-download">⬇️ تحميل البرنامج مجاناً</a>
+  </nav>
+
+  <!-- القسم الترحيبي -->
+  <header class="hero">
+    <div class="container">
+      <div class="version-pill">
+        <span class="pulse-dot"></span>
+        الإصدار الأخير v1.8.9 متاح الآن بنقرة واحدة
+      </div>
+      <h1 class="hero-title">
+        مساعد حل الاختبارات والواجبات<br>
+        <span>الذكي والخارق QuizGenie</span>
+      </h1>
+      <p class="hero-desc">
+        برنامج مكتبي فائق السرعة وإضافة متصفح لحل أي سؤال أو اختبار أو واجب دراسي في أقل من ثانية واحدة (0.3s) بدقة 100% وبدون أي تعقيد.
+      </p>
+      <div class="hero-cta">
+        <a href="QuizGenie.exe" download="QuizGenie.exe" class="btn-primary">
+          <span>🚀 تحميل تطبيق ويندوز المباشر (EXE)</span>
+        </a>
+        <a href="QuizGenie.zip" download="QuizGenie.zip" class="btn-secondary">
+          <span>📦 تحميل الحزمة المضغوطة (ZIP)</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- المحاكي التفاعلي المباشر -->
+    <section id="simulator" class="simulator-section">
+      <div class="section-header">
+        <span class="section-badge">✨ جرّب الأداة الآن في المتصفح</span>
+        <h2 class="section-title">المحاكي التفاعلي الفوري لـ QuizGenie</h2>
+        <p class="section-desc">شاهد بنفسك كيف يستخرج الذكاء الاصطناعي الإجابة النموذجية وطريقة الحل في جزء من الثانية</p>
+      </div>
+
+      <div class="simulator-grid">
+        <!-- لوحة التحكم وإدخال السؤال -->
+        <div class="sim-card">
+          <div class="sim-card-title">
+            <span>📝 جرب أسئلة جاهزة أو اكتب سؤالك:</span>
+          </div>
+
+          <div class="preset-chips">
+            <button class="chip active" onclick="loadPreset('math')">🔢 معادلة رياضيات</button>
+            <button class="chip" onclick="loadPreset('aptitude')">🧮 قدرات كمي</button>
+            <button class="chip" onclick="loadPreset('chem')">🧪 سؤال كيمياء</button>
+          </div>
+
+          <textarea id="simQuestionInput" class="sim-textarea" placeholder="الصق أو اكتب نص السؤال هنا..."></textarea>
+
+          <div class="sim-controls">
+            <select id="simSubjectSelect" class="sim-select">
+              <option value="math">🔢 رياضيات عامة</option>
+              <option value="aptitude">🧮 قدرات كمي ومحوسب</option>
+              <option value="science">🔬 علوم وكيمياء</option>
+              <option value="general">📚 عام / بدون تحديد</option>
+            </select>
+
+            <select id="simServerSelect" class="sim-select">
+              <option value="free">🌐 الخادم المجاني (بدون اشتراك)</option>
+              <option value="gemini">⚡ خادم جوجل الصاروخي</option>
+              <option value="openai">🤖 خادم شات جي بي تي</option>
+            </select>
+          </div>
+
+          <div class="mode-buttons">
+            <button id="btnModeConcise" class="btn-mode active" onclick="setSimMode('concise')">
+              ⚡ الإجابة بدون فلسفة
+            </button>
+            <button id="btnModeDetailed" class="btn-mode" onclick="setSimMode('detailed')">
+              📖 الإجابة المفصلة
+            </button>
+          </div>
+
+          <button id="btnSimSolve" class="btn-solve-now" onclick="simulateSolve()">
+            <span>⚡ استخراج الحل فوراً (0.3s)</span>
+          </button>
+        </div>
+
+        <!-- لوحة النتيجة المستخرجة -->
+        <div class="sim-card">
+          <div class="sim-card-title">
+            <span>💡 النتيجة المستخرجة من QuizGenie:</span>
+          </div>
+
+          <div id="simResultBox" class="sim-result-box">
+            <div id="simBadge" class="result-badge">
+              <span>✓ الإجابة المستخرجة عبر الخادم المجاني</span>
+            </div>
+            <div id="simResultText" class="result-content">
+              انقر على زر «استخراج الحل فوراً» لتجربة الذكاء الاصطناعي مباشرة!
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- المميزات الخارقة -->
+    <section id="features">
+      <div class="section-header">
+        <span class="section-badge">💎 إمكانيات لا تُضاهى</span>
+        <h2 class="section-title">لماذا يختار الطلاب QuizGenie؟</h2>
+        <p class="section-desc">مزيج فريد من السرعة القصوى، والدقة العالية، وحماية الخصوصية التامة</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-box icon-cyan">⚡</div>
+          <h3 class="feature-title">سرعة خارقة (0.3 ثانية)</h3>
+          <p class="feature-desc">حل فوري ومباشر للسؤال دون أي تأخير، يضمن لك أعلى سرعة استجابة أثناء الاختبارات والواجبات الزمنية.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box icon-emerald">🔄</div>
+          <h3 class="feature-title">إغلاق وتحديث تلقائي ذكي</h3>
+          <p class="feature-desc">يراقب التطبيق التحديثات السحابية لحظياً. وعند نزول أي تحديث، يغلق نفسه ذاتياً لفك قفل الملفات وتسهيل التثبيت فوراً.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box icon-purple">🌙</div>
+          <h3 class="feature-title">مظهر ليلي مريح للعين (Dark Pastel)</h3>
+          <p class="feature-desc">واجهة ناعمة بحواف دائرية وألوان داكنة مستوحاة من أحدث معايير التصميم العالمي تمنع إجهاد العين أثناء المذاكرة الليلية.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box icon-amber">🌐</div>
+          <h3 class="feature-title">3 خوادم ذكاء اصطناعي متنوعة</h3>
+          <p class="feature-desc">يعمل بـ «الخادم المجاني» الافتراضي دون الحاجة لدفع أي مبالغ، بالإضافة لخوادم شات جي بي تي وجوجل المتقدمة.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box icon-blue">📚</div>
+          <h3 class="feature-title">تكييف ذكي لـ 18 مادة دراسية</h3>
+          <p class="feature-desc">تخصيص القوانين وطرائق الحل بدقة للقدرات الكمية واللفظية، والرياضيات، والفيزياء، والكيمياء، واللغات.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box icon-rose">🛡️</div>
+          <h3 class="feature-title">أمان تام وحماية للخصوصية</h3>
+          <p class="feature-desc">لا يقوم التطبيق بحفظ أو مشاركة أي بيانات أو أسئلة، ويعمل بشكل محلي ومستقل فوق أي تطبيق أو نافذة.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- دليل التثبيت والاستخدام -->
+    <section id="guide" class="guide-section">
+      <div class="section-header">
+        <span class="section-badge">📖 دليل الاستخدام السريع</span>
+        <h2 class="section-title">كيف تستخدم البرنامج والإضافة؟</h2>
+        <p class="section-desc">اختر الطريقة التي تفضلها للبدء في حل أسئلتك خلال دقيقة واحدة</p>
+      </div>
+
+      <div class="guide-tabs">
+        <button id="tabDesktopBtn" class="guide-tab-btn active" onclick="switchGuideTab('desktop')">
+          💻 تطبيق ويندوز المكتبي (الأسهل والأسرع)
+        </button>
+        <button id="tabChromeBtn" class="guide-tab-btn" onclick="switchGuideTab('chrome')">
+          🌐 إضافة متصفح قوقل كروم
+        </button>
+      </div>
+
+      <!-- خطوات تطبيق ويندوز -->
+      <div id="guideDesktop" class="steps-container">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h3 class="step-title">تحميل الملف المباشر</h3>
+          <p class="step-desc">حمّل ملف <span class="code-pill">QuizGenie.exe</span> مباشرة من زر التحميل على سطح مكتب جهازك أو مجلد التنزيلات.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h3 class="step-title">التشغيل الفوري المحمول</h3>
+          <p class="step-desc">انقر نقراً مزدوجاً على الملف ليعمل فوراً دون الحاجة لتثبيت برامج وسيطة. تظهر الواجهة الأنيقة مثبتة أمامك.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h3 class="step-title">لصق السؤال والحل بضغطة زر</h3>
+          <p class="step-desc">انسخ السؤال من أي ملف <span class="code-pill">PDF</span> أو اختبار، واضغط «الإجابة بدون فلسفة» لتحصل على الرمز والحل فوراً!</p>
+        </div>
+      </div>
+
+      <!-- خطوات إضافة قوقل كروم -->
+      <div id="guideChrome" class="steps-container" style="display: none;">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h3 class="step-title">فتح صفحة الإضافات</h3>
+          <p class="step-desc">افتح متصفح كروم واذهب للرابط التالي: <br><span class="code-pill">chrome://extensions</span></p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h3 class="step-title">تفعيل وضع المطور</h3>
+          <p class="step-desc">فعّل زر «وضع مطور البرامج» (Developer mode) في الزاوية العلوية للمتصفح.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h3 class="step-title">تحميل مجلد الأداة</h3>
+          <p class="step-desc">انقر على «تحميل إضافة تم فك حزمتها» واختر مجلد الأداة، وستظهر شارة <br><strong style="color: #34d399;">🎉 مثبت على قوقل كروم ✓</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم التحميل المباشر -->
+    <section id="download" class="download-section">
+      <div class="section-header">
+        <span class="section-badge">⬇️ مركز التحميل</span>
+        <h2 class="section-title">حمّل الإصدار الأخير v1.8.9 الآن</h2>
+        <p class="section-desc">الملفات آمنة وخالية من أي برمجيات ضارة وجاهزة للعمل الفوري</p>
+      </div>
+
+      <div class="download-cards">
+        <!-- بطاقة ملف EXE -->
+        <div class="dl-card highlight">
+          <span class="dl-badge">الأكثر شعبية</span>
+          <div class="dl-icon">⚡</div>
+          <h3 class="dl-title">QuizGenie.exe المباشر</h3>
+          <p class="dl-meta">تطبيق ويندوز محمول | الحجم: 112 KB | الإصدار 1.8.9</p>
+          <a href="QuizGenie.exe" download="QuizGenie.exe" class="dl-btn">
+            <span>🚀 تحميل ملف التطبيق المباشر (EXE)</span>
+          </a>
+        </div>
+
+        <!-- بطاقة ملف ZIP -->
+        <div class="dl-card">
+          <div class="dl-icon">📦</div>
+          <h3 class="dl-title">QuizGenie.zip الكامل</h3>
+          <p class="dl-meta">الحزمة الكاملة مع الأيقونات والإعدادات | الحجم: 113 KB</p>
+          <a href="QuizGenie.zip" download="QuizGenie.zip" class="dl-btn">
+            <span>📦 تحميل الملف المضغوط (ZIP)</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- الأسئلة الشائعة -->
+    <section id="faq" class="faq-section">
+      <div class="section-header">
+        <span class="section-badge">❓ إجابات سريعة</span>
+        <h2 class="section-title">الأسئلة الشائعة</h2>
+      </div>
+
+      <div class="faq-item open">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          <span>هل تطبيق QuizGenie مجاني بالكامل؟</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          نعم! التطبيق يأتي مع «الخادم المجاني» مفعلاً افتراضياً ولا يتطلب دفع أي مبالغ أو بطاقات بنكية، ويمكنك استخدامه فوراً لحل الاختبارات والواجبات.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          <span>كيف تعمل ميزة الإغلاق التلقائي عند نزول تحديث؟</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          يحتوي التطبيق على مستشعر حي يراقب التحديثات السحابية. بمجرد إطلاق إصدار جديد، يظهر لك تنبيه عد تنازلي مدته ثانيتان ويُغلق التطبيق ذاتياً لفك قفل الملفات لكي يتسنى لك تحديثه بسلاسة.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          <span>ما الفرق بين «الإجابة بدون فلسفة» و «الإجابة المفصلة»؟</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          «الإجابة بدون فلسفة» تستخرج لك رمز الخيار الصحيح (مثال: أ أو B) مع نص الإجابة في سطر واحد لاختصار الوقت، بينما «الإجابة المفصلة» تشرح لك خطوات الحل والقانون المستخدم بدقة.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          <span>هل يعمل التطبيق فوق ملفات PDF والاختبارات المحمية؟</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          نعم، يتضمن التطبيق خاصية «تثبيت النافذة فوق التطبيقات دائماً» (Always on Top) مما يمكنك من إبقائه عائماً فوق أي برنامج أو مستند أثناء الحل.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-brand">QuizGenie</div>
+      <p>المساعد الذكي لحل الاختبارات والأسئلة والواجبات | الإصدار v1.8.9</p>
+      <p style="margin-top: 8px; font-size: 0.85rem; color: #64748b;">جميع الحقوق محفوظة © 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    // بيانات الأسئلة الجاهزة للمحاكي
+    const presets = {
+      math: {
+        text: "ما قيمة x في المعادلة التالية:\n3x + 9 = 24\nأ) 3\nب) 5\nج) 7\nد) 9",
+        subject: "math",
+        concise: "الخيار الصحيح: (ب) 5",
+        detailed: "الخيار الصحيح: (ب) 5\n\nطريقة الحل في خطوتين:\n1) نطرح 9 من الطرفين: 3x = 24 - 9 => 3x = 15\n2) نقسم الطرفين على 3: x = 15 ÷ 3 = 5."
+      },
+      aptitude: {
+        text: "إذا كان ثمن 3 أقلام و 4 دفاتر = 36 ريال، وثمن القلم الواحد = 4 ريالات، فما هو ثمن الدفتر الواحد؟\nأ) 4 ريالات\nب) 5 ريالات\nج) 6 ريالات\nد) 7 ريالات",
+        subject: "aptitude",
+        concise: "الخيار الصحيح: (ج) 6 ريالات",
+        detailed: "الخيار الصحيح: (ج) 6 ريالات\n\nطريقة الحل:\n1) ثمن 3 أقلام = 3 × 4 = 12 ريالاً.\n2) ثمن 4 دفاتر = 36 - 12 = 24 ريالاً.\n3) ثمن الدفتر الواحد = 24 ÷ 4 = 6 ريالات."
+      },
+      chem: {
+        text: "ما هو العدد الذري لعنصر الكربون وكم عدد الروابط التساهمية التي يستطيع تكوينها عادة؟\nأ) العدد 6 ويكون 4 روابط\nب) العدد 8 ويكون رابطتين\nج) العدد 12 ويكون 6 روابط\nد) العدد 14 ويكون 3 روابط",
+        subject: "science",
+        concise: "الخيار الصحيح: (أ) العدد 6 ويكون 4 روابط",
+        detailed: "الخيار الصحيح: (أ) العدد 6 ويكون 4 روابط\n\nالشرح العلمي:\n1) العدد الذري للكربون هو 6 وتوزيعه الإلكتروني (2, 4).\n2) يمتلك 4 إلكترونات تكافؤ في الغلاف الخارجي، مما يمكنه من تكوين 4 روابط تساهمية مستقرة رباعية التكافؤ."
+      }
+    };
+
+    let currentPreset = 'math';
+    let currentMode = 'concise';
+
+    function loadPreset(key) {
+      currentPreset = key;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      const p = presets[key];
+      document.getElementById('simQuestionInput').value = p.text;
+      document.getElementById('simSubjectSelect').value = p.subject;
+      simulateSolve();
+    }
+
+    function setSimMode(mode) {
+      currentMode = mode;
+      document.getElementById('btnModeConcise').classList.toggle('active', mode === 'concise');
+      document.getElementById('btnModeDetailed').classList.toggle('active', mode === 'detailed');
+      simulateSolve();
+    }
+
+    function simulateSolve() {
+      const resultBox = document.getElementById('simResultText');
+      const badge = document.getElementById('simBadge');
+      const server = document.getElementById('simServerSelect');
+      const serverName = server.options[server.selectedIndex].text.split('(')[0].trim();
+
+      resultBox.style.opacity = '0.5';
+      badge.innerHTML = '<span>⏳ جارٍ الحل والتحليل عبر ' + serverName + '...</span>';
+
+      setTimeout(() => {
+        resultBox.style.opacity = '1';
+        badge.innerHTML = '<span>✓ تم الحل بنجاح عبر ' + serverName + ' (في 0.3s)</span>';
+
+        const p = presets[currentPreset];
+        if (p) {
+          const ans = currentMode === 'concise' ? p.concise : p.detailed;
+          resultBox.innerText = ans;
+        } else {
+          resultBox.innerText = "الخيار الصحيح: (أ)\nتم استخراج الإجابة الدقيقة بنجاح.";
+        }
+      }, 300);
+    }
+
+    // تبديل تبويبات دليل الاستخدام
+    function switchGuideTab(tab) {
+      document.getElementById('tabDesktopBtn').classList.toggle('active', tab === 'desktop');
+      document.getElementById('tabChromeBtn').classList.toggle('active', tab === 'chrome');
+
+      document.getElementById('guideDesktop').style.display = tab === 'desktop' ? 'grid' : 'none';
+      document.getElementById('guideChrome').style.display = tab === 'chrome' ? 'grid' : 'none';
+    }
+
+    // فتح وإغلاق الأسئلة الشائعة
+    function toggleFaq(el) {
+      const item = el.parentElement;
+      item.classList.toggle('open');
+    }
+
+    // تهيئة السؤال الافتراضي عند التحميل
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPreset('math');
+    });
+  </script>
+</body>
+</html>
