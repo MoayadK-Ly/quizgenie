@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -793,7 +793,7 @@ namespace QuizGenie
             pnlMain.Controls.Add(pnlAccServersHeader);
 
             pnlAccServersBody = new Panel();
-            pnlAccServersBody.Size = new Size(itemW, 615);
+            pnlAccServersBody.Size = new Size(itemW, 700);
             pnlAccServersBody.BackColor = Color.FromArgb(15, 23, 42);
             pnlAccServersBody.BorderStyle = BorderStyle.None;
             pnlAccServersBody.Visible = false;
@@ -893,7 +893,7 @@ namespace QuizGenie
             // البطاقة 3: خادم ديب سيك (DeepSeek R1)
             pnlCardDeepSeek = new Panel();
             pnlCardDeepSeek.Location = new Point(12, y);
-            pnlCardDeepSeek.Size = new Size(cardW, 110);
+            pnlCardDeepSeek.Size = new Size(cardW, 128);
             pnlCardDeepSeek.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardDeepSeek.Cursor = Cursors.Hand;
             UITheme.ApplyRoundCorners(pnlCardDeepSeek, 11);
@@ -923,7 +923,7 @@ namespace QuizGenie
 
             pnlDeepSeekKey = new Panel();
             pnlDeepSeekKey.Location = new Point(10, 32);
-            pnlDeepSeekKey.Size = new Size(cardW - 20, 70);
+            pnlDeepSeekKey.Size = new Size(cardW - 20, 88);
 
             Panel pnlDeepSeekKeyWrap = new Panel();
             pnlDeepSeekKeyWrap.Location = new Point(120, 4);
@@ -956,10 +956,25 @@ namespace QuizGenie
             btnTestDeepSeek.Click += async (s, e) => await TestDeepSeekKeyAsync();
             pnlDeepSeekKey.Controls.Add(btnTestDeepSeek);
 
+            LinkLabel lnkDeepSeekGet = new LinkLabel();
+            lnkDeepSeekGet.Text = "🔗 اضغط هنا لفتح موقع DeepSeek واستخراج المفتاح (platform.deepseek.com)";
+            lnkDeepSeekGet.Location = new Point(4, 38);
+            lnkDeepSeekGet.Size = new Size(pnlDeepSeekKey.Width - 8, 20);
+            lnkDeepSeekGet.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            lnkDeepSeekGet.LinkColor = Color.FromArgb(56, 189, 248);
+            lnkDeepSeekGet.ActiveLinkColor = Color.FromArgb(125, 211, 252);
+            lnkDeepSeekGet.VisitedLinkColor = Color.FromArgb(56, 189, 248);
+            lnkDeepSeekGet.Cursor = Cursors.Hand;
+            lnkDeepSeekGet.LinkBehavior = LinkBehavior.HoverUnderline;
+            lnkDeepSeekGet.Click += (s, e) => {
+                try { Process.Start(new ProcessStartInfo("https://platform.deepseek.com/api_keys") { UseShellExecute = true }); } catch { }
+            };
+            pnlDeepSeekKey.Controls.Add(lnkDeepSeekGet);
+
             lblDeepSeekStatus = new Label();
-            lblDeepSeekStatus.Text = "احصل عليه مجاناً: platform.deepseek.com (يعمل مجاناً أيضاً بدون مفتاح)";
-            lblDeepSeekStatus.Location = new Point(4, 38);
-            lblDeepSeekStatus.Size = new Size(pnlDeepSeekKey.Width - 8, 24);
+            lblDeepSeekStatus.Text = "ℹ️ يعمل مجاناً بدون مفتاح، أو الصق مفتاحك واضغط فحص.";
+            lblDeepSeekStatus.Location = new Point(4, 62);
+            lblDeepSeekStatus.Size = new Size(pnlDeepSeekKey.Width - 8, 22);
             lblDeepSeekStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblDeepSeekStatus.ForeColor = Color.FromArgb(148, 163, 184);
             pnlDeepSeekKey.Controls.Add(lblDeepSeekStatus);
@@ -967,12 +982,12 @@ namespace QuizGenie
             pnlCardDeepSeek.Controls.Add(pnlDeepSeekKey);
             pnlCardDeepSeek.Click += (s, e) => rbDeepSeek.Checked = true;
             pnlAccServersBody.Controls.Add(pnlCardDeepSeek);
-            y += 118;
+            y += 136;
 
             // البطاقة 4: خادم جروك فائق السرعة (Groq Llama 3.3)
             pnlCardGroq = new Panel();
             pnlCardGroq.Location = new Point(12, y);
-            pnlCardGroq.Size = new Size(cardW, 110);
+            pnlCardGroq.Size = new Size(cardW, 128);
             pnlCardGroq.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardGroq.Cursor = Cursors.Hand;
             UITheme.ApplyRoundCorners(pnlCardGroq, 11);
@@ -1002,7 +1017,7 @@ namespace QuizGenie
 
             pnlGroqKey = new Panel();
             pnlGroqKey.Location = new Point(10, 32);
-            pnlGroqKey.Size = new Size(cardW - 20, 70);
+            pnlGroqKey.Size = new Size(cardW - 20, 88);
 
             Panel pnlGroqKeyWrap = new Panel();
             pnlGroqKeyWrap.Location = new Point(120, 4);
@@ -1035,10 +1050,25 @@ namespace QuizGenie
             btnTestGroq.Click += async (s, e) => await TestGroqKeyAsync();
             pnlGroqKey.Controls.Add(btnTestGroq);
 
+            LinkLabel lnkGroqGet = new LinkLabel();
+            lnkGroqGet.Text = "🔗 اضغط هنا لفتح موقع Groq والحصول على المفتاح مجاناً (console.groq.com)";
+            lnkGroqGet.Location = new Point(4, 38);
+            lnkGroqGet.Size = new Size(pnlGroqKey.Width - 8, 20);
+            lnkGroqGet.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            lnkGroqGet.LinkColor = Color.FromArgb(249, 115, 22);
+            lnkGroqGet.ActiveLinkColor = Color.FromArgb(253, 186, 116);
+            lnkGroqGet.VisitedLinkColor = Color.FromArgb(249, 115, 22);
+            lnkGroqGet.Cursor = Cursors.Hand;
+            lnkGroqGet.LinkBehavior = LinkBehavior.HoverUnderline;
+            lnkGroqGet.Click += (s, e) => {
+                try { Process.Start(new ProcessStartInfo("https://console.groq.com/keys") { UseShellExecute = true }); } catch { }
+            };
+            pnlGroqKey.Controls.Add(lnkGroqGet);
+
             lblGroqStatus = new Label();
-            lblGroqStatus.Text = "احصل عليه مجاناً: console.groq.com/keys (يعمل مجاناً أيضاً بدون مفتاح)";
-            lblGroqStatus.Location = new Point(4, 38);
-            lblGroqStatus.Size = new Size(pnlGroqKey.Width - 8, 24);
+            lblGroqStatus.Text = "ℹ️ يعمل مجاناً بدون مفتاح، أو الصق مفتاحك للسرعة القصوى.";
+            lblGroqStatus.Location = new Point(4, 62);
+            lblGroqStatus.Size = new Size(pnlGroqKey.Width - 8, 22);
             lblGroqStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblGroqStatus.ForeColor = Color.FromArgb(148, 163, 184);
             pnlGroqKey.Controls.Add(lblGroqStatus);
@@ -1046,12 +1076,12 @@ namespace QuizGenie
             pnlCardGroq.Controls.Add(pnlGroqKey);
             pnlCardGroq.Click += (s, e) => rbGroq.Checked = true;
             pnlAccServersBody.Controls.Add(pnlCardGroq);
-            y += 118;
+            y += 136;
 
             // البطاقة 5: الخادم الآخر (Gemini)
             pnlCardGemini = new Panel();
             pnlCardGemini.Location = new Point(12, y);
-            pnlCardGemini.Size = new Size(cardW, 110);
+            pnlCardGemini.Size = new Size(cardW, 128);
             pnlCardGemini.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardGemini.Cursor = Cursors.Hand;
             UITheme.ApplyRoundCorners(pnlCardGemini, 11);
@@ -1081,7 +1111,7 @@ namespace QuizGenie
 
             pnlGeminiKey = new Panel();
             pnlGeminiKey.Location = new Point(10, 32);
-            pnlGeminiKey.Size = new Size(cardW - 20, 70);
+            pnlGeminiKey.Size = new Size(cardW - 20, 88);
 
             Panel pnlGeminiKeyWrap = new Panel();
             pnlGeminiKeyWrap.Location = new Point(120, 4);
@@ -1114,10 +1144,25 @@ namespace QuizGenie
             btnTestGemini.Click += async (s, e) => await TestGeminiKeyAsync();
             pnlGeminiKey.Controls.Add(btnTestGemini);
 
+            LinkLabel lnkGeminiGet = new LinkLabel();
+            lnkGeminiGet.Text = "🔗 اضغط هنا لفتح موقع Google AI Studio واستخراج المفتاح مجاناً";
+            lnkGeminiGet.Location = new Point(4, 38);
+            lnkGeminiGet.Size = new Size(pnlGeminiKey.Width - 8, 20);
+            lnkGeminiGet.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            lnkGeminiGet.LinkColor = Color.FromArgb(56, 189, 248);
+            lnkGeminiGet.ActiveLinkColor = Color.FromArgb(125, 211, 252);
+            lnkGeminiGet.VisitedLinkColor = Color.FromArgb(56, 189, 248);
+            lnkGeminiGet.Cursor = Cursors.Hand;
+            lnkGeminiGet.LinkBehavior = LinkBehavior.HoverUnderline;
+            lnkGeminiGet.Click += (s, e) => {
+                try { Process.Start(new ProcessStartInfo("https://aistudio.google.com/app/apikey") { UseShellExecute = true }); } catch { }
+            };
+            pnlGeminiKey.Controls.Add(lnkGeminiGet);
+
             lblGeminiStatus = new Label();
-            lblGeminiStatus.Text = "احصل عليه مجاناً: aistudio.google.com/app/apikey";
-            lblGeminiStatus.Location = new Point(4, 38);
-            lblGeminiStatus.Size = new Size(pnlGeminiKey.Width - 8, 24);
+            lblGeminiStatus.Text = "ℹ️ الصق المفتاح أعلاه ثم اضغط 'فحص المفتاح' للتأكد.";
+            lblGeminiStatus.Location = new Point(4, 62);
+            lblGeminiStatus.Size = new Size(pnlGeminiKey.Width - 8, 22);
             lblGeminiStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblGeminiStatus.ForeColor = Color.FromArgb(148, 163, 184);
             pnlGeminiKey.Controls.Add(lblGeminiStatus);
@@ -1125,12 +1170,12 @@ namespace QuizGenie
             pnlCardGemini.Controls.Add(pnlGeminiKey);
             pnlCardGemini.Click += (s, e) => rbGemini.Checked = true;
             pnlAccServersBody.Controls.Add(pnlCardGemini);
-            y += 118;
+            y += 136;
 
             // البطاقة 6: خادم شات جي بي تي (OpenAI)
             pnlCardOpenAI = new Panel();
             pnlCardOpenAI.Location = new Point(12, y);
-            pnlCardOpenAI.Size = new Size(cardW, 110);
+            pnlCardOpenAI.Size = new Size(cardW, 128);
             pnlCardOpenAI.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardOpenAI.Cursor = Cursors.Hand;
             UITheme.ApplyRoundCorners(pnlCardOpenAI, 11);
@@ -1160,7 +1205,7 @@ namespace QuizGenie
 
             pnlOpenAIKey = new Panel();
             pnlOpenAIKey.Location = new Point(10, 32);
-            pnlOpenAIKey.Size = new Size(cardW - 20, 70);
+            pnlOpenAIKey.Size = new Size(cardW - 20, 88);
 
             Panel pnlOpenAIKeyWrap = new Panel();
             pnlOpenAIKeyWrap.Location = new Point(120, 4);
@@ -1193,10 +1238,25 @@ namespace QuizGenie
             btnTestOpenAI.Click += async (s, e) => await TestOpenAIKeyAsync();
             pnlOpenAIKey.Controls.Add(btnTestOpenAI);
 
+            LinkLabel lnkOpenAIGet = new LinkLabel();
+            lnkOpenAIGet.Text = "🔗 اضغط هنا لفتح موقع OpenAI واستخراج المفتاح (platform.openai.com)";
+            lnkOpenAIGet.Location = new Point(4, 38);
+            lnkOpenAIGet.Size = new Size(pnlOpenAIKey.Width - 8, 20);
+            lnkOpenAIGet.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            lnkOpenAIGet.LinkColor = Color.FromArgb(216, 180, 254);
+            lnkOpenAIGet.ActiveLinkColor = Color.FromArgb(233, 213, 255);
+            lnkOpenAIGet.VisitedLinkColor = Color.FromArgb(216, 180, 254);
+            lnkOpenAIGet.Cursor = Cursors.Hand;
+            lnkOpenAIGet.LinkBehavior = LinkBehavior.HoverUnderline;
+            lnkOpenAIGet.Click += (s, e) => {
+                try { Process.Start(new ProcessStartInfo("https://platform.openai.com/api-keys") { UseShellExecute = true }); } catch { }
+            };
+            pnlOpenAIKey.Controls.Add(lnkOpenAIGet);
+
             lblOpenAIStatus = new Label();
-            lblOpenAIStatus.Text = "احصل عليه: platform.openai.com/api-keys";
-            lblOpenAIStatus.Location = new Point(4, 38);
-            lblOpenAIStatus.Size = new Size(pnlOpenAIKey.Width - 8, 24);
+            lblOpenAIStatus.Text = "ℹ️ الصق المفتاح واضغط 'فحص المفتاح' للتحقق من الرصيد والاتصال.";
+            lblOpenAIStatus.Location = new Point(4, 62);
+            lblOpenAIStatus.Size = new Size(pnlOpenAIKey.Width - 8, 22);
             lblOpenAIStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblOpenAIStatus.ForeColor = Color.FromArgb(148, 163, 184);
             pnlOpenAIKey.Controls.Add(lblOpenAIStatus);
@@ -1204,7 +1264,9 @@ namespace QuizGenie
             pnlCardOpenAI.Controls.Add(pnlOpenAIKey);
             pnlCardOpenAI.Click += (s, e) => rbOpenAI.Checked = true;
             pnlAccServersBody.Controls.Add(pnlCardOpenAI);
+            y += 136;
 
+            pnlAccServersBody.Height = y + 10;
             pnlMain.Controls.Add(pnlAccServersBody);
         }
         private void BuildAccordionSubjects(int itemW)
