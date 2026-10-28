@@ -1986,6 +1986,7 @@ namespace QuizGenie
             {
                 if (wex.Response != null)
                 {
+                    var httpRes = wex.Response as HttpWebResponse;
                     using (var stream = wex.Response.GetResponseStream())
                     using (var r = new StreamReader(stream, Encoding.UTF8))
                     {
@@ -1996,9 +1997,13 @@ namespace QuizGenie
                                 return "مفتاح API غير صالح أو غير مفعل في Google AI Studio.";
                             if (body.Contains("RESOURCE_EXHAUSTED") || body.Contains("quota"))
                                 return "تم تجاوز الحصة المجانية المؤقتة لمفتاحك، يرجى المحاولة لاحقاً.";
+                            if (httpRes != null && httpRes.StatusCode == HttpStatusCode.NotFound)
+                                return "المفتاح غير معتمد لدى Google أو الخدمة غير مفعلة. تأكد من إنشائه من aistudio.google.com.";
                             return body.Length > 200 ? body.Substring(0, 200) + "..." : body;
                         }
                     }
+                    if (httpRes != null && httpRes.StatusCode == HttpStatusCode.NotFound)
+                        return "المفتاح غير معتمد لدى Google أو الخدمة غير مفعلة. تأكد من إنشائه من aistudio.google.com.";
                 }
             }
             catch { }
@@ -2011,6 +2016,19 @@ namespace QuizGenie
             if (string.IsNullOrEmpty(key))
             {
                 lblGeminiStatus.Text = "⚠️ اكتب مفتاح Gemini أولاً ثم اضغط فحص.";
+                lblGeminiStatus.ForeColor = Color.FromArgb(251, 191, 36);
+                return;
+            }
+
+            if (key.StartsWith("ghp_"))
+            {
+                lblGeminiStatus.Text = "⚠️ هذا الرمز هو مفتاح GitHub وليس مفتاح Google Gemini! احصل على مفتاح مجاني من aistudio.google.com";
+                lblGeminiStatus.ForeColor = Color.FromArgb(251, 191, 36);
+                return;
+            }
+            if (key.StartsWith("sk-") || key.StartsWith("gsk_"))
+            {
+                lblGeminiStatus.Text = "⚠️ هذا المفتاح خاص بخدمة أخرى (OpenAI أو Groq) وليس Google Gemini.";
                 lblGeminiStatus.ForeColor = Color.FromArgb(251, 191, 36);
                 return;
             }
@@ -2081,10 +2099,10 @@ namespace QuizGenie
 
         private string BuildSystemPrompt(string mode)
         {
-            string subj = (cbSubject != null && !string.IsNullOrEmpty(cbSubject.Text)) ? cbSubject.Text : "عام";
-            string lang = (cbLanguage != null && !string.IsNullOrEmpty(cbLanguage.Text)) ? cbLanguage.Text : "العربية";
+            string subj = currentConfig != null ? currentConfig.Subject : "general";
+            string lang = currentConfig != null ? currentConfig.TargetLanguage : "ar";
 
-            string prompt = "أنت QuizGenie المساعد الأكاديمي الذكي الفائق لحل الاختبارات والأسئلة في تخصص (" + subj + ").";
+            string prompt = "أنت QuizGenie المساعد الأكاديمي الذكي الفائق لحل الاختبارات والأسئلة.";
             if (mode == "concise")
             {
                 prompt += " المطلوب: استخرج رمز الخيار الصحيح (مثال: أ أو B) مع نص الإجابة المختصر في سطر واحد فقط ومباشر دون أي مقدمات أو فلسفة زائدة.";
@@ -2094,7 +2112,7 @@ namespace QuizGenie
                 prompt += " المطلوب: قدم الحل النموذجي المفصل الدقيق خطوة بخطوة مع ذكر القوانين الرياضية أو العلمية وشرح سبب اختيار الإجابة الصحيحة بشكل منظم.";
             }
 
-            if (lang.IndexOf("English", StringComparison.OrdinalIgnoreCase) >= 0) prompt += " Answer in English.";
+            if (lang == "en") prompt += " Answer in English.";
             else prompt += " الإجابة باللغة العربية.";
 
             return prompt;
@@ -2314,6 +2332,7 @@ namespace QuizGenie
                     new Dictionary<string, object> { { "role", "system" }, { "content", "حل مباشر وسريع بالعربية في سطر واحد: " + sys } },
                     new Dictionary<string, object> { { "role", "user" }, { "content", q } }
                 }},
+                { "model", "openai" },
                 { "seed", 42 }
             };
 
@@ -2346,7 +2365,7 @@ namespace QuizGenie
                     new Dictionary<string, object> { { "role", "system" }, { "content", "حل بديل دقيق ومباشر بالعربية في سطر واحد: " + sys } },
                     new Dictionary<string, object> { { "role", "user" }, { "content", q } }
                 }},
-                { "model", "mistral" },
+                { "model", "openai" },
                 { "seed", 99 }
             };
 
@@ -2412,7 +2431,7 @@ namespace QuizGenie
                         new Dictionary<string, object> { { "role", "system" }, { "content", "أنت نموذج ديب سيك R1 المتخصص في الرياضيات والمنطق. " + sys } },
                         new Dictionary<string, object> { { "role", "user" }, { "content", q } }
                     }},
-                    { "model", "deepseek-r1" }
+                    { "model", "openai" }
                 };
 
                 byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
@@ -3351,6 +3370,9 @@ namespace QuizGenie
         public string OpenAIKey { get; set; }
         public string DeepSeekKey { get; set; }
         public string GroqKey { get; set; }
+        public string Subject { get; set; }
+        public string TargetLanguage { get; set; }
+        public string DefaultMode { get; set; }
         public bool IsFirstRunAfterUpdate { get; set; }
         public string UpdateServerUrl { get; set; }
         public string InstalledVersion { get; set; }
