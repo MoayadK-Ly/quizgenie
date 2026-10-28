@@ -530,7 +530,7 @@ async function solveViaDeepSeek(systemPrompt, userText, apiKey) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userText }
         ],
-        model: 'deepseek-r1',
+        model: 'openai',
         seed: 99
       }),
       signal: controller.signal
@@ -595,7 +595,7 @@ async function solveViaGroq(systemPrompt, userText, apiKey) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userText }
         ],
-        model: 'llama',
+        model: 'openai',
         seed: 123
       }),
       signal: controller.signal
