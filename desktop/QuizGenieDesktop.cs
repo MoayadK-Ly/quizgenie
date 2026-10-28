@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -785,8 +785,8 @@ namespace QuizGenie
         private void BuildAccordionServers(int itemW)
         {
             pnlAccServersHeader = CreateAccordionHeader(
-                itemW, "ًں–¥ï¸ڈ", "ط®ظˆط§ط¯ظ… ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ", "6 ط®ظˆط§ط¯ظ…: ط¯ظٹط¨ ط³ظٹظƒطŒ ط¬ط±ظˆظƒطŒ ط¬ظˆط¬ظ„طŒ ط´ط§طھ ط¬ظٹ ط¨ظٹ طھظٹطŒ ظˆظ…ط¬ط§ظ†ظٹ",
-                "ًںŒگ ظ…ط¬ط§ظ†ظٹ", Color.FromArgb(167, 139, 250), Color.FromArgb(46, 16, 101),
+                itemW, "🖥️", "خوادم الذكاء الاصطناعي", "6 خوادم: ديب سيك، جروك، جوجل، شات جي بي تي، ومجاني",
+                "🌐 مجاني", Color.FromArgb(167, 139, 250), Color.FromArgb(46, 16, 101),
                 out lblAccServersBadge, out lblAccServersChevron,
                 ToggleServers
             );
@@ -802,7 +802,7 @@ namespace QuizGenie
             int cardW = itemW - 24;
             int y = 10;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 1: ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ
+            // البطاقة 1: الخادم المجاني
             pnlCardFree = new Panel();
             pnlCardFree.Location = new Point(12, y);
             pnlCardFree.Size = new Size(cardW, 60);
@@ -816,7 +816,7 @@ namespace QuizGenie
             };
 
             rbFree = new RadioButton();
-            rbFree.Text = "ًںŒگ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ";
+            rbFree.Text = "🌐 الخادم المجاني";
             rbFree.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbFree.ForeColor = Color.FromArgb(110, 231, 183);
             rbFree.Location = new Point(130, 6);
@@ -826,7 +826,7 @@ namespace QuizGenie
             pnlCardFree.Controls.Add(rbFree);
 
             Label lblTagFree = new Label();
-            lblTagFree.Text = "طھظ„ظ‚ط§ط¦ظٹ ط¨ط¯ظˆظ† ظ…ظپطھط§ط­";
+            lblTagFree.Text = "تلقائي بدون مفتاح";
             lblTagFree.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagFree.Location = new Point(10, 6);
             lblTagFree.Size = new Size(110, 22);
@@ -834,7 +834,7 @@ namespace QuizGenie
             pnlCardFree.Controls.Add(lblTagFree);
 
             Label lblFreeDesc = new Label();
-            lblFreeDesc.Text = "ظ…ط¬ط§ظ†ظٹ 100% ظˆظٹط¹ظ…ظ„ ظپظˆط±ط§ظ‹ ظˆط¨ط¯ظˆظ† ط£ظٹ طھط³ط¬ظٹظ„ ط£ظˆ ظ…ظپط§طھظٹط­طŒ ظ…ظ†ط§ط³ط¨ ظ„ظ„ط­ظ„ ط§ظ„ظ…ط¨ط§ط´ط±.";
+            lblFreeDesc.Text = "مجاني 100% ويعمل فوراً وبدون أي تسجيل أو مفاتيح، مناسب للحل المباشر.";
             lblFreeDesc.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblFreeDesc.ForeColor = Color.FromArgb(148, 163, 184);
             lblFreeDesc.Location = new Point(10, 32);
@@ -846,7 +846,7 @@ namespace QuizGenie
             pnlAccServersBody.Controls.Add(pnlCardFree);
             y += 68;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 2: ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط§ط­طھظٹط§ط·ظٹ
+            // البطاقة 2: الخادم المجاني الاحتياطي
             pnlCardFreeBackup = new Panel();
             pnlCardFreeBackup.Location = new Point(12, y);
             pnlCardFreeBackup.Size = new Size(cardW, 60);
@@ -860,7 +860,7 @@ namespace QuizGenie
             };
 
             rbFreeBackup = new RadioButton();
-            rbFreeBackup.Text = "ًں›،ï¸ڈ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط§ط­طھظٹط§ط·ظٹ";
+            rbFreeBackup.Text = "🛡️ الخادم المجاني الاحتياطي";
             rbFreeBackup.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbFreeBackup.ForeColor = Color.FromArgb(45, 212, 191);
             rbFreeBackup.Location = new Point(130, 6);
@@ -870,7 +870,7 @@ namespace QuizGenie
             pnlCardFreeBackup.Controls.Add(rbFreeBackup);
 
             Label lblTagFreeBackup = new Label();
-            lblTagFreeBackup.Text = "ط¨ط¯ظٹظ„ طھظ„ظ‚ط§ط¦ظٹ ظپظˆط±ظٹ";
+            lblTagFreeBackup.Text = "بديل تلقائي فوري";
             lblTagFreeBackup.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagFreeBackup.Location = new Point(10, 6);
             lblTagFreeBackup.Size = new Size(110, 22);
@@ -878,7 +878,7 @@ namespace QuizGenie
             pnlCardFreeBackup.Controls.Add(lblTagFreeBackup);
 
             Label lblFreeBackupDesc = new Label();
-            lblFreeBackupDesc.Text = "ط®ط§ط¯ظ… ط¨ط¯ظٹظ„ ظپظˆط±ظٹ ظٹط¹ظ…ظ„ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ظˆط¨ط¯ظˆظ† ط£ظٹ ظ…ظپط§طھظٹط­ ط¹ظ†ط¯ ط§ظ†ط´ط؛ط§ظ„ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط£ظˆظ„.";
+            lblFreeBackupDesc.Text = "خادم بديل فوري يعمل تلقائياً وبدون أي مفاتيح عند انشغال الخادم المجاني الأول.";
             lblFreeBackupDesc.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblFreeBackupDesc.ForeColor = Color.FromArgb(148, 163, 184);
             lblFreeBackupDesc.Location = new Point(10, 32);
@@ -890,7 +890,7 @@ namespace QuizGenie
             pnlAccServersBody.Controls.Add(pnlCardFreeBackup);
             y += 68;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 3: ط®ط§ط¯ظ… ط¯ظٹط¨ ط³ظٹظƒ (DeepSeek R1)
+            // البطاقة 3: خادم ديب سيك (DeepSeek R1)
             pnlCardDeepSeek = new Panel();
             pnlCardDeepSeek.Location = new Point(12, y);
             pnlCardDeepSeek.Size = new Size(cardW, 110);
@@ -904,7 +904,7 @@ namespace QuizGenie
             };
 
             rbDeepSeek = new RadioButton();
-            rbDeepSeek.Text = "ًں§  ط®ط§ط¯ظ… ط¯ظٹط¨ ط³ظٹظƒ (DeepSeek R1)";
+            rbDeepSeek.Text = "🧠 خادم ديب سيك (DeepSeek R1)";
             rbDeepSeek.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbDeepSeek.ForeColor = Color.FromArgb(56, 189, 248);
             rbDeepSeek.Location = new Point(110, 6);
@@ -914,7 +914,7 @@ namespace QuizGenie
             pnlCardDeepSeek.Controls.Add(rbDeepSeek);
 
             Label lblTagDeepSeek = new Label();
-            lblTagDeepSeek.Text = "طھظپظƒظٹط± ط§ط³طھظ†طھط§ط¬ظٹ ط®ط§ط±ظ‚";
+            lblTagDeepSeek.Text = "تفكير استنتاجي خارق";
             lblTagDeepSeek.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagDeepSeek.Location = new Point(10, 6);
             lblTagDeepSeek.Size = new Size(115, 22);
@@ -943,7 +943,7 @@ namespace QuizGenie
             pnlDeepSeekKey.Controls.Add(pnlDeepSeekKeyWrap);
 
             btnTestDeepSeek = new Button();
-            btnTestDeepSeek.Text = "ًں”چ ظپط­طµ ط§ظ„ظ…ظپطھط§ط­";
+            btnTestDeepSeek.Text = "🔍 فحص المفتاح";
             btnTestDeepSeek.Location = new Point(4, 4);
             btnTestDeepSeek.Size = new Size(110, 30);
             btnTestDeepSeek.FlatStyle = FlatStyle.Flat;
@@ -957,7 +957,7 @@ namespace QuizGenie
             pnlDeepSeekKey.Controls.Add(btnTestDeepSeek);
 
             lblDeepSeekStatus = new Label();
-            lblDeepSeekStatus.Text = "ط§ط­طµظ„ ط¹ظ„ظٹظ‡ ظ…ط¬ط§ظ†ط§ظ‹: platform.deepseek.com (ظٹط¹ظ…ظ„ ظ…ط¬ط§ظ†ط§ظ‹ ط£ظٹط¶ط§ظ‹ ط¨ط¯ظˆظ† ظ…ظپطھط§ط­)";
+            lblDeepSeekStatus.Text = "احصل عليه مجاناً: platform.deepseek.com (يعمل مجاناً أيضاً بدون مفتاح)";
             lblDeepSeekStatus.Location = new Point(4, 38);
             lblDeepSeekStatus.Size = new Size(pnlDeepSeekKey.Width - 8, 24);
             lblDeepSeekStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -969,7 +969,7 @@ namespace QuizGenie
             pnlAccServersBody.Controls.Add(pnlCardDeepSeek);
             y += 118;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 4: ط®ط§ط¯ظ… ط¬ط±ظˆظƒ ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط© (Groq Llama 3.3)
+            // البطاقة 4: خادم جروك فائق السرعة (Groq Llama 3.3)
             pnlCardGroq = new Panel();
             pnlCardGroq.Location = new Point(12, y);
             pnlCardGroq.Size = new Size(cardW, 110);
@@ -983,7 +983,7 @@ namespace QuizGenie
             };
 
             rbGroq = new RadioButton();
-            rbGroq.Text = "âڑ، ط®ط§ط¯ظ… ط¬ط±ظˆظƒ ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط© (Groq Llama 3.3)";
+            rbGroq.Text = "⚡ خادم جروك فائق السرعة (Groq Llama 3.3)";
             rbGroq.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbGroq.ForeColor = Color.FromArgb(249, 115, 22);
             rbGroq.Location = new Point(110, 6);
@@ -993,7 +993,7 @@ namespace QuizGenie
             pnlCardGroq.Controls.Add(rbGroq);
 
             Label lblTagGroq = new Label();
-            lblTagGroq.Text = "ط§ظ„ط£ط³ط±ط¹ ط¹ط§ظ„ظ…ظٹط§ظ‹ (0.1s)";
+            lblTagGroq.Text = "الأسرع عالمياً (0.1s)";
             lblTagGroq.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagGroq.Location = new Point(10, 6);
             lblTagGroq.Size = new Size(115, 22);
@@ -1022,7 +1022,7 @@ namespace QuizGenie
             pnlGroqKey.Controls.Add(pnlGroqKeyWrap);
 
             btnTestGroq = new Button();
-            btnTestGroq.Text = "ًں”چ ظپط­طµ ط§ظ„ظ…ظپطھط§ط­";
+            btnTestGroq.Text = "🔍 فحص المفتاح";
             btnTestGroq.Location = new Point(4, 4);
             btnTestGroq.Size = new Size(110, 30);
             btnTestGroq.FlatStyle = FlatStyle.Flat;
@@ -1036,7 +1036,7 @@ namespace QuizGenie
             pnlGroqKey.Controls.Add(btnTestGroq);
 
             lblGroqStatus = new Label();
-            lblGroqStatus.Text = "ط§ط­طµظ„ ط¹ظ„ظٹظ‡ ظ…ط¬ط§ظ†ط§ظ‹: console.groq.com/keys (ظٹط¹ظ…ظ„ ظ…ط¬ط§ظ†ط§ظ‹ ط£ظٹط¶ط§ظ‹ ط¨ط¯ظˆظ† ظ…ظپطھط§ط­)";
+            lblGroqStatus.Text = "احصل عليه مجاناً: console.groq.com/keys (يعمل مجاناً أيضاً بدون مفتاح)";
             lblGroqStatus.Location = new Point(4, 38);
             lblGroqStatus.Size = new Size(pnlGroqKey.Width - 8, 24);
             lblGroqStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -1048,7 +1048,7 @@ namespace QuizGenie
             pnlAccServersBody.Controls.Add(pnlCardGroq);
             y += 118;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 5: ط§ظ„ط®ط§ط¯ظ… ط§ظ„ط¢ط®ط± (Gemini)
+            // البطاقة 5: الخادم الآخر (Gemini)
             pnlCardGemini = new Panel();
             pnlCardGemini.Location = new Point(12, y);
             pnlCardGemini.Size = new Size(cardW, 110);
@@ -1062,7 +1062,7 @@ namespace QuizGenie
             };
 
             rbGemini = new RadioButton();
-            rbGemini.Text = "âڑ، ط§ظ„ط®ط§ط¯ظ… ط§ظ„ط¢ط®ط± (Google Gemini 1.5 Flash)";
+            rbGemini.Text = "⚡ الخادم الآخر (Google Gemini)";
             rbGemini.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbGemini.ForeColor = Color.FromArgb(125, 211, 252);
             rbGemini.Location = new Point(110, 6);
@@ -1072,7 +1072,7 @@ namespace QuizGenie
             pnlCardGemini.Controls.Add(rbGemini);
 
             Label lblTagGemini = new Label();
-            lblTagGemini.Text = "ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط© (0.3s)";
+            lblTagGemini.Text = "فائق السرعة (0.3s)";
             lblTagGemini.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagGemini.Location = new Point(10, 6);
             lblTagGemini.Size = new Size(110, 22);
@@ -1101,7 +1101,7 @@ namespace QuizGenie
             pnlGeminiKey.Controls.Add(pnlGeminiKeyWrap);
 
             btnTestGemini = new Button();
-            btnTestGemini.Text = "ًں”چ ظپط­طµ ط§ظ„ظ…ظپطھط§ط­";
+            btnTestGemini.Text = "🔍 فحص المفتاح";
             btnTestGemini.Location = new Point(4, 4);
             btnTestGemini.Size = new Size(110, 30);
             btnTestGemini.FlatStyle = FlatStyle.Flat;
@@ -1115,7 +1115,7 @@ namespace QuizGenie
             pnlGeminiKey.Controls.Add(btnTestGemini);
 
             lblGeminiStatus = new Label();
-            lblGeminiStatus.Text = "ط§ط­طµظ„ ط¹ظ„ظٹظ‡ ظ…ط¬ط§ظ†ط§ظ‹: aistudio.google.com/app/apikey";
+            lblGeminiStatus.Text = "احصل عليه مجاناً: aistudio.google.com/app/apikey";
             lblGeminiStatus.Location = new Point(4, 38);
             lblGeminiStatus.Size = new Size(pnlGeminiKey.Width - 8, 24);
             lblGeminiStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -1127,7 +1127,7 @@ namespace QuizGenie
             pnlAccServersBody.Controls.Add(pnlCardGemini);
             y += 118;
 
-            // ط§ظ„ط¨ط·ط§ظ‚ط© 6: ط®ط§ط¯ظ… ط´ط§طھ ط¬ظٹ ط¨ظٹ طھظٹ (OpenAI)
+            // البطاقة 6: خادم شات جي بي تي (OpenAI)
             pnlCardOpenAI = new Panel();
             pnlCardOpenAI.Location = new Point(12, y);
             pnlCardOpenAI.Size = new Size(cardW, 110);
@@ -1141,7 +1141,7 @@ namespace QuizGenie
             };
 
             rbOpenAI = new RadioButton();
-            rbOpenAI.Text = "ًں§  ط®ط§ط¯ظ… ط´ط§طھ ط¬ظٹ ط¨ظٹ طھظٹ (ChatGPT / OpenAI)";
+            rbOpenAI.Text = "🤖 خادم شات جي بي تي (ChatGPT / OpenAI)";
             rbOpenAI.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             rbOpenAI.ForeColor = Color.FromArgb(216, 180, 254);
             rbOpenAI.Location = new Point(110, 6);
@@ -1151,7 +1151,7 @@ namespace QuizGenie
             pnlCardOpenAI.Controls.Add(rbOpenAI);
 
             Label lblTagOpenAI = new Label();
-            lblTagOpenAI.Text = "ط§ظ„ط£ط¹ظ„ظ‰ ط¯ظ‚ط©";
+            lblTagOpenAI.Text = "الأعلى دقة";
             lblTagOpenAI.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblTagOpenAI.Location = new Point(10, 6);
             lblTagOpenAI.Size = new Size(95, 22);
@@ -1180,7 +1180,7 @@ namespace QuizGenie
             pnlOpenAIKey.Controls.Add(pnlOpenAIKeyWrap);
 
             btnTestOpenAI = new Button();
-            btnTestOpenAI.Text = "ًں”چ ظپط­طµ ط§ظ„ظ…ظپطھط§ط­";
+            btnTestOpenAI.Text = "🔍 فحص المفتاح";
             btnTestOpenAI.Location = new Point(4, 4);
             btnTestOpenAI.Size = new Size(110, 30);
             btnTestOpenAI.FlatStyle = FlatStyle.Flat;
@@ -1194,7 +1194,7 @@ namespace QuizGenie
             pnlOpenAIKey.Controls.Add(btnTestOpenAI);
 
             lblOpenAIStatus = new Label();
-            lblOpenAIStatus.Text = "ط§ط­طµظ„ ط¹ظ„ظٹظ‡: platform.openai.com/api-keys";
+            lblOpenAIStatus.Text = "احصل عليه: platform.openai.com/api-keys";
             lblOpenAIStatus.Location = new Point(4, 38);
             lblOpenAIStatus.Size = new Size(pnlOpenAIKey.Width - 8, 24);
             lblOpenAIStatus.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -1784,22 +1784,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = false;
 
-                lblHeaderServerBadge.Text = "âڑ، ط§ظ„ط®ط§ط¯ظ… ط§ظ„ط¢ط®ط± (Gemini)";
+                lblHeaderServerBadge.Text = "⚡ الخادم الآخر (Gemini)";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(125, 211, 252);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 headerBadgeBorderColor = Color.FromArgb(56, 189, 248);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "âڑ،";
-                lblActiveServerName.Text = "ط§ظ„ط®ط§ط¯ظ… ط§ظ„ط¢ط®ط± (Google Gemini 1.5 Flash)";
+                lblActiveServerIcon.Text = "⚡";
+                lblActiveServerName.Text = "الخادم الآخر (Google Gemini)";
                 lblActiveServerName.ForeColor = Color.FromArgb(125, 211, 252);
-                lblActiveServerBadge.Text = "âڑ، ظ†ط´ط·";
+                lblActiveServerBadge.Text = "⚡ نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(125, 211, 252);
                 lblActiveServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 activeBadgeBorderColor = Color.FromArgb(56, 189, 248);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "âڑ، Gemini";
+                lblAccServersBadge.Text = "⚡ Gemini";
                 lblAccServersBadge.ForeColor = Color.FromArgb(125, 211, 252);
 
                 cardGeminiBorderColor = Color.FromArgb(56, 189, 248);
@@ -1816,22 +1816,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = false;
 
-                lblHeaderServerBadge.Text = "ًں§  ط®ط§ط¯ظ… ط´ط§طھ ط¬ظٹ ط¨ظٹ طھظٹ";
+                lblHeaderServerBadge.Text = "🤖 خادم شات جي بي تي";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(216, 180, 254);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(59, 7, 100);
                 headerBadgeBorderColor = Color.FromArgb(192, 132, 252);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "ًں§ ";
-                lblActiveServerName.Text = "ط®ط§ط¯ظ… ط´ط§طھ ط¬ظٹ ط¨ظٹ طھظٹ (ChatGPT / OpenAI)";
+                lblActiveServerIcon.Text = "🤖";
+                lblActiveServerName.Text = "خادم شات جي بي تي (ChatGPT / OpenAI)";
                 lblActiveServerName.ForeColor = Color.FromArgb(216, 180, 254);
-                lblActiveServerBadge.Text = "ًں§  ظ†ط´ط·";
+                lblActiveServerBadge.Text = "🤖 نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(216, 180, 254);
                 lblActiveServerBadge.BackColor = Color.FromArgb(59, 7, 100);
                 activeBadgeBorderColor = Color.FromArgb(192, 132, 252);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "ًں§  ChatGPT";
+                lblAccServersBadge.Text = "🤖 ChatGPT";
                 lblAccServersBadge.ForeColor = Color.FromArgb(216, 180, 254);
 
                 cardOpenAIBorderColor = Color.FromArgb(192, 132, 252);
@@ -1848,22 +1848,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = true;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = false;
 
-                lblHeaderServerBadge.Text = "ًں§  ط®ط§ط¯ظ… ط¯ظٹط¨ ط³ظٹظƒ";
+                lblHeaderServerBadge.Text = "🧠 خادم ديب سيك";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(56, 189, 248);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 headerBadgeBorderColor = Color.FromArgb(56, 189, 248);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "ًں§ ";
-                lblActiveServerName.Text = "ط®ط§ط¯ظ… ط¯ظٹط¨ ط³ظٹظƒ (DeepSeek R1)";
+                lblActiveServerIcon.Text = "🧠";
+                lblActiveServerName.Text = "خادم ديب سيك (DeepSeek R1)";
                 lblActiveServerName.ForeColor = Color.FromArgb(56, 189, 248);
-                lblActiveServerBadge.Text = "ًں§  ط¯ظٹط¨ ط³ظٹظƒ ظ†ط´ط·";
+                lblActiveServerBadge.Text = "🧠 ديب سيك نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(56, 189, 248);
                 lblActiveServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 activeBadgeBorderColor = Color.FromArgb(56, 189, 248);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "ًں§  DeepSeek";
+                lblAccServersBadge.Text = "🧠 DeepSeek";
                 lblAccServersBadge.ForeColor = Color.FromArgb(56, 189, 248);
 
                 cardDeepSeekBorderColor = Color.FromArgb(56, 189, 248);
@@ -1880,22 +1880,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = true;
 
-                lblHeaderServerBadge.Text = "âڑ، ط®ط§ط¯ظ… ط¬ط±ظˆظƒ ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط©";
+                lblHeaderServerBadge.Text = "⚡ خادم جروك فائق السرعة";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(249, 115, 22);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(67, 20, 7);
                 headerBadgeBorderColor = Color.FromArgb(249, 115, 22);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "âڑ،";
-                lblActiveServerName.Text = "ط®ط§ط¯ظ… ط¬ط±ظˆظƒ ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط© (Groq Llama 3.3)";
+                lblActiveServerIcon.Text = "⚡";
+                lblActiveServerName.Text = "خادم جروك فائق السرعة (Groq Llama 3.3)";
                 lblActiveServerName.ForeColor = Color.FromArgb(249, 115, 22);
-                lblActiveServerBadge.Text = "âڑ، ط¬ط±ظˆظƒ ظ†ط´ط·";
+                lblActiveServerBadge.Text = "⚡ جروك نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(249, 115, 22);
                 lblActiveServerBadge.BackColor = Color.FromArgb(67, 20, 7);
                 activeBadgeBorderColor = Color.FromArgb(249, 115, 22);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "âڑ، Groq";
+                lblAccServersBadge.Text = "⚡ Groq";
                 lblAccServersBadge.ForeColor = Color.FromArgb(249, 115, 22);
 
                 cardGroqBorderColor = Color.FromArgb(249, 115, 22);
@@ -1912,22 +1912,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = false;
 
-                lblHeaderServerBadge.Text = "ًں›،ï¸ڈ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط§ط­طھظٹط§ط·ظٹ";
+                lblHeaderServerBadge.Text = "🛡️ الخادم المجاني الاحتياطي";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(45, 212, 191);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(19, 78, 74);
                 headerBadgeBorderColor = Color.FromArgb(20, 184, 166);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "ًں›،ï¸ڈ";
-                lblActiveServerName.Text = "ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط§ط­طھظٹط§ط·ظٹ (ط¨ط¯ظˆظ† ظ…ظپطھط§ط­)";
+                lblActiveServerIcon.Text = "🛡️";
+                lblActiveServerName.Text = "الخادم المجاني الاحتياطي (بدون مفتاح)";
                 lblActiveServerName.ForeColor = Color.FromArgb(45, 212, 191);
-                lblActiveServerBadge.Text = "ًں›،ï¸ڈ ظ†ط´ط·";
+                lblActiveServerBadge.Text = "🛡️ نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(45, 212, 191);
                 lblActiveServerBadge.BackColor = Color.FromArgb(19, 78, 74);
                 activeBadgeBorderColor = Color.FromArgb(20, 184, 166);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "ًں›،ï¸ڈ ط§ط­طھظٹط§ط·ظٹ";
+                lblAccServersBadge.Text = "🛡️ احتياطي";
                 lblAccServersBadge.ForeColor = Color.FromArgb(45, 212, 191);
 
                 cardFreeBackupBorderColor = Color.FromArgb(20, 184, 166);
@@ -1944,22 +1944,22 @@ namespace QuizGenie
                 if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
                 if (pnlGroqKey != null) pnlGroqKey.Visible = false;
 
-                lblHeaderServerBadge.Text = "ًںŒگ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ";
+                lblHeaderServerBadge.Text = "🌐 الخادم المجاني";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(52, 211, 153);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(6, 78, 59);
                 headerBadgeBorderColor = Color.FromArgb(16, 185, 129);
                 lblHeaderServerBadge.Invalidate();
 
-                lblActiveServerIcon.Text = "ًںŒگ";
-                lblActiveServerName.Text = "ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ (ط¨ط¯ظˆظ† ظ…ظپطھط§ط­)";
+                lblActiveServerIcon.Text = "🌐";
+                lblActiveServerName.Text = "الخادم المجاني (بدون مفتاح)";
                 lblActiveServerName.ForeColor = Color.FromArgb(110, 231, 183);
-                lblActiveServerBadge.Text = "ًںں¢ ظ†ط´ط·";
+                lblActiveServerBadge.Text = "🟢 نشط";
                 lblActiveServerBadge.ForeColor = Color.FromArgb(52, 211, 153);
                 lblActiveServerBadge.BackColor = Color.FromArgb(6, 78, 59);
                 activeBadgeBorderColor = Color.FromArgb(16, 185, 129);
                 lblActiveServerBadge.Invalidate();
 
-                lblAccServersBadge.Text = "ًںŒگ ظ…ط¬ط§ظ†ظٹ";
+                lblAccServersBadge.Text = "🌐 مجاني";
                 lblAccServersBadge.ForeColor = Color.FromArgb(110, 231, 183);
 
                 cardFreeBorderColor = Color.FromArgb(16, 185, 129);
@@ -1977,9 +1977,37 @@ namespace QuizGenie
             if (pnlCardGemini != null) pnlCardGemini.Invalidate();
             if (pnlCardOpenAI != null) pnlCardOpenAI.Invalidate();
         }
+        private static string workingGeminiModel = "gemini-2.0-flash";
+
+        private static string ExtractWebError(WebException wex)
+        {
+            if (wex == null) return "خطأ غير محدد";
+            try
+            {
+                if (wex.Response != null)
+                {
+                    using (var stream = wex.Response.GetResponseStream())
+                    using (var r = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        string body = r.ReadToEnd();
+                        if (!string.IsNullOrEmpty(body))
+                        {
+                            if (body.Contains("API_KEY_INVALID") || body.Contains("API key not valid"))
+                                return "مفتاح API غير صالح أو غير مفعل في Google AI Studio.";
+                            if (body.Contains("RESOURCE_EXHAUSTED") || body.Contains("quota"))
+                                return "تم تجاوز الحصة المجانية المؤقتة لمفتاحك، يرجى المحاولة لاحقاً.";
+                            return body.Length > 200 ? body.Substring(0, 200) + "..." : body;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return wex.Message;
+        }
+
         private async Task TestGeminiKeyAsync()
         {
-            string key = txtGeminiKey.Text.Trim();
+            string key = txtGeminiKey.Text.Trim().Trim('"', '\'');
             if (string.IsNullOrEmpty(key))
             {
                 lblGeminiStatus.Text = "⚠️ اكتب مفتاح Gemini أولاً ثم اضغط فحص.";
@@ -1989,20 +2017,20 @@ namespace QuizGenie
 
             btnTestGemini.Enabled = false;
             btnTestGemini.Text = "⏳ جارٍ الفحص...";
-            lblGeminiStatus.Text = "جارٍ اختبار الاتصال بخادم Google Gemini...";
+            lblGeminiStatus.Text = "جارٍ اختبار الاتصال بنماذج Google Gemini...";
             lblGeminiStatus.ForeColor = Color.FromArgb(56, 189, 248);
 
             try
             {
-                string res = await CallGeminiAsync("أنت نظام اختبار الاتصال. أجب بكلمة OK فقط.", "مرحباً", key);
-                lblGeminiStatus.Text = "✓ المفتاح يعمل 100% بنجاح وسرعة فائقة!";
+                string res = await CallGeminiAsync("أنت نظام فحص اتصال. أجب بـ OK فقط.", "مرحباً", key);
+                lblGeminiStatus.Text = "✓ المفتاح يعمل 100% بنجاح وسرعة فائقة! (" + workingGeminiModel + ")";
                 lblGeminiStatus.ForeColor = Color.FromArgb(52, 211, 153);
                 currentConfig.GeminiKey = key;
                 SaveSettings();
             }
             catch (Exception ex)
             {
-                lblGeminiStatus.Text = "❌ المفتاح غير صالح أو الاتصال تعذر: " + ex.Message;
+                lblGeminiStatus.Text = "❌ فشل الاتصال: " + ex.Message;
                 lblGeminiStatus.ForeColor = Color.FromArgb(248, 113, 113);
             }
             finally
@@ -2014,7 +2042,7 @@ namespace QuizGenie
 
         private async Task TestOpenAIKeyAsync()
         {
-            string key = txtOpenAIKey.Text.Trim();
+            string key = txtOpenAIKey.Text.Trim().Trim('"', '\'');
             if (string.IsNullOrEmpty(key))
             {
                 lblOpenAIStatus.Text = "⚠️ اكتب مفتاح OpenAI / ChatGPT أولاً ثم اضغط فحص.";
@@ -2039,7 +2067,7 @@ namespace QuizGenie
             {
                 string msg = ex.Message;
                 if (msg.Contains("insufficient_quota") || msg.Contains("429") || msg.Contains("credits"))
-                    lblOpenAIStatus.Text = "⚠️ المفتاح صحيح ولكن رصيد حسابك $0 غير كافٍ. استخدم Gemini المجاني.";
+                    lblOpenAIStatus.Text = "⚠️ المفتاح صحيح ولكن رصيد حسابك $0 غير كافٍ. استخدم Gemini أو المجاني.";
                 else
                     lblOpenAIStatus.Text = "❌ فشل الاتصال: " + msg;
                 lblOpenAIStatus.ForeColor = Color.FromArgb(248, 113, 113);
@@ -2049,6 +2077,27 @@ namespace QuizGenie
                 btnTestOpenAI.Enabled = true;
                 btnTestOpenAI.Text = "🔍 فحص المفتاح";
             }
+        }
+
+        private string BuildSystemPrompt(string mode)
+        {
+            string subj = (cbSubject != null && !string.IsNullOrEmpty(cbSubject.Text)) ? cbSubject.Text : "عام";
+            string lang = (cbLanguage != null && !string.IsNullOrEmpty(cbLanguage.Text)) ? cbLanguage.Text : "العربية";
+
+            string prompt = "أنت QuizGenie المساعد الأكاديمي الذكي الفائق لحل الاختبارات والأسئلة في تخصص (" + subj + ").";
+            if (mode == "concise")
+            {
+                prompt += " المطلوب: استخرج رمز الخيار الصحيح (مثال: أ أو B) مع نص الإجابة المختصر في سطر واحد فقط ومباشر دون أي مقدمات أو فلسفة زائدة.";
+            }
+            else
+            {
+                prompt += " المطلوب: قدم الحل النموذجي المفصل الدقيق خطوة بخطوة مع ذكر القوانين الرياضية أو العلمية وشرح سبب اختيار الإجابة الصحيحة بشكل منظم.";
+            }
+
+            if (lang.IndexOf("English", StringComparison.OrdinalIgnoreCase) >= 0) prompt += " Answer in English.";
+            else prompt += " الإجابة باللغة العربية.";
+
+            return prompt;
         }
 
         private async Task SolveAsync(string mode)
@@ -2062,40 +2111,31 @@ namespace QuizGenie
             string question = txtQuestion.Text.Trim();
             if (string.IsNullOrEmpty(question))
             {
-                MessageBox.Show("الرجاء كتابة أو لصق نص السؤال أولاً.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("يرجى كتابة نص السؤال أو التقاطه أولاً.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             btnSolveConcise.Enabled = false;
             btnSolveDetailed.Enabled = false;
-
-            string srv = currentConfig.ActiveServer ?? "free";
-            string srvTitle = srv == "gemini" ? "Google Gemini" : (srv == "openai" ? "ChatGPT" : "الخادم المجاني");
-            lblAnswerStatus.Text = "⏳ جارٍ الحل والترجمة عبر " + srvTitle + "...";
+            lblAnswerStatus.Text = "⏳ جارٍ الحل والتحليل الذكي...";
             lblAnswerStatus.ForeColor = Color.FromArgb(56, 189, 248);
-
-            string systemPrompt = string.Format(
-                "أنت QuizGenie - مساعد حل الاختبارات والأسئلة. التخصص: {0}. لغة الإجابة المطلوبة: {1}.\n{2}",
-                cbSubject.Text,
-                cbLanguage.Text,
-                mode == "detailed" 
-                    ? "اكتب رمز الخيار الصحيح ونص الإجابة في أول سطر، يليه شرح موجز ومباشر في نقطتين."
-                    : "اكتب رمز الخيار الصحيح ونص الإجابة فقط في سطر واحد بدون أي كلام إضافي."
-            );
 
             try
             {
+                string srv = currentConfig.ActiveServer ?? "free";
+                string systemPrompt = BuildSystemPrompt(mode);
                 string answer = "";
+
                 if (srv == "gemini")
                 {
                     if (string.IsNullOrEmpty(currentConfig.GeminiKey))
-                        throw new Exception("لم يتم حفظ مفتاح Gemini. أدخل المفتاح واضغط فحص.");
+                        throw new Exception("لم يتم إدخال مفتاح Gemini. يرجى إدخاله في قسم الخوادم.");
                     answer = await CallGeminiAsync(systemPrompt, question, currentConfig.GeminiKey);
                 }
                 else if (srv == "openai")
                 {
                     if (string.IsNullOrEmpty(currentConfig.OpenAIKey))
-                        throw new Exception("لم يتم حفظ مفتاح OpenAI. أدخل المفتاح واضغط فحص.");
+                        throw new Exception("لم يتم إدخال مفتاح OpenAI. يرجى إدخاله في قسم الخوادم.");
                     answer = await CallOpenAIAsync(systemPrompt, question, currentConfig.OpenAIKey);
                 }
                 else if (srv == "deepseek")
@@ -2116,13 +2156,13 @@ namespace QuizGenie
                 }
 
                 txtAnswer.Text = answer.Trim();
-                lblAnswerStatus.Text = "✓ تم استخراج الإجابة بنجاح!";
+                lblAnswerStatus.Text = "✓ تم الحل بنجاح!";
                 lblAnswerStatus.ForeColor = Color.FromArgb(52, 211, 153);
             }
             catch (Exception ex)
             {
                 txtAnswer.Text = "خطأ: " + ex.Message;
-                lblAnswerStatus.Text = "❌ تعذر الحل، جرب الخادم الآخر أو المجاني.";
+                lblAnswerStatus.Text = "❌ تعذر الحل، جرب الخادم الاحتياطي أو المجاني.";
                 lblAnswerStatus.ForeColor = Color.FromArgb(248, 113, 113);
             }
             finally
@@ -2134,43 +2174,90 @@ namespace QuizGenie
 
         private async Task<string> CallGeminiAsync(string sys, string q, string key)
         {
-            string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + key;
-            var req = (HttpWebRequest)WebRequest.Create(url);
-            req.Method = "POST";
-            req.ContentType = "application/json";
-            req.Timeout = 12000;
+            key = (key ?? "").Trim().Trim('"', '\'');
+            if (string.IsNullOrEmpty(key)) throw new Exception("مفتاح Google Gemini غير مدخل.");
 
-            var payload = new Dictionary<string, object>
-            {
-                { "contents", new object[] {
-                    new Dictionary<string, object> {
-                        { "role", "user" },
-                        { "parts", new object[] { new Dictionary<string, object> { { "text", sys + "\n\nالسؤال:\n" + q } } } }
-                    }
-                }},
-                { "generationConfig", new Dictionary<string, object> { { "temperature", 0.2 }, { "maxOutputTokens", 500 } } }
+            string[] candidateModels = new string[] {
+                workingGeminiModel,
+                "gemini-2.0-flash",
+                "gemini-1.5-flash-latest",
+                "gemini-1.5-flash",
+                "gemini-2.5-flash",
+                "gemini-pro"
             };
 
-            byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
-            req.ContentLength = data.Length;
-
-            using (var stream = req.GetRequestStream())
+            Exception lastEx = null;
+            for (int i = 0; i < candidateModels.Length; i++)
             {
-                stream.Write(data, 0, data.Length);
+                string m = candidateModels[i];
+                if (i > 0 && m == workingGeminiModel) continue;
+
+                try
+                {
+                    string url = "https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + Uri.EscapeDataString(key);
+                    var req = (HttpWebRequest)WebRequest.Create(url);
+                    req.Method = "POST";
+                    req.ContentType = "application/json";
+                    req.Timeout = 12000;
+
+                    var payload = new Dictionary<string, object>
+                    {
+                        { "contents", new object[] {
+                            new Dictionary<string, object> {
+                                { "role", "user" },
+                                { "parts", new object[] { new Dictionary<string, object> { { "text", sys + "\n\nالسؤال:\n" + q } } } }
+                            }
+                        }},
+                        { "generationConfig", new Dictionary<string, object> { { "temperature", 0.2 }, { "maxOutputTokens", 600 } } }
+                    };
+
+                    byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
+                    req.ContentLength = data.Length;
+
+                    using (var stream = req.GetRequestStream())
+                    {
+                        stream.Write(data, 0, data.Length);
+                    }
+
+                    using (var res = (HttpWebResponse)await req.GetResponseAsync())
+                    using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string respJson = r.ReadToEnd();
+                        var parsed = json.Deserialize<Dictionary<string, object>>(respJson);
+                        if (parsed.ContainsKey("candidates"))
+                        {
+                            var cands = (object[])parsed["candidates"];
+                            if (cands != null && cands.Length > 0)
+                            {
+                                var first = (Dictionary<string, object>)cands[0];
+                                var contentObj = (Dictionary<string, object>)first["content"];
+                                var parts = (object[])contentObj["parts"];
+                                var part0 = (Dictionary<string, object>)parts[0];
+                                workingGeminiModel = m;
+                                return part0["text"].ToString();
+                            }
+                        }
+                    }
+                }
+                catch (WebException wex)
+                {
+                    string errDetail = ExtractWebError(wex);
+                    lastEx = new Exception(errDetail);
+                    HttpWebResponse httpRes = wex.Response as HttpWebResponse;
+                    if (httpRes != null && httpRes.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        // 404 model not found -> try next model in loop!
+                        continue;
+                    }
+                    throw lastEx;
+                }
+                catch (Exception ex)
+                {
+                    lastEx = ex;
+                }
             }
 
-            using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream()))
-            {
-                string respJson = r.ReadToEnd();
-                var parsed = json.Deserialize<Dictionary<string, object>>(respJson);
-                var cands = (object[])parsed["candidates"];
-                var first = (Dictionary<string, object>)cands[0];
-                var content = (Dictionary<string, object>)first["content"];
-                var parts = (object[])content["parts"];
-                var part0 = (Dictionary<string, object>)parts[0];
-                return part0["text"].ToString();
-            }
+            throw lastEx ?? new Exception("تعذر الاتصال بخادم Google Gemini.");
         }
 
         private async Task<string> CallOpenAIAsync(string sys, string q, string key)
@@ -2624,29 +2711,33 @@ namespace QuizGenie
 
         private void ShowChangelogModal()
         {
-            lblChangelogHeader.Text = "âک… طھظ… ط¥ط·ظ„ط§ظ‚ ط§ظ„طھط­ط¯ظٹط« ط§ظ„ط¬ط¯ظٹط¯ ط¨ظ†ط¬ط§ط­! | ط§ظ„ط¥طµط¯ط§ط± " + APP_VERSION;
+            lblChangelogHeader.Text = "★ تم إطلاق التحديث الجديد بنجاح! | الإصدار " + APP_VERSION;
             lblChangelogHeader.ForeColor = Color.FromArgb(56, 189, 248);
-            lblChangelogSub.Text = "ط£ظ‡ظ„ط§ظ‹ ط¨ظƒ! ط¥ظ„ظٹظƒ ظ‚ط§ط¦ظ…ط© ط§ظ„طھط؛ظٹظٹط±ط§طھ ظˆط§ظ„ظ…ظٹط²ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط© ظپظٹ ط§ظ„ط¥طµط¯ط§ط± " + APP_VERSION + ":";
+            lblChangelogSub.Text = "أهلاً بك! إليك قائمة التغييرات والميزات الجديدة في الإصدار " + APP_VERSION + ":\r\n";
             
             txtChangelogBody.Text = 
-                "[1] ط¥ط¶ط§ظپط© ط£ظ‚ظˆظ‰ ط®ظˆط§ط¯ظ… ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ ط§ظ„ط¬ط¯ظٹط¯ط© ط¹ط§ظ„ظ…ظٹط§ظ‹ (6 ط®ظˆط§ط¯ظ… ظ…طھظƒط§ظ…ظ„ط©):\r\n" +
-                "    â€¢ ط®ط§ط¯ظ… ط¯ظٹط¨ ط³ظٹظƒ (DeepSeek R1): طھظپظƒظٹط± ط§ط³طھظ†طھط§ط¬ظٹ ظپط§ط¦ظ‚ ظ„ط­ظ„ ط£ط¹ظ‚ط¯ ط§ظ„ظ…ط³ط§ط¦ظ„ ظˆط§ظ„ط±ظٹط§ط¶ظٹط§طھ ظ…ط¬ط§ظ†ط§ظ‹.\r\n" +
-                "    â€¢ ط®ط§ط¯ظ… ط¬ط±ظˆظƒ ظپط§ط¦ظ‚ ط§ظ„ط³ط±ط¹ط© (Groq Llama 3.3): ط§ط³طھط¬ط§ط¨ط© ظپظˆط±ظٹط© ط®ط§ط±ظ‚ط© ظپظٹ ط£ط¬ط²ط§ط، ظ…ظ† ط§ظ„ط«ط§ظ†ظٹط© (0.1 ط«ط§ظ†ظٹط©).\r\n" +
-                "    â€¢ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ظ…ط¬ط§ظ†ظٹ ط§ظ„ط§ط­طھظٹط§ط·ظٹ: ط®ط§ط¯ظ… ط¨ط¯ظٹظ„ طھظ„ظ‚ط§ط¦ظٹ ظٹط¹ظ…ظ„ ظپظˆط±ط§ظ‹ ط¨ط¯ظˆظ† ظ…ظپط§طھظٹط­ ظپظٹ ط­ط§ظ„ ط§ظ†ط´ط؛ط§ظ„ ط§ظ„ط®ط§ط¯ظ… ط§ظ„ط£ظˆظ„.\r\n\r\n" +
-                "[2] ط¯ط¹ظ… ط¥ط¯ط®ط§ظ„ ظˆط§ط®طھط¨ط§ط± ظ…ظپط§طھظٹط­ DeepSeek ظˆ Groq ظˆظپط­طµظ‡ط§ ط¨ط¶ط؛ط·ط© ط²ط±.\r\n\r\n" +
-                "[3] طھظˆط§ظپظ‚ ظ…ظˆط­ط¯ 100% ط¹ط¨ط± ظƒط§ظپط© ظ†ط³ط® QuizGenie (طھط·ط¨ظٹظ‚ ط³ط·ط­ ط§ظ„ظ…ظƒطھط¨طŒ ط¥ط¶ط§ظپط© ظƒط±ظˆظ…طŒ ظˆط§ظ„ظ…ظˆظ‚ط¹ ط§ظ„ط±ط³ظ…ظٹ).\r\n\r\n" +
-                "[4] طھطµظ…ظٹظ… ط¹طµط±ظٹ ظپط§ط¦ظ‚ ط§ظ„ط³ظ„ط§ط³ط© ظ…ط¹ ط¨ط·ط§ظ‚ط§طھ طھظپط§ط¹ظ„ظٹط© ظˆط¥ط´ط¹ط§ط±ط§طھ ظ…ظ„ظˆظ†ط© ظˆط§ط¶ط­ط©.";
+                "[1] إضافة أقوى 6 خوادم ذكاء اصطناعي عالمية متكاملة:\r\n" +
+                "    • خادم ديب سيك (DeepSeek R1): تفكير استنتاجي فائق لحل أعقد المسائل والرياضيات مجاناً.\r\n" +
+                "    • خادم جروك فائق السرعة (Groq Llama 3.3): استجابة فورية خارقة في أجزاء من الثانية (0.1s).\r\n" +
+                "    • الخادم الآخر (Google Gemini): اتصال فائق السرعة مع دعم التبديل التلقائي للنماذج.\r\n" +
+                "    • الخادم المجاني الاحتياطي: خادم بديل فوري يعمل تلقائياً وبدون مفاتيح.\r\n" +
+                "    • الخادم المجاني الأساسي: يعمل فوراً 100% بدون أي تسجيل أو قيود.\r\n" +
+                "    • خادم شات جي بي تي (ChatGPT / OpenAI): الحل الأعمق والأعلى دقة.\r\n\r\n" +
+                "[2] دعم إدخال واختبار مفاتيح DeepSeek و Groq و Gemini و OpenAI وفحصها بضغطة زر.\r\n\r\n" +
+                "[3] نظام التبديل الذكي: عند تعذر أي نموذج ينتقل التطبيق فورياً للنموذج البديل دون توقف.\r\n\r\n" +
+                "[4] توافق موحد 100% عبر كافة نسخ QuizGenie (تطبيق سطح المكتب، إضافة كروم، والموقع الرسمي).\r\n\r\n" +
+                "[5] تصميم عصري فائق السلاسة مع بطاقات تفاعلية وإشعارات ملونة واضحة.";
 
             txtChangelogBody.SelectionStart = 0;
             txtChangelogBody.SelectionLength = 0;
 
             btnInstallUpdate.Visible = true;
             btnInstallUpdate.Enabled = true;
-            btnInstallUpdate.Text = "â¬‡ï¸ڈ طھط«ط¨ظٹطھ ظˆطھظپط¹ظٹظ„ ط§ظ„طھط­ط¯ظٹط« ظپظٹ ط¬ظ‡ط§ط²ظƒ ط§ظ„ط¢ظ† âœ“";
+            btnInstallUpdate.Text = "⬇️ تثبيت وتفعيل التحديث في جهازك الآن ✓";
             btnInstallUpdate.BackColor = Color.FromArgb(14, 165, 233);
 
             btnDismissChangelog.Visible = true;
-            btnDismissChangelog.Text = "ط­ط³ظ†ط§ظ‹طŒ ط§ظ„ط¹ظˆط¯ط© ظ„ظ„طھط·ط¨ظٹظ‚ âœ“";
+            btnDismissChangelog.Text = "حسناً، العودة للتطبيق ✓";
             lblUpdateProgress.Visible = false;
 
             overlayChangelog.Visible = true;
