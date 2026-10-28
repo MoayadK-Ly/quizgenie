@@ -2664,7 +2664,14 @@ namespace QuizGenie
             }
             catch (Exception ex)
             {
-                lblDeepSeekStatus.Text = "❌ المفتاح غير صالح: " + ex.Message;
+                if (ex.Message.Contains("Insufficient Balance") || ex.Message.ToLower().Contains("balance"))
+                {
+                    lblDeepSeekStatus.Text = "⚠️ رصيد حساب DeepSeek هو ($0) ويحتاج شحن بالفيزا. احذف المفتاح وسيعمل الخادم مجاناً بدون مفتاح!";
+                }
+                else
+                {
+                    lblDeepSeekStatus.Text = "❌ المفتاح غير صالح: " + ex.Message;
+                }
                 lblDeepSeekStatus.ForeColor = Color.FromArgb(248, 113, 113);
             }
             finally
