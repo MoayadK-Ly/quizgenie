@@ -542,8 +542,13 @@ async function solveViaDeepSeek(systemPrompt, userText, apiKey) {
       return (data.choices?.[0]?.message?.content || '').trim();
     } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم DeepSeek');
-      throw err;
+      if (err.message.includes('Insufficient Balance') || err.message.includes('balance') || err.message.includes('402')) {
+        console.warn('DeepSeek key has 0 balance, falling back to free mirror...');
+        // Fallback to free mirror below
+      } else {
+        if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم DeepSeek');
+        throw err;
+      }
     }
   }
 
@@ -669,6 +674,12 @@ async function testServerConnection(server, apiKey) {
         message: `✓ خادم ديب سيك (DeepSeek R1) شغال بنجاح فائق! (سرعة الاستجابة: ${elapsed} ثانية)`
       };
     } catch (err) {
+      if (err.message.includes('Insufficient Balance') || err.message.includes('balance')) {
+        return {
+          success: false,
+          message: '⚠️ رصيد حسابك في DeepSeek منتهي ($0) ويحتاج شحن مدفوع. نصيحة: احذف المفتاح واتركه فارغاً وسيعمل الخادم معك مجاناً 100% بدون أي مفتاح!'
+        };
+      }
       return { success: false, message: `❌ خطأ في فحص DeepSeek: ${err.message}` };
     }
   }
