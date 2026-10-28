@@ -1,4 +1,4 @@
-// QuizGenie - Background Service Worker (Multi-Server Engine v1.5.0)
+﻿// QuizGenie - Background Service Worker (Multi-Server Engine v1.5.0)
 
 // ذاكرة تخزين مؤقت للنتائج
 const answerCache = new Map();
@@ -248,26 +248,38 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
   const systemPrompt = `${subjectDesc} ${langDesc} ${modeDesc}`;
   let finalAnswer = '';
 
-  // 3. التوجيه للخادم المختار
-  if (serverType === 'gemini') {
-    if (!geminiKey || !geminiKey.trim()) {
-      throw new Error('⚠️ لم يتم إدخال مفتاح Gemini API. افتح نافذة الإضافة وأدخل المفتاح، أو اختر "الخادم المجاني".');
+  // 3. التوجيه للخادم المختار مع الحماية التلقائية الشاملة
+  try {
+    if (serverType === 'gemini') {
+      if (!geminiKey || !geminiKey.trim()) {
+        throw new Error('⚠️ لم يتم إدخال مفتاح Gemini API.');
+      }
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, geminiKey.trim());
+    } else if (serverType === 'openai') {
+      if (!openaiKey || !openaiKey.trim()) {
+        throw new Error('⚠️ لم يتم إدخال مفتاح OpenAI API.');
+      }
+      finalAnswer = await solveViaOpenAI(systemPrompt, cleanText, openaiKey.trim());
+    } else if (serverType === 'deepseek') {
+      finalAnswer = await solveViaDeepSeek(systemPrompt, cleanText, deepseekKey);
+    } else if (serverType === 'groq') {
+      finalAnswer = await solveViaGroq(systemPrompt, cleanText, groqKey);
+    } else if (serverType === 'free_backup') {
+      finalAnswer = await solveQuestionFreeBackup(systemPrompt, cleanText);
+    } else {
+      finalAnswer = await solveQuestionFree(systemPrompt, cleanText);
     }
-    finalAnswer = await solveViaGemini(systemPrompt, cleanText, geminiKey.trim());
-  } else if (serverType === 'openai') {
-    if (!openaiKey || !openaiKey.trim()) {
-      throw new Error('⚠️ لم يتم إدخال مفتاح OpenAI API. افتح نافذة الإضافة وأدخل المفتاح، أو اختر "الخادم المجاني".');
+  } catch (err) {
+    console.warn(`Server ${serverType} failed (${err.message}), triggering silent failover to Dedicated Free Engine...`);
+    try {
+      finalAnswer = await solveQuestionFree(systemPrompt, cleanText);
+    } catch (fbErr) {
+      try {
+        finalAnswer = await solveQuestionFreeBackup(systemPrompt, cleanText);
+      } catch (fbErr2) {
+        throw err;
+      }
     }
-    finalAnswer = await solveViaOpenAI(systemPrompt, cleanText, openaiKey.trim());
-  } else if (serverType === 'deepseek') {
-    finalAnswer = await solveViaDeepSeek(systemPrompt, cleanText, deepseekKey);
-  } else if (serverType === 'groq') {
-    finalAnswer = await solveViaGroq(systemPrompt, cleanText, groqKey);
-  } else if (serverType === 'free_backup') {
-    finalAnswer = await solveQuestionFreeBackup(systemPrompt, cleanText);
-  } else {
-    // الخادم المجاني الافتراضي (Pollinations)
-    finalAnswer = await solveQuestionFree(systemPrompt, cleanText);
   }
 
   if (finalAnswer && finalAnswer.trim()) {
@@ -279,50 +291,71 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
   throw new Error('لم يتم استلام إجابة من الخادم المختار.');
 }
 
+let workingGeminiModel = 'gemini-2.0-flash';
+let workingGroqModel = 'llama-3.1-8b-instant';
+const GEMINI_CANDIDATE_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.5-flash', 'gemini-pro'];
+const GROQ_CANDIDATE_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
+
 // 1. خادم جوجل الصاروخي (Gemini API)
+let workingGeminiModel = 'gemini-2.0-flash';
+
 async function solveViaGemini(systemPrompt, userText, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const models = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+  const distinctModels = Array.from(new Set(models));
+  let lastErr = null;
 
-  const payload = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${systemPrompt}\n\nنص السؤال:\n${userText}` }]
+  for (const model of distinctModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${systemPrompt}\n\nنص السؤال:\n${userText}` }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 600
       }
-    ],
-    generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 600
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Model not found in this region/tier, try next candidate
+          continue;
+        }
+        const err = await response.json().catch(() => ({}));
+        const msg = err.error ? err.error.message : `خطأ (${response.status})`;
+        throw new Error(`خطأ في خادم Gemini: ${msg}`);
+      }
+
+      const data = await response.json();
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!answer) throw new Error('لم يرجع خادم Gemini أي إجابة.');
+      workingGeminiModel = model;
+      return answer.trim();
+    } catch (err) {
+      clearTimeout(timeoutId);
+      lastErr = err;
+      if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Gemini');
+      if (err.message && !err.message.includes('404')) throw err;
     }
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      const msg = err.error ? err.error.message : `خطأ (${response.status})`;
-      throw new Error(`خطأ في خادم Gemini: ${msg}`);
-    }
-
-    const data = await response.json();
-    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!answer) throw new Error('لم يرجع خادم Gemini أي إجابة.');
-    return answer.trim();
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Gemini');
-    throw err;
   }
+
+  throw lastErr || new Error('تعذر الاتصال بخادم Gemini عبر جميع النماذج المتاحة.');
 }
 
 // 2. خادم شات جي بي تي (ChatGPT / OpenAI API)
@@ -374,35 +407,11 @@ async function solveViaOpenAI(systemPrompt, userText, apiKey) {
   }
 }
 
-// 3. الخادم المجاني التلقائي (Pollinations Free Engine - model=openai)
+// 3. الخادم المجاني التلقائي (Pollinations Free) - معالج فائق السرعة
 async function solveQuestionFree(systemPrompt, cleanText) {
+  // اختصار وتوجيه مباشر للخادم المجاني لتقليل زمن التفكير لأقصى سرعة
   const fastPrompt = `حل مباشر وسريع جداً بدون مقدمات. أجب بالعربية: اكتب رمز الخيار الصحيح ونص الإجابة فقط.`;
   
-  // المحاولة الأولى: GET السريع مع model=openai (Tier Anonymous مجاني 100% بدون أي حدود)
-  try {
-    const sanitized = `${fastPrompt} ${cleanText}`
-      .replace(/[\/\#\?\[\]\&\\\%]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const encodedPrompt = encodeURIComponent(sanitized.substring(0, 300));
-    const url = `https://text.pollinations.ai/${encodedPrompt}?model=openai`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6500);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const text = await res.text();
-      if (text && text.trim() && !text.includes('Free limit')) {
-        return text.trim();
-      }
-    }
-  } catch (e) {
-    // Fallback to POST
-  }
-
-  // المحاولة الثانية: POST
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 7500);
@@ -415,7 +424,6 @@ async function solveQuestionFree(systemPrompt, cleanText) {
           { role: 'system', content: fastPrompt },
           { role: 'user', content: cleanText }
         ],
-        model: 'openai',
         seed: 42
       }),
       signal: controller.signal
@@ -423,40 +431,56 @@ async function solveQuestionFree(systemPrompt, cleanText) {
 
     clearTimeout(timeoutId);
 
-    if (response.ok) {
-      const text = await response.text();
-      if (text && text.trim()) return text.trim();
-    }
-  } catch (err) { }
+    const text = await response.text();
 
-  throw new Error('⚠️ الخادم المجاني العام عليه ضغط مؤقت، أعد المحاولة أو اختر خادماً آخر مثل خادم Google Gemini السريع.');
+    if (!response.ok) {
+      if (response.status === 402 || text.includes('30 seconds') || text.includes('Free limit')) {
+        throw new Error('30s limit');
+      }
+      throw new Error(`خطأ (${response.status})`);
+    }
+
+    if (text.includes('Free limit') || text.includes('30 seconds')) {
+      throw new Error('30s limit');
+    }
+
+    return text;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('⏳ الخادم المجاني العام بطيء أو مشغول حالياً بسبب الضغط. ننصحك بالتبديل إلى "خادم جوجل Gemini" فهو مجاني 100% ويجيب في 0.3 ثانية فقط!');
+    }
+
+    if (err.message === '30s limit' || (err.message && err.message.includes('402'))) {
+      throw new Error('⏳ الخادم المجاني يتطلب الانتظار 30 ثانية بين الأسئلة لمنع الضغط. (استخدم خادم جوجل Gemini للحل الصاروخي بدون أي انتظار).');
+    }
+
+    // بديل GET السريع المنظف
+    try {
+      const sanitized = `${fastPrompt} ${cleanText}`
+        .replace(/[\/\#\?\[\]\&\\\%]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const encodedPrompt = encodeURIComponent(sanitized.substring(0, 300));
+      const url = `https://text.pollinations.ai/${encodedPrompt}`;
+
+      const res = await fetch(url);
+      const text = await res.text();
+      if (!res.ok || text.includes('Free limit') || text.includes('30 seconds')) {
+        throw new Error('30s limit');
+      }
+      return text;
+    } catch (getErr) {
+      throw new Error('⚠️ الخادم المجاني العام عليه ضغط حالياً، اضغط "إعادة المحاولة" أو بدّل لخادم جوجل Gemini المجاني بالكامل.');
+    }
+  }
 }
 
-// 4. الخادم المجاني الاحتياطي (Pollinations Backup Engine)
+// 4. الخادم المجاني الاحتياطي (Pollinations Backup / Mistral)
 async function solveQuestionFreeBackup(systemPrompt, cleanText) {
   const fastPrompt = `حل مباشر وموجز جداً بدون أي مقدمات. أجب بالعربية: اكتب رمز الخيار الصحيح ونص الإجابة فقط.`;
   try {
-    const sanitized = `${fastPrompt} ${cleanText}`
-      .replace(/[\/\#\?\[\]\&\\\%]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const encodedPrompt = encodeURIComponent(sanitized.substring(0, 300));
-    const url = `https://text.pollinations.ai/${encodedPrompt}?model=openai&seed=888`;
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const text = await res.text();
-      if (text && text.trim()) return text.trim();
-    }
-  } catch (err) { }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const response = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -465,19 +489,24 @@ async function solveQuestionFreeBackup(systemPrompt, cleanText) {
           { role: 'system', content: fastPrompt },
           { role: 'user', content: cleanText }
         ],
-        model: 'openai',
+        model: 'mistral',
         seed: 777
       }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    if (response.ok) {
-      const text = await response.text();
-      if (text && text.trim()) return text.trim();
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const text = await response.text();
+    return text.trim();
+  } catch (err) {
+    try {
+      const encoded = encodeURIComponent(`${fastPrompt} ${cleanText}`.substring(0, 250));
+      const res = await fetch(`https://text.pollinations.ai/${encoded}?model=mistral`);
+      return (await res.text()).trim();
+    } catch (e) {
+      throw new Error('تعذر الاتصال بالخادم المجاني الاحتياطي، يرجى إعادة المحاولة.');
     }
-  } catch (e) { }
-
-  throw new Error('تعذر الاتصال بالخادم الاحتياطي حالياً، يرجى المحاولة بعد قليل.');
+  }
 }
 
 // 5. خادم ديب سيك (DeepSeek R1)
@@ -648,7 +677,7 @@ async function testServerConnection(server, apiKey) {
   if (srv === 'groq') {
     const start = Date.now();
     try {
-      await solveViaGroq('Test prompt', '1+1', cleanKey);
+      await solveViaGroq('أنت نظام فحص.', '1+1', cleanKey);
       const elapsed = ((Date.now() - start) / 1000).toFixed(2);
       return {
         success: true,
@@ -664,15 +693,8 @@ async function testServerConnection(server, apiKey) {
     if (!cleanKey) {
       return { success: false, message: '⚠️ الصق مفتاح Gemini أولاً في المربع أعلاه لكي يتم فحصه.' };
     }
-    if (cleanKey.startsWith('ghp_')) {
-      return { success: false, message: '⚠️ هذا الرمز هو مفتاح GitHub وليس مفتاح Google Gemini! احصل على مفتاح مجاني من aistudio.google.com' };
-    }
-    if (cleanKey.startsWith('sk-') || cleanKey.startsWith('gsk_')) {
-      return { success: false, message: '⚠️ يبدو أن هذا المفتاح تابع لخدمة أخرى (OpenAI أو Groq) وليس Google Gemini.' };
-    }
-
-    const candidateModels = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
-    const distinctModels = Array.from(new Set(candidateModels.filter(Boolean)));
+    const candidateModels = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    const distinctModels = Array.from(new Set(candidateModels));
     let lastMsg = '';
 
     for (const model of distinctModels) {
@@ -698,9 +720,10 @@ async function testServerConnection(server, apiKey) {
           workingGeminiModel = model;
           return {
             success: true,
-            message: `✓ المفتاح صالح وشغال 100%! تم التحقق من خادم جوجل (${model}) بنجاح (سرعة: ${elapsed} ثانية).`
+            message: `✓ المفتاح صالح وشغال 100%! تم التحقق من خادم جوجل بنجاح (${model} - سرعة الاستجابة: ${elapsed} ثانية).`
           };
         } else if (response.status === 404) {
+          // Model not found, try next candidate
           continue;
         } else {
           const data = await response.json().catch(() => ({}));
@@ -721,7 +744,7 @@ async function testServerConnection(server, apiKey) {
 
     return {
       success: false,
-      message: `❌ المفتاح غير معتمد لدى جوجل أو تعذر الاتصال بـ Gemini (${lastMsg || '404 Not Found'}). تأكد من نسخه من Google AI Studio (يبدأ بـ AIzaSy).`
+      message: `❌ تعذر التحقق: ${lastMsg || 'جميع نماذج Gemini غير متوفرة لهذا المفتاح.'}`
     };
   }
 
@@ -778,13 +801,18 @@ async function testServerConnection(server, apiKey) {
     }
   }
 
-  // فحص اتصال الخادم المجاني (الافتراضي مع model=openai)
+  // فحص اتصال الخادم المجاني (الافتراضي)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
   const start = Date.now();
 
   try {
-    const response = await fetch('https://text.pollinations.ai/1?model=openai', {
+    const response = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: '1' }]
+      }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
