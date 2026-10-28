@@ -590,13 +590,14 @@
     }
 
     .download-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.8rem;
+      display: flex;
+      justify-content: center;
       margin-top: 2.5rem;
     }
 
     .dl-card {
+      max-width: 520px;
+      width: 100%;
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 22px;
@@ -761,11 +762,8 @@
         برنامج مكتبي فائق السرعة وإضافة متصفح لحل أي سؤال أو اختبار أو واجب دراسي في أقل من ثانية واحدة (0.3s) بدقة 100% وبدون أي تعقيد.
       </p>
       <div class="hero-cta">
-        <a href="QuizGenie.exe" download="QuizGenie.exe" class="btn-primary">
-          <span>🚀 تحميل تطبيق ويندوز المباشر (EXE)</span>
-        </a>
-        <a href="QuizGenie.zip" download="QuizGenie.zip" class="btn-secondary">
-          <span>📦 تحميل الحزمة المضغوطة (ZIP)</span>
+        <a href="QuizGenie.exe" download="QuizGenie.exe" class="btn-primary" style="padding: 1.1rem 2.8rem; font-size: 1.25rem;">
+          <span>🚀 تحميل برنامج QuizGenie مجاناً</span>
         </a>
       </div>
     </div>
@@ -910,8 +908,8 @@
       <div id="guideDesktop" class="steps-container">
         <div class="step-card">
           <div class="step-num">1</div>
-          <h3 class="step-title">تحميل الملف المباشر</h3>
-          <p class="step-desc">حمّل ملف <span class="code-pill">QuizGenie.exe</span> مباشرة من زر التحميل على سطح مكتب جهازك أو مجلد التنزيلات.</p>
+          <h3 class="step-title">تحميل البرنامج مباشرة</h3>
+          <p class="step-desc">حمّل البرنامج مباشرة بنقرة واحدة من زر التحميل على جهازك أو مجلد التنزيلات.</p>
         </div>
 
         <div class="step-card">
@@ -958,24 +956,13 @@
       </div>
 
       <div class="download-cards">
-        <!-- بطاقة ملف EXE -->
         <div class="dl-card highlight">
-          <span class="dl-badge">الأكثر شعبية</span>
+          <span class="dl-badge">الرسمي والمباشر</span>
           <div class="dl-icon">⚡</div>
-          <h3 class="dl-title">QuizGenie.exe المباشر</h3>
-          <p class="dl-meta">تطبيق ويندوز محمول | الحجم: 112 KB | الإصدار 1.8.9</p>
+          <h3 class="dl-title">برنامج QuizGenie الرسمي</h3>
+          <p class="dl-meta">تطبيق ويندوز أصلي وفوري | الإصدار v1.8.9</p>
           <a href="QuizGenie.exe" download="QuizGenie.exe" class="dl-btn">
-            <span>🚀 تحميل ملف التطبيق المباشر (EXE)</span>
-          </a>
-        </div>
-
-        <!-- بطاقة ملف ZIP -->
-        <div class="dl-card">
-          <div class="dl-icon">📦</div>
-          <h3 class="dl-title">QuizGenie.zip الكامل</h3>
-          <p class="dl-meta">الحزمة الكاملة مع الأيقونات والإعدادات | الحجم: 113 KB</p>
-          <a href="QuizGenie.zip" download="QuizGenie.zip" class="dl-btn">
-            <span>📦 تحميل الملف المضغوط (ZIP)</span>
+            <span>🚀 تحميل البرنامج الآن مجاناً</span>
           </a>
         </div>
       </div>
