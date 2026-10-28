@@ -132,7 +132,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'GET_STATE') {
     chrome.storage.local.get([
       'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
-      'serverType', 'geminiKey', 'openaiKey'
+      'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
     ], (data) => {
       sendResponse({
         enabled: data.enabled !== false,
@@ -142,7 +142,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         targetLanguage: data.targetLanguage || 'ar',
         serverType: data.serverType || 'free',
         geminiKey: data.geminiKey || '',
-        openaiKey: data.openaiKey || ''
+        openaiKey: data.openaiKey || '',
+        deepseekKey: data.deepseekKey || '',
+        groqKey: data.groqKey || ''
       });
     });
     return true;
@@ -606,9 +608,10 @@ async function solveViaGroq(systemPrompt, userText, apiKey) {
 // 7. فحص واختبار صلاحية وسرعة اتصال الخوادم
 async function testServerConnection(server, apiKey) {
   const cleanKey = (apiKey || '').trim();
+  const srv = (server || '').trim().toLowerCase();
 
   // فحص الخادم المجاني الاحتياطي
-  if (server === 'free_backup') {
+  if (srv === 'free_backup' || srv === 'backup') {
     const start = Date.now();
     try {
       await solveQuestionFreeBackup('test', '1+1');
@@ -623,7 +626,7 @@ async function testServerConnection(server, apiKey) {
   }
 
   // فحص خادم ديب سيك
-  if (server === 'deepseek') {
+  if (srv === 'deepseek' || srv === 'deepseek-r1') {
     const start = Date.now();
     try {
       await solveViaDeepSeek('Test prompt', '1+1', cleanKey);
@@ -638,7 +641,7 @@ async function testServerConnection(server, apiKey) {
   }
 
   // فحص خادم جروك
-  if (server === 'groq') {
+  if (srv === 'groq') {
     const start = Date.now();
     try {
       await solveViaGroq('Test prompt', '1+1', cleanKey);
@@ -653,7 +656,7 @@ async function testServerConnection(server, apiKey) {
   }
 
   // فحص خادم جوجل Gemini الصاروخي
-  if (server === 'gemini') {
+  if (srv === 'gemini' || srv === 'other' || srv === 'google') {
     if (!cleanKey) {
       return { success: false, message: '⚠️ الصق مفتاح Gemini أولاً في المربع أعلاه لكي يتم فحصه.' };
     }
@@ -698,7 +701,7 @@ async function testServerConnection(server, apiKey) {
   }
 
   // فحص خادم شات جي بي تي (OpenAI)
-  if (server === 'openai') {
+  if (srv === 'openai' || srv === 'chatgpt') {
     if (!cleanKey) {
       return { success: false, message: '⚠️ الصق مفتاح OpenAI أولاً في المربع أعلاه لكي يتم فحصه.' };
     }
@@ -750,40 +753,37 @@ async function testServerConnection(server, apiKey) {
     }
   }
 
-  // فحص اتصال الخادم المجاني
-  if (server === 'free') {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const start = Date.now();
+  // فحص اتصال الخادم المجاني (الافتراضي)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const start = Date.now();
 
-    try {
-      const response = await fetch('https://text.pollinations.ai/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: '1' }]
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+  try {
+    const response = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: '1' }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
 
-      if (response.ok) {
-        return {
-          success: true,
-          message: `✓ الخادم المجاني متصل ومتاح للاستخدام الفوري (سرعة الاستجابة: ${elapsed} ثانية).`
-        };
-      } else {
-        return {
-          success: false,
-          message: `⏳ الخادم المجاني مشغول حالياً لمنع الضغط، انتظر ثوانٍ أو انتقل لخادم Gemini.`
-        };
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      return { success: false, message: '⏳ الخادم المجاني مشغول حالياً، يرجى المحاولة بعد قليل.' };
+    if (response.ok) {
+      return {
+        success: true,
+        message: `✓ الخادم المجاني متصل ومتاح للاستخدام الفوري (سرعة الاستجابة: ${elapsed} ثانية).`
+      };
+    } else {
+      return {
+        success: false,
+        message: `⏳ الخادم المجاني مشغول حالياً لمنع الضغط، انتظر ثوانٍ أو انتقل لخادم Gemini.`
+      };
     }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    return { success: false, message: '⏳ الخادم المجاني مشغول حالياً، يرجى المحاولة بعد قليل.' };
   }
-
-  return { success: false, message: 'خادم غير محدد.' };
+}
 }
