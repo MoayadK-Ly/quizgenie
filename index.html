@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuizGenie - المساعد الذكي لحل الاختبارات والأسئلة والواجبات | v1.8.9</title>
+  <link rel="icon" type="image/png" href="icons/icon48.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -74,11 +75,19 @@
       color: var(--text-main);
     }
 
-    .brand-logo img {
+    .brand-logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 44px;
       height: 44px;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+      box-shadow: 0 0 20px rgba(14, 165, 233, 0.45);
+      transition: transform 0.3s ease;
+    }
+
+    .brand-logo:hover .brand-logo-icon {
+      transform: scale(1.08) rotate(-4deg);
     }
 
     .brand-title {
@@ -731,8 +740,40 @@
 
   <!-- الشريط العلوي -->
   <nav>
-    <a href="#" class="brand-logo">
-      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAARg0lEQVR42l1ZaZRdVZX+9j7n3vumejUllaFSlaQIsUhIQhgykjBJCNEEFOxmKS0oAtqoaDe4QKS7RcXl0GqDQ9uKgNqmQbuNDEIYEggoMyaQoTJWkkpVKjWmXr3pDufs/nHfq6rkrrfeuvVOvdrf3cO3v72L6LxVSKaQSCGVQTINL4lECmAYQTqNulqkMiAiIoBQuQhEQiAAAogVC4oPRQQgQAAQxx9BBFI5RRRgNIeRHMIAmhGUURgVv0ilIspFBGVdQZDKIJlBJgvtihC1ttIZZ4jjoeBTviB+WDUCAGItxcbECgDFYEAkBkwyhjpGTmIFAhBEBOlaaplFKVeGhmT/ATk5RNl6Kjogjl8aqTRSNchkUVML0qit5RUrUDby8mvYuRsD/baYJ2tFIFU/xH9ZRAQCothTVipOOM2RVmwVnhARlJZUWppn0NIltHI19Ryx29+jmlowgwgEog9fj0wWtfWAwuzZfMEy+eOzsnkzCifBFmIQG6/YiZ1feV4AoOpN5VDGXEkT70QEcZAJzABDFFra+FOflIYau3ULJMLoSRRGia69BbX1UB7OaKNzLpDvPIiOHdBWgoDCANZALKyViQbGr4nITj2l6vn470olisxgDc8DKSBBt3wW7bPtC8+DDHLDis5fjUQKDY20bJXc/0McfB9sUcxTWEYUwhgYI9aQtTGy6svAmsqNxEcC2NidFSgS47KQ6udiiQjGwEaIQojAY7zxFs1fjNkz0d1DjsNIpkFMy1fK7zZh/06QRWEUoY8ogo3ERLARSRWNWLFVA9UbGncIAQzlQadEJ0XF70mwC3DsQ5sfFBNABCZCUEKxCG3kkYeophH1DaIchXMvojlnElz85lFwiEIeUQATVh5oLD/GUxUEiZMBBGJChRMYyoObBmfgNlLtLKqdRd5kQFEloCEpddY13ywOHAlyfaRUbAJKoZiHU0OLFqLriCYiap2FP29BUBAbwIQwhsY8P54LFX6hseRhiBXHYa110RdyPegMVAO1X6zmXYTMVImMFPJ25AQ6/4quV8nvZ4lKuQExAZMQrBWBEfgleCm88zouXIZUWksqTZalYy8YVPbFxAGqUhlhvIggExNVATD2K7d+YHZL9vP37QncGpuayWs+K7OXhEcPYN/rGD0OUyLtUl2DNQuk8y0bDvRs+R7YJeUYP2RHCSyiEI7B4AkMDVNDg6ZsLUYLMjxEYsREZMfQVHNznFqkWixxjMQyHzo8Ui74RntITOGPfMlMX0S7Nl+YObTorOO5E4NvvN9/ZLDsW+3V1H3m5uVt9cX//MW2geGciG2c7HQNREbYioWN4JcwNIi6jEYigWIZoQ9jIFKNjpxS2qhWbExuJIpBENL43XP90B6cOl52FZ15vtfxzJ0fD244P9lazLh+ce+eWV/4zvvDKnn/l+YWS8G0xrqaW5ZsevrtHXv6rjy34ceb+uA47LBYgYTI5dFYy2AGLFkjEKr0nXGiq0KsEgkAEs1IKjN/hk5r4zpg16HGFr7wStP1t4uvdCddnr772ZHFdx388o97Zrbkv3nz9OtWpTd+u//GO7d0H+ic36bPnKpPjoaPbjl547qmBS0KxhJBICQWIIYVWBnPVpromQl5XYmbMMFjM7sR//qFsxe1OposCVHbWbYhmdJH+eK2X78W/uH7L+1+/t0fPbrvvkf7l6zM7uroeXjj7unZkmdHw+FuisppBx5HaW0umV9jA0MMkrgVWQZVK3i8AU3IXZpAMagkT30ad3+y+ao12btumDW9XkkYei1TMulierL0JlqOvHOchweokIdf3LrP7+bszDm1Luc5KpvAJxOWisHqxdk3Hlnyyo6Rx/6a00kl1o4FQYOqMkImdAPIKYVVxSpiBTJcpO//d3etw9/deOxEzhFF2Vo9NTPUkx8w8Lx0xjru5HPmUaZmsDnzUv2cffaoDY22UcojGFFA30D5+ZePDRfliUGjU57E/Y4AZl0RMTImaKp5QxNLbLxpWsCPqOOE3PNw96FBKUYi1jr9Bxek55XyvTo3WPfB1QNPbG1csWDRLWujrgOvR7Szy954ReM1l00d7h9ytUokeEdnedsPD6+7oG79ssQvXxixIkIgZiHi2Hy1Z1MVVyVUMjFgFcAUWQSWd/aiEPCUOp4z2x15f8dCHpjnFfHEk8mW5jkP3D3S3vZ2yMfPXvTOzmhZq7ptw1RdGq3LeHNmJA8dLzbUuXf93bSGJCXIUkUYUGxNi4Bslf5R7du2EiqiCc28muhCFFlxFAWF8IaPNa1fOWnFlw93bt7yudWt33xsm2HjrbkMay/kgb58x3Fn9eqdh7uf3L6p1gavvN3XOxQcPOGXQzF+sPNocfuropPeWDiISENIRE4RCWNaZmLZC01IeRFQaEQl9UNP9z22dchLOJt+s23DWZf86KPNP39qa/ff3m1obnMSSS/XV5gzY9KU5JEh/dq2vr4R31pz3YWNnqafbB4sG3ITOpQ4LCwWsKJBAqbTu2fctUhiXh4n7vhiIiJittb05aVvNPSS6Ds+fPOdzz5wz7JvXD/9yNFSz+ABzkzLtExR+f6wqze1fNLH5kbf+5+9B/uiuc1p8f2p9bovJ2VDYKpaFACaqGoROF0BnoKycipM5DiWFYKIPYeCQAFRMbh8Sba50fn0V15Yd9GMNSumzJuVrk0VsonD9dPqvbo6uG0Y6p0x2f7jDzqefWuwHMjh/vCKhZnndwendkhoYUUQiB1noBgTTaBsqkJjYu1Y5UxddM4lF6/a+MtHmEasX7bWZLT5tw31b+4q/OH5rude6WqocRoyXJ+mmoQ0T3YvvqBp7cfWzl9/xbpXer71+750TeLKc2ue216w7GJMPxAg0BArIiCu6ssxd1ElpeJeK7GKZTgOZ+quuvv2T1++ou/kyRd/u1GpiD37h1fzr+0ulSJEEea2eAtnph56YSTlgUUSOtj8l6E9u0/e+e1rz2jNutx319WNUTn881tFlSSDCXVN0KQ0sZK47phBmhRbEbAiIjKGbGTDEJYJgFLWStPCs7suXfELseuvv3rrn55BLrQm0p7uPmmImZjeOxLs6wkNpBAyM0eWhd3fv3T8pl17+3OsNP/wycGuwUh5rrECrtINEYh0PMMgdpLriFUipCdNgpewxtrAx+gIaR9+GSLkusJOX+/Ai3uOuWfNeGVfpzUCL6EAUy6zjmmB8gHyoVIJR5QORAJjR0Nqn97YsfvE77YcL5M3NCJKO0aqtDc2hQo0jI0DQ0qRUd7kKYtuu2na4sU66SRMNEtkZPuuB7/1Ax4dAmAj1LS2nLVm1cziaDIy6bqG6Z+4dtvLfzGHO5lY/DJAxKwcbR3PaA/pbOuCeee3z9n+3u6hvnf/+eGuPSc4sgyIGetV1TYZg9PCTHHXZG0lbL/jtpMbPjIYmqyOpqZ02VPti9uv6Dy2+Ve/YU1tV31owRdv7a6b9nYSzZ6cv3blZ9auvPHIdQ9856fvvviS9ktRFFmQdRI8vfn85Us/tP7SxUvnH0vw+jDSu47+8sGHSl2bRGKBMUZs1Uq2AERX0LGyJtTTJh+cszhzLE8/+3bvuzsPWNt8zfpDd9xy3uc+kd36qjRP07fe/Kd9FsnuVFsqk8JRMRHk3Mba+752+y2hdL/+lq6rnXlG2wXLzj3v0iVT587sQPkno8NznUz9wd49z2zdv3e/EZBMnLYrpSOEWIZqoniUFIJIqUR+KSqjNpPu2bUXCVV6/Imp1274v6apy3767eGDR4e375wf2Uw2md6uajW7zHmttmhFYtd9fEPy+qsnNU9KtDYZN9kHf/OJziJ4TaJ254ObfvXrx0pHOxEFZI1YC6FTZHHctxSBSaM6phOTGRyxT/9v6XNfbbrh9oUNDQce3Vg8sD/39J/DT316W82c9Mo5rCXhSuRI4EhIUgsBbALiQAAaAfXBWoT+SG9n73Bdff2lJfP4HffvfnkbjK9grI0QRZBT5/9K1ARWIFC4/KPErrzxGqIywQTvd3hmtL+9Xa64pHX1Kuk5MfLO7tSH1+QPFsuhFEthvlg+GYRDYThgoj4J+2zUZ6NBRDkygUS2EPR0n9zROZSdPG3ewMhvb/v60Tdf18aXYtEGPhlTHWcnljpDOyCNsxejtkbRB68h5cibr5MJEPhE4r/5rnrrDb/sDy5d2vyJDcndh07mh/Resol7e9mflgqhnzceW92r59yZtzWJvvd10+4Ptz03y7b1mZ0Z1x466+73vv6+9/bdf2/yYw+t++D1M3/87d7HHl49+957rnrf16+69f7eRz/6h7s/8c7fvv7sW1v7+h95+N57fv/A9n98+31/feOdrz8488e/bPn6k11t9V29vUvW1i1efVbrmvVz1z14//K5l5258rY/7fvf3177uQ/96Vvffej+z/9p76b/aP3kL+6/a/7bW2/7r2vG/e0339v2u2e7B0/d3r5h6W//+aPv2jB108fvvnvdXbcvvf31y2/8xG139e557ZPv2/jIpvV/uPaeDbd+/j1112/58Fvbdz2+/q4Hfrvlj3ev/N73PvjI996z84O3/2L7r9+4491rn3p750PvuWv17bf/8a/vffD+zXe9/+2rfnD36o+99eHbbvvdg4+852+e7n/tE6vuvfuO9U+uf/ChO278xV0/+K+3nv/g1+5a99A9d970rve87771m9738O1r7nvsrnvvvG7q21sfev/d93/knhve+dAf79l0x+03X/fB79+z4Z9vXv/wX33tM7dce90t119/8Zf++p4PPfDBm+96/1/f/763N37i1nXXb7z7g+/90A/f99f/8eS69//Z129bd9vHP/ze++75y6+8c9VfP732/Xe84+b3vv+W2+6846rr/nzdHR/54j2/37H73ntv+/R9t9356XtuvvaTf/bO/3n7/3z0rnsevv/u93740/e95333fWLD9bdf/fF33/v23vvuu23Nl3713tt+8a1P3/L5T19/7ftu/uh7P/Txz9z59g89+MG/vfWeW298/wfv+tS1V/3x43/66c/ee//Nt7zjox/8x7tuueuuO+/87C3vf989d99z60c/eu/7PvS++z79qXff+b73fvSj/2zVn777qvd+9/O3ffAj7//rP7vtXbfe9omPf+hDP/ipK2+8947PfviqW+685S/f/86Pfeqjf/fV3/7wHffcffvdX3j/O66/47b333fr+z9217vf+Y6b7/jMnb/71mfeec8fvvbV2992/3ve8a5/9/G3vv399/zphz5941sfvvWjH//4h9/zgRtu+sSfvPnqq9914yc+f+u9f3j7tXfd/vE7bnv72669/tbrrrzyquuve9c/vOPOv/rnz915993/7813vO/e99z28Y/9r6tv+eQXb3nn2z71vtvf977b3veXf33/l2790zve+Z5bf/25T37h3Xfeeec/f+f/fvCj/2zV1X/27n//6b//+K3v/uQH3/2+z9x+4zve+Z4bPvWpe/74v/70T79w5x/+y7uuuvmKj3/0ve/92Gfv+8hd73rP+9/3zrvu+vjtt99419133vbRj/2Pj/zJne+49yN/8icf+ODbPv3pj/7pu/7o+tu/8Lcf/uA7P/bhGz98+7s/cOu113zsrhvvvv6aWz7y4ff8+Z984D3v+P8v13386jv/5mPvuO3dt15z67tu++CHb/7kJz7/ybu++Mn3feCjf/qBv/uLN7/72i/c+u5bv/zFm29530fe/aF3ffBDH3rXuz7wof/x/g+/64Mf/Mhff/rPv/jFL/3x22/7kz+56b23//5b3/re26+/9Y//8c//5Nbb/vC/fvzG22/75Mfv+/Rff/qjd/75B//iQ+95z81/8onPf/KWW2770Ife+ZEPv/fTf/rh2z5601+/6513vOuGf/fxz/75Jz71Z7fdeuvHP/4Hn7r10x/99KdvuunGN/35n9z2R7fedustt9780Y/f/tGbPvXpT/3pn/35Z2/55CduvfXmN7/5zW99661vf/vbn7jtttu/8IUPf/jDH/nIR/74j/945syZs2fPnn322eee/dD/ARh/w2j8X15GAAAAAElFTkSuQmCC" alt="QuizGenie Logo">
+        <a href="#" class="brand-logo">
+      <div class="brand-logo-icon">
+        <svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="qgBg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0ea5e9"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+            <linearGradient id="qgGold" x1="8" y1="17" x2="38" y2="35" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#fef08a"/>
+              <stop offset="50%" stop-color="#fbbf24"/>
+              <stop offset="100%" stop-color="#f59e0b"/>
+            </linearGradient>
+            <filter id="qgGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+          </defs>
+          <rect width="48" height="48" rx="12" fill="url(#qgBg)"/>
+          <rect x="0.5" y="0.5" width="47" height="47" rx="11.5" stroke="rgba(255,255,255,0.35)"/>
+          <!-- Magic Lamp Body -->
+          <path d="M8 27C12 21 18 20 27 21C37 17 32 25 24 30C13 30 8 27 8 27Z" fill="url(#qgGold)"/>
+          <!-- Base -->
+          <polygon points="15,30 23,30 25,35 13,35" fill="#d97706"/>
+          <!-- Handle -->
+          <path d="M12 22C6 21 6 29 11 28" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- Lid -->
+          <ellipse cx="20" cy="19.5" rx="4" ry="1.5" fill="#fef08a"/>
+          <circle cx="20" cy="17.5" r="1.3" fill="#ffffff"/>
+          <!-- Star Sparkle -->
+          <path d="M35 5L36.2 9.8L41 11L36.2 12.2L35 17L33.8 12.2L29 11L33.8 9.8L35 5Z" fill="#ffffff" filter="url(#qgGlow)"/>
+          <circle cx="35" cy="11" r="1.5" fill="#fef08a"/>
+        </svg>
+      </div>
       <div>
         <div class="brand-title">QuizGenie</div>
       </div>
