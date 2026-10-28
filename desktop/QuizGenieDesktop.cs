@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -822,7 +822,8 @@ namespace QuizGenie
             rbFree.Location = new Point(130, 6);
             rbFree.Size = new Size(cardW - 140, 24);
             rbFree.Cursor = Cursors.Hand;
-            rbFree.CheckedChanged += (s, e) => { if (rbFree.Checked) SwitchServer("free"); };
+            rbFree.AutoCheck = false;
+            rbFree.Click += (s, e) => SwitchServer("free");
             pnlCardFree.Controls.Add(rbFree);
 
             Label lblTagFree = new Label();
@@ -866,7 +867,8 @@ namespace QuizGenie
             rbFreeBackup.Location = new Point(130, 6);
             rbFreeBackup.Size = new Size(cardW - 140, 24);
             rbFreeBackup.Cursor = Cursors.Hand;
-            rbFreeBackup.CheckedChanged += (s, e) => { if (rbFreeBackup.Checked) SwitchServer("free_backup"); };
+            rbFreeBackup.AutoCheck = false;
+            rbFreeBackup.Click += (s, e) => SwitchServer("free_backup");
             pnlCardFreeBackup.Controls.Add(rbFreeBackup);
 
             Label lblTagFreeBackup = new Label();
@@ -910,7 +912,8 @@ namespace QuizGenie
             rbDeepSeek.Location = new Point(110, 6);
             rbDeepSeek.Size = new Size(cardW - 120, 24);
             rbDeepSeek.Cursor = Cursors.Hand;
-            rbDeepSeek.CheckedChanged += (s, e) => { if (rbDeepSeek.Checked) SwitchServer("deepseek"); };
+            rbDeepSeek.AutoCheck = false;
+            rbDeepSeek.Click += (s, e) => SwitchServer("deepseek");
             pnlCardDeepSeek.Controls.Add(rbDeepSeek);
 
             Label lblTagDeepSeek = new Label();
@@ -980,7 +983,8 @@ namespace QuizGenie
             pnlDeepSeekKey.Controls.Add(lblDeepSeekStatus);
 
             pnlCardDeepSeek.Controls.Add(pnlDeepSeekKey);
-            pnlCardDeepSeek.Click += (s, e) => rbDeepSeek.Checked = true;
+            pnlCardDeepSeek.Click += (s, e) => SwitchServer("deepseek");
+            txtDeepSeekKey.TextChanged += (s, e) => { currentConfig.DeepSeekKey = txtDeepSeekKey.Text.Trim(); SaveSettings(); };
             pnlAccServersBody.Controls.Add(pnlCardDeepSeek);
             y += 136;
 
@@ -1004,7 +1008,8 @@ namespace QuizGenie
             rbGroq.Location = new Point(110, 6);
             rbGroq.Size = new Size(cardW - 120, 24);
             rbGroq.Cursor = Cursors.Hand;
-            rbGroq.CheckedChanged += (s, e) => { if (rbGroq.Checked) SwitchServer("groq"); };
+            rbGroq.AutoCheck = false;
+            rbGroq.Click += (s, e) => SwitchServer("groq");
             pnlCardGroq.Controls.Add(rbGroq);
 
             Label lblTagGroq = new Label();
@@ -1074,7 +1079,8 @@ namespace QuizGenie
             pnlGroqKey.Controls.Add(lblGroqStatus);
 
             pnlCardGroq.Controls.Add(pnlGroqKey);
-            pnlCardGroq.Click += (s, e) => rbGroq.Checked = true;
+            pnlCardGroq.Click += (s, e) => SwitchServer("groq");
+            txtGroqKey.TextChanged += (s, e) => { currentConfig.GroqKey = txtGroqKey.Text.Trim(); SaveSettings(); };
             pnlAccServersBody.Controls.Add(pnlCardGroq);
             y += 136;
 
@@ -1098,7 +1104,8 @@ namespace QuizGenie
             rbGemini.Location = new Point(110, 6);
             rbGemini.Size = new Size(cardW - 120, 24);
             rbGemini.Cursor = Cursors.Hand;
-            rbGemini.CheckedChanged += (s, e) => { if (rbGemini.Checked) SwitchServer("gemini"); };
+            rbGemini.AutoCheck = false;
+            rbGemini.Click += (s, e) => SwitchServer("gemini");
             pnlCardGemini.Controls.Add(rbGemini);
 
             Label lblTagGemini = new Label();
@@ -1168,7 +1175,8 @@ namespace QuizGenie
             pnlGeminiKey.Controls.Add(lblGeminiStatus);
 
             pnlCardGemini.Controls.Add(pnlGeminiKey);
-            pnlCardGemini.Click += (s, e) => rbGemini.Checked = true;
+            pnlCardGemini.Click += (s, e) => SwitchServer("gemini");
+            txtGeminiKey.TextChanged += (s, e) => { currentConfig.GeminiKey = txtGeminiKey.Text.Trim(); SaveSettings(); };
             pnlAccServersBody.Controls.Add(pnlCardGemini);
             y += 136;
 
@@ -1192,7 +1200,8 @@ namespace QuizGenie
             rbOpenAI.Location = new Point(110, 6);
             rbOpenAI.Size = new Size(cardW - 120, 24);
             rbOpenAI.Cursor = Cursors.Hand;
-            rbOpenAI.CheckedChanged += (s, e) => { if (rbOpenAI.Checked) SwitchServer("openai"); };
+            rbOpenAI.AutoCheck = false;
+            rbOpenAI.Click += (s, e) => SwitchServer("openai");
             pnlCardOpenAI.Controls.Add(rbOpenAI);
 
             Label lblTagOpenAI = new Label();
@@ -1262,7 +1271,8 @@ namespace QuizGenie
             pnlOpenAIKey.Controls.Add(lblOpenAIStatus);
 
             pnlCardOpenAI.Controls.Add(pnlOpenAIKey);
-            pnlCardOpenAI.Click += (s, e) => rbOpenAI.Checked = true;
+            pnlCardOpenAI.Click += (s, e) => SwitchServer("openai");
+            txtOpenAIKey.TextChanged += (s, e) => { currentConfig.OpenAIKey = txtOpenAIKey.Text.Trim(); SaveSettings(); };
             pnlAccServersBody.Controls.Add(pnlCardOpenAI);
             y += 136;
 
@@ -1839,18 +1849,34 @@ namespace QuizGenie
             currentConfig.ActiveServer = srv;
             SaveSettings();
 
+            // 1. RadioButtons Exclusive Selection (ONLY 1 checked)
+            if (rbFree != null) rbFree.Checked = (srv == "free");
+            if (rbFreeBackup != null) rbFreeBackup.Checked = (srv == "free_backup");
+            if (rbDeepSeek != null) rbDeepSeek.Checked = (srv == "deepseek");
+            if (rbGroq != null) rbGroq.Checked = (srv == "groq");
+            if (rbGemini != null) rbGemini.Checked = (srv == "gemini");
+            if (rbOpenAI != null) rbOpenAI.Checked = (srv == "openai");
+
+            // 2. All Key Panels ALWAYS visible (no empty void cards!)
+            if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = true;
+            if (pnlGroqKey != null) pnlGroqKey.Visible = true;
+            if (pnlGeminiKey != null) pnlGeminiKey.Visible = true;
+            if (pnlOpenAIKey != null) pnlOpenAIKey.Visible = true;
+
+            // 3. Highlight active server card border
+            cardFreeBorderColor = (srv == "free") ? Color.FromArgb(52, 211, 153) : Color.FromArgb(51, 65, 85);
+            cardFreeBackupBorderColor = (srv == "free_backup") ? Color.FromArgb(45, 212, 191) : Color.FromArgb(51, 65, 85);
+            cardDeepSeekBorderColor = (srv == "deepseek") ? Color.FromArgb(56, 189, 248) : Color.FromArgb(51, 65, 85);
+            cardGroqBorderColor = (srv == "groq") ? Color.FromArgb(249, 115, 22) : Color.FromArgb(51, 65, 85);
+            cardGeminiBorderColor = (srv == "gemini") ? Color.FromArgb(125, 211, 252) : Color.FromArgb(51, 65, 85);
+            cardOpenAIBorderColor = (srv == "openai") ? Color.FromArgb(192, 132, 252) : Color.FromArgb(51, 65, 85);
+
             if (srv == "gemini")
             {
-                pnlGeminiKey.Visible = true;
-                pnlOpenAIKey.Visible = false;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = false;
-
                 lblHeaderServerBadge.Text = "⚡ الخادم الآخر (Gemini)";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(125, 211, 252);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 headerBadgeBorderColor = Color.FromArgb(56, 189, 248);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "⚡";
                 lblActiveServerName.Text = "الخادم الآخر (Google Gemini)";
@@ -1859,30 +1885,16 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(125, 211, 252);
                 lblActiveServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 activeBadgeBorderColor = Color.FromArgb(56, 189, 248);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "⚡ Gemini";
                 lblAccServersBadge.ForeColor = Color.FromArgb(125, 211, 252);
-
-                cardGeminiBorderColor = Color.FromArgb(56, 189, 248);
-                cardFreeBorderColor = Color.FromArgb(51, 65, 85);
-                cardFreeBackupBorderColor = Color.FromArgb(51, 65, 85);
-                cardDeepSeekBorderColor = Color.FromArgb(51, 65, 85);
-                cardGroqBorderColor = Color.FromArgb(51, 65, 85);
-                cardOpenAIBorderColor = Color.FromArgb(51, 65, 85);
             }
             else if (srv == "openai")
             {
-                pnlGeminiKey.Visible = false;
-                pnlOpenAIKey.Visible = true;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = false;
-
                 lblHeaderServerBadge.Text = "🤖 خادم شات جي بي تي";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(216, 180, 254);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(59, 7, 100);
                 headerBadgeBorderColor = Color.FromArgb(192, 132, 252);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "🤖";
                 lblActiveServerName.Text = "خادم شات جي بي تي (ChatGPT / OpenAI)";
@@ -1891,30 +1903,16 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(216, 180, 254);
                 lblActiveServerBadge.BackColor = Color.FromArgb(59, 7, 100);
                 activeBadgeBorderColor = Color.FromArgb(192, 132, 252);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "🤖 ChatGPT";
                 lblAccServersBadge.ForeColor = Color.FromArgb(216, 180, 254);
-
-                cardOpenAIBorderColor = Color.FromArgb(192, 132, 252);
-                cardFreeBorderColor = Color.FromArgb(51, 65, 85);
-                cardFreeBackupBorderColor = Color.FromArgb(51, 65, 85);
-                cardDeepSeekBorderColor = Color.FromArgb(51, 65, 85);
-                cardGroqBorderColor = Color.FromArgb(51, 65, 85);
-                cardGeminiBorderColor = Color.FromArgb(51, 65, 85);
             }
             else if (srv == "deepseek")
             {
-                pnlGeminiKey.Visible = false;
-                pnlOpenAIKey.Visible = false;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = true;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = false;
-
                 lblHeaderServerBadge.Text = "🧠 خادم ديب سيك";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(56, 189, 248);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 headerBadgeBorderColor = Color.FromArgb(56, 189, 248);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "🧠";
                 lblActiveServerName.Text = "خادم ديب سيك (DeepSeek R1)";
@@ -1923,30 +1921,16 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(56, 189, 248);
                 lblActiveServerBadge.BackColor = Color.FromArgb(12, 74, 110);
                 activeBadgeBorderColor = Color.FromArgb(56, 189, 248);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "🧠 DeepSeek";
                 lblAccServersBadge.ForeColor = Color.FromArgb(56, 189, 248);
-
-                cardDeepSeekBorderColor = Color.FromArgb(56, 189, 248);
-                cardFreeBorderColor = Color.FromArgb(51, 65, 85);
-                cardFreeBackupBorderColor = Color.FromArgb(51, 65, 85);
-                cardGroqBorderColor = Color.FromArgb(51, 65, 85);
-                cardGeminiBorderColor = Color.FromArgb(51, 65, 85);
-                cardOpenAIBorderColor = Color.FromArgb(51, 65, 85);
             }
             else if (srv == "groq")
             {
-                pnlGeminiKey.Visible = false;
-                pnlOpenAIKey.Visible = false;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = true;
-
                 lblHeaderServerBadge.Text = "⚡ خادم جروك فائق السرعة";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(249, 115, 22);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(67, 20, 7);
                 headerBadgeBorderColor = Color.FromArgb(249, 115, 22);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "⚡";
                 lblActiveServerName.Text = "خادم جروك فائق السرعة (Groq Llama 3.3)";
@@ -1955,30 +1939,16 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(249, 115, 22);
                 lblActiveServerBadge.BackColor = Color.FromArgb(67, 20, 7);
                 activeBadgeBorderColor = Color.FromArgb(249, 115, 22);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "⚡ Groq";
                 lblAccServersBadge.ForeColor = Color.FromArgb(249, 115, 22);
-
-                cardGroqBorderColor = Color.FromArgb(249, 115, 22);
-                cardFreeBorderColor = Color.FromArgb(51, 65, 85);
-                cardFreeBackupBorderColor = Color.FromArgb(51, 65, 85);
-                cardDeepSeekBorderColor = Color.FromArgb(51, 65, 85);
-                cardGeminiBorderColor = Color.FromArgb(51, 65, 85);
-                cardOpenAIBorderColor = Color.FromArgb(51, 65, 85);
             }
             else if (srv == "free_backup")
             {
-                pnlGeminiKey.Visible = false;
-                pnlOpenAIKey.Visible = false;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = false;
-
                 lblHeaderServerBadge.Text = "🛡️ الخادم المجاني الاحتياطي";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(45, 212, 191);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(19, 78, 74);
                 headerBadgeBorderColor = Color.FromArgb(20, 184, 166);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "🛡️";
                 lblActiveServerName.Text = "الخادم المجاني الاحتياطي (بدون مفتاح)";
@@ -1987,30 +1957,16 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(45, 212, 191);
                 lblActiveServerBadge.BackColor = Color.FromArgb(19, 78, 74);
                 activeBadgeBorderColor = Color.FromArgb(20, 184, 166);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "🛡️ احتياطي";
                 lblAccServersBadge.ForeColor = Color.FromArgb(45, 212, 191);
-
-                cardFreeBackupBorderColor = Color.FromArgb(20, 184, 166);
-                cardFreeBorderColor = Color.FromArgb(51, 65, 85);
-                cardDeepSeekBorderColor = Color.FromArgb(51, 65, 85);
-                cardGroqBorderColor = Color.FromArgb(51, 65, 85);
-                cardGeminiBorderColor = Color.FromArgb(51, 65, 85);
-                cardOpenAIBorderColor = Color.FromArgb(51, 65, 85);
             }
             else
             {
-                pnlGeminiKey.Visible = false;
-                pnlOpenAIKey.Visible = false;
-                if (pnlDeepSeekKey != null) pnlDeepSeekKey.Visible = false;
-                if (pnlGroqKey != null) pnlGroqKey.Visible = false;
-
                 lblHeaderServerBadge.Text = "🌐 الخادم المجاني";
                 lblHeaderServerBadge.ForeColor = Color.FromArgb(52, 211, 153);
                 lblHeaderServerBadge.BackColor = Color.FromArgb(6, 78, 59);
                 headerBadgeBorderColor = Color.FromArgb(16, 185, 129);
-                lblHeaderServerBadge.Invalidate();
 
                 lblActiveServerIcon.Text = "🌐";
                 lblActiveServerName.Text = "الخادم المجاني (بدون مفتاح)";
@@ -2019,18 +1975,13 @@ namespace QuizGenie
                 lblActiveServerBadge.ForeColor = Color.FromArgb(52, 211, 153);
                 lblActiveServerBadge.BackColor = Color.FromArgb(6, 78, 59);
                 activeBadgeBorderColor = Color.FromArgb(16, 185, 129);
-                lblActiveServerBadge.Invalidate();
 
                 lblAccServersBadge.Text = "🌐 مجاني";
                 lblAccServersBadge.ForeColor = Color.FromArgb(110, 231, 183);
-
-                cardFreeBorderColor = Color.FromArgb(16, 185, 129);
-                cardFreeBackupBorderColor = Color.FromArgb(51, 65, 85);
-                cardDeepSeekBorderColor = Color.FromArgb(51, 65, 85);
-                cardGroqBorderColor = Color.FromArgb(51, 65, 85);
-                cardGeminiBorderColor = Color.FromArgb(51, 65, 85);
-                cardOpenAIBorderColor = Color.FromArgb(51, 65, 85);
             }
+
+            lblHeaderServerBadge.Invalidate();
+            lblActiveServerBadge.Invalidate();
 
             if (pnlCardFree != null) pnlCardFree.Invalidate();
             if (pnlCardFreeBackup != null) pnlCardFreeBackup.Invalidate();
@@ -2039,7 +1990,7 @@ namespace QuizGenie
             if (pnlCardGemini != null) pnlCardGemini.Invalidate();
             if (pnlCardOpenAI != null) pnlCardOpenAI.Invalidate();
         }
-        private static string workingGeminiModel = "gemini-2.0-flash";
+                private static string workingGeminiModel = "gemini-2.0-flash";
 
         private static string ExtractWebError(WebException wex)
         {
@@ -2369,7 +2320,7 @@ namespace QuizGenie
             }
 
             using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream()))
+            using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
             {
                 string respJson = r.ReadToEnd();
                 var parsed = json.Deserialize<Dictionary<string, object>>(respJson);
@@ -2407,7 +2358,7 @@ namespace QuizGenie
             }
 
             using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream()))
+            using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
             {
                 return r.ReadToEnd();
             }
@@ -2436,7 +2387,7 @@ namespace QuizGenie
 
             using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
             using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream()))
+            using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
             {
                 return r.ReadToEnd();
             }
@@ -2469,7 +2420,7 @@ namespace QuizGenie
 
                 using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
                 using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                using (var r = new StreamReader(res.GetResponseStream()))
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                 {
                     string respJson = r.ReadToEnd();
                     var parsed = json.Deserialize<Dictionary<string, object>>(respJson);
@@ -2500,7 +2451,7 @@ namespace QuizGenie
                 req.ContentLength = data.Length;
                 using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
                 using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                using (var r = new StreamReader(res.GetResponseStream()))
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                 {
                     return r.ReadToEnd();
                 }
@@ -2533,7 +2484,7 @@ namespace QuizGenie
                 req.ContentLength = data.Length;
                 using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
                 using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                using (var r = new StreamReader(res.GetResponseStream()))
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                 {
                     string respJson = r.ReadToEnd();
                     var parsed = json.Deserialize<Dictionary<string, object>>(respJson);
@@ -2557,14 +2508,14 @@ namespace QuizGenie
                         new Dictionary<string, object> { { "role", "system" }, { "content", "حل سريع وفوري فائق السرعة عبر جروك: " + sys } },
                         new Dictionary<string, object> { { "role", "user" }, { "content", q } }
                     }},
-                    { "model", "llama" }
+                    { "model", "openai" }
                 };
 
                 byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
                 req.ContentLength = data.Length;
                 using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
                 using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                using (var r = new StreamReader(res.GetResponseStream()))
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                 {
                     return r.ReadToEnd();
                 }
@@ -3067,7 +3018,7 @@ namespace QuizGenie
                 req.Timeout = 2500;
                 req.UserAgent = "QuizGenie-Desktop/" + APP_VERSION;
                 using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                using (var r = new StreamReader(res.GetResponseStream()))
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                 {
                     jsonContent = await r.ReadToEndAsync();
                 }
@@ -3208,7 +3159,7 @@ namespace QuizGenie
                     req.Timeout = 3500;
                     req.UserAgent = "QuizGenie-Desktop/" + APP_VERSION;
                     using (var res = (HttpWebResponse)await req.GetResponseAsync())
-                    using (var r = new StreamReader(res.GetResponseStream()))
+                    using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
                     {
                         jsonContent = await r.ReadToEndAsync();
                     }
