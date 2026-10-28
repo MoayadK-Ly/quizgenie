@@ -280,49 +280,65 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
 }
 
 // 1. خادم جوجل الصاروخي (Gemini API)
+let workingGeminiModel = 'gemini-2.0-flash';
+
 async function solveViaGemini(systemPrompt, userText, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const models = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+  const distinctModels = Array.from(new Set(models));
+  let lastErr = null;
 
-  const payload = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${systemPrompt}\n\nنص السؤال:\n${userText}` }]
+  for (const model of distinctModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${systemPrompt}\n\nنص السؤال:\n${userText}` }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 600
       }
-    ],
-    generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 600
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Model not found in this region/tier, try next candidate
+          continue;
+        }
+        const err = await response.json().catch(() => ({}));
+        const msg = err.error ? err.error.message : `خطأ (${response.status})`;
+        throw new Error(`خطأ في خادم Gemini: ${msg}`);
+      }
+
+      const data = await response.json();
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!answer) throw new Error('لم يرجع خادم Gemini أي إجابة.');
+      workingGeminiModel = model;
+      return answer.trim();
+    } catch (err) {
+      clearTimeout(timeoutId);
+      lastErr = err;
+      if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Gemini');
+      if (err.message && !err.message.includes('404')) throw err;
     }
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      const msg = err.error ? err.error.message : `خطأ (${response.status})`;
-      throw new Error(`خطأ في خادم Gemini: ${msg}`);
-    }
-
-    const data = await response.json();
-    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!answer) throw new Error('لم يرجع خادم Gemini أي إجابة.');
-    return answer.trim();
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Gemini');
-    throw err;
   }
+
+  throw lastErr || new Error('تعذر الاتصال بخادم Gemini عبر جميع النماذج المتاحة.');
 }
 
 // 2. خادم شات جي بي تي (ChatGPT / OpenAI API)
@@ -660,44 +676,59 @@ async function testServerConnection(server, apiKey) {
     if (!cleanKey) {
       return { success: false, message: '⚠️ الصق مفتاح Gemini أولاً في المربع أعلاه لكي يتم فحصه.' };
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const start = Date.now();
+    const candidateModels = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    const distinctModels = Array.from(new Set(candidateModels));
+    let lastMsg = '';
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: '1+1' }] }],
-          generationConfig: { maxOutputTokens: 5 }
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+    for (const model of distinctModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const start = Date.now();
 
-      if (response.ok) {
-        return {
-          success: true,
-          message: `✓ المفتاح صالح وشغال 100%! تم التحقق من خادم جوجل بنجاح (سرعة الاستجابة: ${elapsed} ثانية).`
-        };
-      } else {
-        const data = await response.json().catch(() => ({}));
-        const msg = data.error?.message || `خطأ (${response.status})`;
-        return {
-          success: false,
-          message: `❌ المفتاح غير صالح من جوجل: ${msg}`
-        };
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: '1+1' }] }],
+            generationConfig: { maxOutputTokens: 5 }
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+
+        if (response.ok) {
+          workingGeminiModel = model;
+          return {
+            success: true,
+            message: `✓ المفتاح صالح وشغال 100%! تم التحقق من خادم جوجل بنجاح (${model} - سرعة الاستجابة: ${elapsed} ثانية).`
+          };
+        } else if (response.status === 404) {
+          // Model not found, try next candidate
+          continue;
+        } else {
+          const data = await response.json().catch(() => ({}));
+          const msg = data.error?.message || `خطأ (${response.status})`;
+          return {
+            success: false,
+            message: `❌ المفتاح غير صالح من جوجل: ${msg}`
+          };
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          return { success: false, message: '❌ انتهت مهلة الفحص، تأكد من اتصالك بالإنترنت.' };
+        }
+        lastMsg = err.message;
       }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        return { success: false, message: '❌ انتهت مهلة الفحص، تأكد من اتصالك بالإنترنت.' };
-      }
-      return { success: false, message: `❌ تعذر التحقق: ${err.message}` };
     }
+
+    return {
+      success: false,
+      message: `❌ تعذر التحقق: ${lastMsg || 'جميع نماذج Gemini غير متوفرة لهذا المفتاح.'}`
+    };
   }
 
   // فحص خادم شات جي بي تي (OpenAI)
