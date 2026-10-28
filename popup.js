@@ -801,7 +801,9 @@ document.addEventListener('DOMContentLoaded', () => {
       targetLanguage: currentTargetLang,
       serverType: currentServer,
       geminiKey: currentGeminiKey,
-      openaiKey: currentOpenaiKey
+      openaiKey: currentOpenaiKey,
+      deepseekKey: currentDeepseekKey,
+      groqKey: currentGroqKey
     }, (response) => {
       solveConciseBtn.disabled = false;
       solveDetailedBtn.disabled = false;
