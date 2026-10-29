@@ -579,21 +579,18 @@ namespace QuizGenie
             ApplySettingsToUI();
             UpdateChromeInstallStatus();
 
-            // إظهار شاشة التحديث عند توفر إصدار جديد
+            // حفظ الإصدار الجديد بصمت تام دون فتح أي نوافذ منبثقة أو مقاطعة للمستخدم
             bool isNewUpdate = string.IsNullOrEmpty(currentConfig.InstalledVersion) || 
                                currentConfig.InstalledVersion != APP_VERSION || 
                                currentConfig.IsFirstRunAfterUpdate;
 
             if (isNewUpdate)
             {
-                ShowChangelogModal();
                 currentConfig.IsFirstRunAfterUpdate = false;
                 currentConfig.InstalledVersion = APP_VERSION;
                 SaveSettings();
             }
 
-            // تشغيل المراقبة الحية للإغلاق التلقائي عند إطلاق أي تحديث جديد
-            StartLiveUpdateWatcher();
             InitFloatingSelectionMonitor();
         }
 
@@ -3765,36 +3762,7 @@ namespace QuizGenie
 
         private void StartLiveUpdateWatcher()
         {
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                SetupDirectoryWatcher(baseDir);
-
-                string rootDir = @"C:\QuizGenie";
-                if (Directory.Exists(rootDir) && !rootDir.Equals(baseDir, StringComparison.OrdinalIgnoreCase))
-                {
-                    SetupDirectoryWatcher(rootDir);
-                }
-            }
-            catch { }
-
-            Task.Run(async () =>
-            {
-                await Task.Delay(1500);
-                try { await CheckForUpdatesInBackgroundAsync(); } catch { }
-
-                while (!this.IsDisposed)
-                {
-                    await Task.Delay(4000);
-                    if (this.IsDisposed || isClosingForUpdate) break;
-
-                    try
-                    {
-                        await CheckForUpdatesInBackgroundAsync();
-                    }
-                    catch { }
-                }
-            });
+            // تم إيقاف الفحص التلقائي المزعج - التطبيق لا يفتح ولا ينبثق بنفسه إطلاقاً
         }
 
         private void SetupDirectoryWatcher(string dir)
