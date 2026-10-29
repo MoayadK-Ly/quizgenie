@@ -1,4 +1,4 @@
-﻿:host {
+:host {
   all: initial;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   direction: rtl;
@@ -451,4 +451,96 @@
   background: #ef4444 !important;
   color: #fff !important;
   border-color: #f87171 !important;
+}
+
+/* ====================================================
+   QuizGenie - Smart Exam Scanner Highlights
+   🟡 Question = Vibrant Yellow Glow
+   🔴 Wrong Options = Crimson Red Outline + ✖
+   🟢 Correct Option = Emerald Green Pulse Glow + ✔
+   ==================================================== */
+
+.quizgenie-highlight-question {
+  position: relative !important;
+  outline: 2.5px solid #fbbf24 !important;
+  outline-offset: 3px !important;
+  background-color: rgba(251, 191, 36, 0.12) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.35) !important;
+  transition: all 0.3s ease !important;
+}
+
+.quizgenie-highlight-question::before {
+  content: "🎯 السؤال المكتشف" !important;
+  position: absolute !important;
+  top: -22px !important;
+  right: 0 !important;
+  background: #f59e0b !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  z-index: 2147483640 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.quizgenie-highlight-correct {
+  position: relative !important;
+  outline: 3px solid #10b981 !important;
+  outline-offset: 3px !important;
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.6) !important;
+  animation: qgPulseGreen 1.5s infinite alternate !important;
+  transition: all 0.3s ease !important;
+}
+
+.quizgenie-highlight-correct::after {
+  content: "✔ الإجابة الصحيحة" !important;
+  position: absolute !important;
+  left: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: #059669 !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  padding: 3px 9px !important;
+  border-radius: 20px !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4) !important;
+  z-index: 2147483640 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.quizgenie-highlight-wrong {
+  position: relative !important;
+  outline: 1.5px dashed rgba(239, 68, 68, 0.65) !important;
+  outline-offset: 2px !important;
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  opacity: 0.65 !important;
+  border-radius: 6px !important;
+  transition: all 0.3s ease !important;
+}
+
+.quizgenie-highlight-wrong::after {
+  content: "✖" !important;
+  position: absolute !important;
+  left: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #ef4444 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+@keyframes qgPulseGreen {
+  from {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  }
+  to {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.85), 0 0 6px #10b981;
+  }
 }
