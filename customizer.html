@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QuizGenie - تخصيص المظهر والثيم وشكل الحواف</title>
+  <title>QuizGenie - تخصيص المظهر والثيم وشكل حواف خيارات الأداة</title>
   <link rel="stylesheet" href="customizer.css">
 </head>
 <body>
@@ -16,8 +16,8 @@
             <span class="logo-emoji">🧞</span>
           </div>
           <div>
-            <h1 class="header-title">مركز تخصيص المظهر وتحديث الإضافة</h1>
-            <p class="header-subtitle">تحكم كامل بالثيم، شكل حواف الخيارات، الشريط العائم، وتحديثات الإضافة</p>
+            <h1 class="header-title">مركز تخصيص مظهر الأداة وشكل حواف الخيارات</h1>
+            <p class="header-subtitle">تحكم كامل بثيم الأداة، شكل حواف بطاقات وخيارات وأزرار المساعد، وشريط التحكم v2.1.0</p>
           </div>
         </div>
         <div class="header-badge">
@@ -34,13 +34,13 @@
         <!-- Column 1: Controls -->
         <div class="controls-column">
 
-          <!-- Section 1: Border Shapes -->
+          <!-- Section 1: Border Shapes for Tool Options -->
           <div class="card-section">
             <div class="section-title-wrap">
               <span class="section-icon">📐</span>
               <div>
-                <h2 class="section-title">شكل حواف خيارات الأسئلة</h2>
-                <p class="section-desc">حدد مظهر انحناء الحواف المفضل لخيارات الإجابة داخل صفحة الاختبار</p>
+                <h2 class="section-title">شكل حواف بطاقات وخيارات الأداة نفسها</h2>
+                <p class="section-desc">حدد مظهر انحناء الحواف المفضل لبطاقات الخوادم وأنماط الحل وأزرار نافذة QuizGenie</p>
               </div>
             </div>
 
@@ -79,8 +79,8 @@
             <div class="section-title-wrap">
               <span class="section-icon">🎨</span>
               <div>
-                <h2 class="section-title">منتقي الألوان الحر للثيم</h2>
-                <p class="section-desc">اختر ألوانك المفضلة لواجهة الإضافة وأزرار الحل بحرية تامة</p>
+                <h2 class="section-title">منتقي الألوان الحر لثيم الأداة</h2>
+                <p class="section-desc">اختر ألوانك المفضلة لواجهة وخيارات الأداة بحرية تامة</p>
               </div>
             </div>
 
@@ -105,7 +105,7 @@
 
               <!-- Color 3: Glow / Correct Answer -->
               <div class="color-picker-item">
-                <label for="glowColor">لون توهج الإجابة الصحيحة:</label>
+                <label for="glowColor">لون تمييز الخيار النشط:</label>
                 <div class="picker-control">
                   <input type="color" id="glowColor" value="#10b981">
                   <span class="color-hex-badge" id="glowColorHex">#10b981</span>
@@ -114,10 +114,10 @@
 
               <!-- Color 4: Question Ring Color -->
               <div class="color-picker-item">
-                <label for="ringColor">لون دائرة تمييز السؤال:</label>
+                <label for="ringColor">لون إطار التحديد البارز:</label>
                 <div class="picker-control">
-                  <input type="color" id="ringColor" value="#ef4444">
-                  <span class="color-hex-badge" id="ringColorHex">#ef4444</span>
+                  <input type="color" id="ringColor" value="#38bdf8">
+                  <span class="color-hex-badge" id="ringColorHex">#38bdf8</span>
                 </div>
               </div>
             </div>
@@ -135,7 +135,7 @@
               <span class="section-icon">🕹️</span>
               <div>
                 <h2 class="section-title">شريط التحكم العائم المصغر للاختبار</h2>
-                <p class="section-desc">شريط عائم وشفاف يظهر في زاوية الشاشة لحل الأسئلة بنقرة واحدة مباشرة من الصفحة</p>
+                <p class="section-desc">شريط عائم وشفاف يظهر في زاوية الشاشة للحل السريع بنقرة واحدة</p>
               </div>
             </div>
 
@@ -182,39 +182,54 @@
 
         </div>
 
-        <!-- Column 2: Live Preview -->
+        <!-- Column 2: Live Preview of Tool Options -->
         <div class="preview-column">
           <div class="preview-sticky-card">
             <div class="preview-header">
-              <span class="preview-tag">معاينة حية وتفاعلية فورية</span>
+              <span class="preview-tag">معاينة حية لشكل بطاقات وخيارات الأداة</span>
               <span class="preview-live-dot"></span>
             </div>
 
             <div class="preview-box" id="previewContainer">
-              <!-- Question preview -->
-              <div class="preview-question" id="previewQuestion">
-                <span class="preview-q-tag">سؤال تجريبي قدرات:</span>
-                <div class="preview-q-text">لحاء : شجرة</div>
+              <span class="preview-section-heading">بطاقات خيارات الأداة (تتغير حوافها فوراً):</span>
+
+              <!-- Mock Tool Card 1: Server Option -->
+              <div class="preview-tool-card selected-mock" id="mockServerCard">
+                <div class="tool-card-icon">🤖</div>
+                <div class="tool-card-details">
+                  <div class="tool-card-title">خادم Google Gemini 3.0 الذكي</div>
+                  <div class="tool-card-sub">خادم فائق السرعة والاستقرار (0.0 ثانية استباقي)</div>
+                </div>
+                <span class="tool-card-badge">✓ نشط</span>
               </div>
 
-              <!-- Options preview -->
-              <div class="preview-options-list" id="previewOptionsList">
-                <div class="preview-option-item" id="opt0">
-                  <span class="radio-mock"></span>
-                  <span class="opt-text">لياقة : عنق</span>
+              <!-- Mock Tool Card 2: Solve Mode Option -->
+              <div class="preview-tool-card" id="mockModeCard">
+                <div class="tool-card-icon">⚡</div>
+                <div class="tool-card-details">
+                  <div class="tool-card-title">الحل المباشر الحاسم بدون فلسفة</div>
+                  <div class="tool-card-sub">استخراج رمز الإجابة الصحيحة الصريح فوراً</div>
                 </div>
-                <div class="preview-option-item correct-mock" id="opt1">
-                  <span class="radio-mock correct-radio"></span>
-                  <span class="opt-text">جلد : ثعبان</span>
-                  <span class="correct-badge-mock">✓ الإجابة الصحيحة (يغطي)</span>
+                <span class="tool-card-badge-muted">مباشر</span>
+              </div>
+
+              <!-- Mock Tool Card 3: Subject Option -->
+              <div class="preview-tool-card" id="mockSubjectCard">
+                <div class="tool-card-icon">📚</div>
+                <div class="tool-card-details">
+                  <div class="tool-card-title">اختبار القدرات العامة (التناظر اللفظي)</div>
+                  <div class="tool-card-sub">كشف الجملة الرابطة والاتجاه المنطقي بدقة</div>
                 </div>
-                <div class="preview-option-item" id="opt2">
-                  <span class="radio-mock"></span>
-                  <span class="opt-text">غطاء : علبة</span>
-                </div>
-                <div class="preview-option-item" id="opt3">
-                  <span class="radio-mock"></span>
-                  <span class="opt-text">حجاب : وجه</span>
+                <span class="tool-card-badge-muted">مخصص</span>
+              </div>
+
+              <!-- Mock Tool Buttons -->
+              <div class="preview-tool-buttons-wrap">
+                <span class="preview-bar-label">أزرار تحكم الأداة:</span>
+                <div class="mock-btn-group">
+                  <button type="button" class="preview-tool-btn primary" id="mockBtn1">⚡ حل مباشر</button>
+                  <button type="button" class="preview-tool-btn purple" id="mockBtn2">📖 حل مفصل</button>
+                  <button type="button" class="preview-tool-btn green" id="mockBtn3">📄 ملخص المذاكرة</button>
                 </div>
               </div>
 
@@ -233,9 +248,9 @@
 
             <div class="preview-actions">
               <button type="button" id="btnSaveCustomization" class="btn-save-primary">
-                <span>💾</span> حفظ وتطبيق المظهر فوراً في جميع التبويبات
+                <span>💾</span> حفظ وتطبيق المظهر فوراً على خيارات الأداة
               </button>
-              <div id="saveToast" class="save-toast">✨ تم حفظ الإعدادات وتطبيقها بنجاح!</div>
+              <div id="saveToast" class="save-toast">✨ تم تطبيق شكل الحواف والثيم على خيارات الأداة بنجاح!</div>
             </div>
 
           </div>
