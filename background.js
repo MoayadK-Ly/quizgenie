@@ -305,6 +305,57 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // Pre-solve (Pre-computation during mouse drag/selection)
+  if (request.action === 'PRE_SOLVE' || request.action === 'PREFETCH_QUESTION') {
+    const text = (request.text || '').trim();
+    if (!text || text.length < 4) {
+      sendResponse({ status: 'ignored' });
+      return false;
+    }
+    chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'], (settings) => {
+      if (chrome.runtime.lastError || !settings) settings = {};
+      const mode = request.mode || 'concise';
+      const subj = request.subject || 'general';
+      const lang = request.targetLanguage || 'ar';
+      let server = request.serverType || settings.serverType || 'gemini';
+      if (server === 'free' || server === 'free_backup') server = 'gemini';
+      const geminiKey = request.geminiKey || settings.geminiKey || DEFAULT_GEMINI_KEY;
+      const openaiKey = request.openaiKey || settings.openaiKey || '';
+      const deepseekKey = request.deepseekKey || settings.deepseekKey || '';
+      const groqKey = request.groqKey || settings.groqKey || '';
+
+      // Run quietly in background to warm up cache
+      solveQuestionDispatcher(text, mode, subj, lang, server, geminiKey, openaiKey, deepseekKey, groqKey)
+        .then(() => sendResponse({ status: 'cached' }))
+        .catch(() => sendResponse({ status: 'pre_error' }));
+    });
+    return true;
+  }
+
+  // Smart Exam Page Scanner
+  if (request.action === 'SOLVE_EXAM_SCAN' || request.action === 'EXAM_SCAN_SOLVE') {
+    chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey', 'scannerDefaultMode'], (settings) => {
+      if (chrome.runtime.lastError || !settings) settings = {};
+      const mode = request.mode || settings.scannerDefaultMode || 'concise';
+      const subj = request.subject || 'qudrat';
+      const lang = request.targetLanguage || 'ar';
+      let server = request.serverType || settings.serverType || 'gemini';
+      if (server === 'free' || server === 'free_backup') server = 'gemini';
+      const geminiKey = settings.geminiKey || DEFAULT_GEMINI_KEY;
+      const openaiKey = settings.openaiKey || '';
+      const deepseekKey = settings.deepseekKey || '';
+      const groqKey = settings.groqKey || '';
+
+      const questionText = request.question || request.questionText || '';
+      const options = request.options || request.optionsList || [];
+
+      solveExamScanDispatcher(questionText, options, mode, subj, lang, server, geminiKey, openaiKey, deepseekKey, groqKey)
+        .then(result => sendResponse({ success: true, data: result, result: result }))
+        .catch(err => sendResponse({ success: false, error: err.message || 'فشل تحليل سؤال الاختبار.' }));
+    });
+    return true;
+  }
+
   // Test server key
   if (request.action === 'TEST_SERVER_KEY') {
     testServerConnection(request.server, request.key)
@@ -312,101 +363,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(err => sendResponse({ success: false, message: err.message || 'فشل فحص الاتصال بالسيرفر.' }));
     return true;
   }
-
-  // التجهيز الفوري المسبق في الخلفية في 0 ثانية أثناء التحديد
-  if (request.action === 'PREFETCH_QUESTION') {
-    const text = (request.text || '').trim();
-    if (text.length > 3) {
-      chrome.storage.local.get(['serverType', 'geminiKey', 'subject', 'targetLanguage'], (settings) => {
-        const safe = settings || {};
-        const srv = safe.serverType || 'gemini';
-        const gKey = safe.geminiKey || DEFAULT_GEMINI_KEY;
-        const subj = request.subject || safe.subject || 'general';
-        const lang = request.targetLanguage || safe.targetLanguage || 'ar';
-        solveQuestionDispatcher(text, 'concise', subj, lang, srv, gKey, '', '', '').catch(() => {});
-        solveQuestionDispatcher(text, 'detailed', subj, lang, srv, gKey, '', '', '').catch(() => {});
-      });
-    }
-    sendResponse({ prefetching: true });
-    return false;
-  }
-
-  // ماسح الاختبارات الذكي مع تلوين السؤال والخيارات
-  if (request.action === 'EXAM_SCAN_SOLVE') {
-    chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey', 'subject', 'targetLanguage'], async (settings) => {
-      if (chrome.runtime.lastError || !settings) settings = {};
-      const qText = (request.questionText || '').trim();
-      const options = request.optionsList || [];
-      const mode = request.mode || 'concise';
-      const subj = request.subject || settings.subject || 'general';
-      const lang = request.targetLanguage || settings.targetLanguage || 'ar';
-      let server = request.serverType || settings.serverType || 'gemini';
-      if (server === 'free' || server === 'free_backup') server = 'gemini';
-      const geminiKey = request.geminiKey || settings.geminiKey || DEFAULT_GEMINI_KEY;
-
-      try {
-        const result = await solveExamWithStructuredOptions(qText, options, mode, subj, lang, server, geminiKey);
-        sendResponse({ success: true, data: result });
-      } catch (err) {
-        sendResponse({ success: false, error: err.message || 'فشل فحص وحل السؤال.' });
-      }
-    });
-    return true;
-  }
 });
-
-// محرك حل أسئلة الاختبارات المنظمة والتناظر اللفظي بدقة متناهية
-async function solveExamWithStructuredOptions(questionText, optionsList, mode, subject, targetLanguage, serverType, geminiKey) {
-  let optionsBlock = '';
-  if (optionsList && optionsList.length > 0) {
-    optionsBlock = optionsList.map((opt, idx) => `الخيار (${idx + 1}): ${opt}`).join('\n');
-  }
-
-  const prompt = `أنت خبير حل اختبارات قياس والقدرات والامتحانات المدرسية والجامعية فائق الذكاء في QuizGenie.
-مهمتك: قراءة نص السؤال والخيارات المحددة، ثم استخراج الخيار الصحيح بنسبة 100% وتفنيد الخيارات الخاطئة.
-
-⚠️ قواعد التمييز الصارمة لمنع الخلط بين السؤال والخيارات:
-1. نص السؤال الأساسي المطلوب حله هو: "${questionText}".
-2. لا تعتبر أي خيار من الخيارات أدناه سؤالاً، بل هي بدائل مقترحة للإجابة فقط.
-3. إذا كان السؤال بصيغة تناظر لفظي (مثل: س : ص)، فحدد نوع العلاقة وسهم الاتجاه أولاً وطابقها مع الخيارات.
-
-الخيارات المعطاة:
-${optionsBlock}
-
-المطلوب إخراجه بالتنسيق الإلزامي التالي:
-🎯 الخيار الصحيح: [رقم الخيار الصحيح من 1 إلى ${optionsList.length}] - [نص الخيار الصحيح بالكامل]
-⚡ الجملة الرابطة والعلاقة: [العلاقة الدقيقة التي تربط بين الكلمات أو قانون المسألة]
-🔍 استبعاد الخيارات الخاطئة: [سبب مقتضب جداً لاستبعاد كل خيار خاطئ]
-${mode === 'detailed' ? '📘 شرح وتأسيس علمي مفصل: [شرح وافٍ للخطوات والقوانين]' : ''}`;
-
-  const rawAnswer = await solveViaGemini(prompt, questionText, geminiKey, mode);
-  
-  // استخراج رقم الخيار الصحيح المكتشف بدقة
-  let matchedIndex = -1;
-  const matchNum = rawAnswer.match(/🎯\s*الخيار الصحيح:\s*(\d+)/i) || rawAnswer.match(/الخيار\s*\(?(\d+)\)?/i);
-  if (matchNum && matchNum[1]) {
-    const num = parseInt(matchNum[1], 10) - 1;
-    if (num >= 0 && num < optionsList.length) {
-      matchedIndex = num;
-    }
-  }
-  
-  if (matchedIndex === -1 && optionsList.length > 0) {
-    for (let i = 0; i < optionsList.length; i++) {
-      if (rawAnswer.includes(optionsList[i].trim())) {
-        matchedIndex = i;
-        break;
-      }
-    }
-  }
-
-  return {
-    rawAnswer: rawAnswer,
-    correctIndex: matchedIndex,
-    correctText: (matchedIndex >= 0) ? optionsList[matchedIndex] : '',
-    totalOptions: optionsList.length
-  };
-}
 
 // Central Dispatcher
 async function solveQuestionDispatcher(questionText, mode, subject, targetLanguage, serverType, geminiKey, openaiKey, deepseekKey, groqKey) {
@@ -476,6 +433,17 @@ ${subjectDesc}
 ${langDesc}`;
   }
 
+  const isAnalogy = /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(cleanText);
+  if (isAnalogy) {
+    systemPrompt += `\n\n🎯 تنبيه تخصصي فائق الأهمية (محرك التناظر اللفظي - القدرات العامة):
+السؤال هو تناظر لفظي بين كلمتين (مثل: عطاس : حمد أو لحاء : شجرة).
+القواعد الصارمة:
+1. حدد بدقة "الجملة الرابطة" (مثال: اللحاء يغطي ويحمي الشجرة كما أن الجلد يغطي ويحمي الثعبان).
+2. حدد "اتجاه العلاقة" الإلزامي (يمين -> يسار أو يسار -> يمين).
+3. استبعد تماماً الخيارات المعكوسة أو المصنوعة أو غير المتطابقة في الاتجاه.
+4. الخيار الصحيح هو الخيار المطابق بنسبة 100% في نوع العلاقة والاتجاه.`;
+  }
+
   let finalAnswer = '';
 
   try {
@@ -507,6 +475,87 @@ ${langDesc}`;
   }
 
   throw new Error('لم يتم استلام إجابة صحيحة من السيرفر.');
+}
+
+// Smart Exam Page Scanner Engine
+async function solveExamScanDispatcher(questionText, options, mode, subject, targetLanguage, serverType, geminiKey, openaiKey, deepseekKey, groqKey) {
+  const cleanQ = (questionText || '').trim();
+  const cleanOpts = (options || []).map((o, i) => `[الخيار ${i}]: ${o.trim()}`).join('\n');
+  const isAnalogy = /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(cleanQ);
+
+  const scanPrompt = `أنت المحلل الأكاديمي الذكي المتقدم في QuizGenie المتخصص في تحليل وحل امتحانات الشاشة واختبارات القدرات.
+تم مسح السؤال التالي من الشاشة:
+رأس السؤال الرئيسي:
+"${cleanQ}"
+
+خيارات الإجابة المعروضة:
+${cleanOpts}
+
+${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (علاقة بين كلمتين)، استخرج الجملة الرابطة وحدد اتجاه العلاقة بدقة تامة.' : ''}
+
+المطلوب بدقة:
+حدد رقم فهرس الخيار الصحيح (من 0 إلى ${(options && options.length) ? options.length - 1 : 3})، نص الخيار، والشرح.
+أخرج النتيجة حصراً بصيغة JSON نظيفة بدون أي علامات markdown:
+{
+  "correctIndex": 1,
+  "correctText": "نص الخيار الصحيح",
+  "relation": "نوع العلاقة أو الفكرة المركزية",
+  "explanation": "شرح توضيحي مركز لسبب صحة هذا الخيار واستبعاد البقية"
+}`;
+
+  let rawResponse = '';
+  let srv = serverType || 'gemini';
+  if (srv === 'free' || srv === 'free_backup') srv = 'gemini';
+  const activeGeminiKey = (geminiKey && geminiKey.trim()) ? geminiKey.trim() : DEFAULT_GEMINI_KEY;
+
+  try {
+    if (srv === 'gemini') {
+      rawResponse = await solveViaGemini(scanPrompt, cleanQ, activeGeminiKey, 'detailed');
+    } else if (srv === 'groq') {
+      rawResponse = await solveViaGroq(scanPrompt, cleanQ, groqKey);
+    } else if (srv === 'deepseek') {
+      rawResponse = await solveViaDeepSeek(scanPrompt, cleanQ, deepseekKey);
+    } else if (srv === 'openai') {
+      rawResponse = await solveViaOpenAI(scanPrompt, cleanQ, openaiKey);
+    } else {
+      rawResponse = await solveViaGemini(scanPrompt, cleanQ, activeGeminiKey, 'detailed');
+    }
+  } catch (err) {
+    try {
+      rawResponse = await solveViaGemini(scanPrompt, cleanQ, activeGeminiKey, 'detailed');
+    } catch (gErr) {
+      throw new Error(`فشل الاتصال لتحليل الاختبار: ${err.message}`);
+    }
+  }
+
+  // Parse JSON from output
+  try {
+    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : 0;
+      if (cIdx < 0 || cIdx >= options.length) cIdx = 0;
+      return {
+        correctIndex: cIdx,
+        correctText: parsed.correctText || options[cIdx] || '',
+        relation: parsed.relation || '',
+        explanation: parsed.explanation || rawResponse,
+        isAnalogy: isAnalogy,
+        rawAnswer: rawResponse
+      };
+    }
+  } catch (e) {
+    console.warn('Scan JSON parse fallback:', e);
+  }
+
+  return {
+    correctIndex: 0,
+    correctText: options[0] || '',
+    relation: '',
+    explanation: rawResponse,
+    isAnalogy: isAnalogy,
+    rawAnswer: rawResponse
+  };
 }
 
 let workingGeminiModel = 'gemini-3-flash-preview';
