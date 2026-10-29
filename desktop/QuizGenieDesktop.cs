@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
+using System.Collections;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
@@ -308,7 +309,7 @@ namespace QuizGenie
 
     public class MainForm : Form
     {
-        public const string APP_VERSION = "1.9.0";
+        public const string APP_VERSION = "2.0.0";
         public const string DEFAULT_UPDATE_URL = "https://raw.githubusercontent.com/MoayadK-Ly/quizgenie/main/version.json";
 
         // اللوحة الرئيسية القابلة للتمرير
@@ -412,6 +413,11 @@ namespace QuizGenie
         private Panel pnlAccSolverBody;
         private TextBox txtQuestion;
         private Button btnPasteQuestion;
+        private Button btnSnipScreen;
+        private Button btnExportHistory;
+        private Button btnSpeakDesktop;
+        private System.Speech.Synthesis.SpeechSynthesizer desktopSynth;
+        private bool isDesktopSpeaking = false;
         private Button btnSolveConcise;
         private Button btnSolveDetailed;
         private Label lblAnswerStatus;
@@ -1470,6 +1476,34 @@ namespace QuizGenie
                 if (Clipboard.ContainsText()) txtQuestion.Text = Clipboard.GetText();
             };
             pnlAccSolverBody.Controls.Add(btnPasteQuestion);
+
+            btnSnipScreen = new Button();
+            btnSnipScreen.Text = "ًں“¸ ظ‚طµ ط§ظ„ط´ط§ط´ط© (F2)";
+            btnSnipScreen.Location = new Point(148, y - 2);
+            btnSnipScreen.Size = new Size(130, 28);
+            btnSnipScreen.FlatStyle = FlatStyle.Flat;
+            btnSnipScreen.FlatAppearance.BorderSize = 0;
+            btnSnipScreen.ForeColor = Color.FromArgb(186, 230, 253);
+            btnSnipScreen.BackColor = Color.FromArgb(30, 41, 59);
+            btnSnipScreen.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            btnSnipScreen.Cursor = Cursors.Hand;
+            UITheme.ApplyRoundedCard(btnSnipScreen, 14, Color.FromArgb(56, 189, 248), 1.2f);
+            btnSnipScreen.Click += (s, e) => StartScreenSnip();
+            pnlAccSolverBody.Controls.Add(btnSnipScreen);
+
+            btnExportHistory = new Button();
+            btnExportHistory.Text = "ًں“œ ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط©";
+            btnExportHistory.Location = new Point(282, y - 2);
+            btnExportHistory.Size = new Size(130, 28);
+            btnExportHistory.FlatStyle = FlatStyle.Flat;
+            btnExportHistory.FlatAppearance.BorderSize = 0;
+            btnExportHistory.ForeColor = Color.FromArgb(187, 247, 208);
+            btnExportHistory.BackColor = Color.FromArgb(30, 41, 59);
+            btnExportHistory.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            btnExportHistory.Cursor = Cursors.Hand;
+            UITheme.ApplyRoundedCard(btnExportHistory, 14, Color.FromArgb(52, 211, 153), 1.2f);
+            btnExportHistory.Click += (s, e) => ExportStudySheet();
+            pnlAccSolverBody.Controls.Add(btnExportHistory);
             y += 32;
 
             Panel pnlQuestionWrap = new Panel();
@@ -1558,6 +1592,20 @@ namespace QuizGenie
                 }
             };
             pnlAccSolverBody.Controls.Add(btnCopyAnswer);
+
+            btnSpeakDesktop = new Button();
+            btnSpeakDesktop.Text = "ًں”ٹ ط§ط³طھظ…ط§ط¹ طµظˆطھظٹ";
+            btnSpeakDesktop.Location = new Point(134, y - 2);
+            btnSpeakDesktop.Size = new Size(115, 28);
+            btnSpeakDesktop.FlatStyle = FlatStyle.Flat;
+            btnSpeakDesktop.FlatAppearance.BorderSize = 0;
+            btnSpeakDesktop.ForeColor = Color.FromArgb(224, 231, 255);
+            btnSpeakDesktop.BackColor = Color.FromArgb(30, 41, 59);
+            btnSpeakDesktop.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            btnSpeakDesktop.Cursor = Cursors.Hand;
+            UITheme.ApplyRoundedCard(btnSpeakDesktop, 14, Color.FromArgb(129, 140, 248), 1.2f);
+            btnSpeakDesktop.Click += (s, e) => ToggleDesktopSpeech();
+            pnlAccSolverBody.Controls.Add(btnSpeakDesktop);
             y += 32;
 
             Panel pnlAnswerWrap = new Panel();
@@ -2355,6 +2403,122 @@ namespace QuizGenie
             menuForm.BringToFront();
         }
 
+        public void StartScreenSnip()
+        {
+            try
+            {
+                var overlay = new ScreenSnipOverlayForm(this);
+                overlay.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("طھط¹ط°ط± طھط´ط؛ظٹظ„ ط£ط¯ط§ط© طھطµظˆظٹط± ط§ظ„ط´ط§ط´ط©: " + ex.Message, "QuizGenie", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        public void OpenFloatingAnswerWithImage(Point loc, Bitmap bmp, string mode)
+        {
+            if (answerForm == null || answerForm.IsDisposed)
+                answerForm = new FloatingAnswerForm(this);
+
+            var screen = Screen.FromPoint(loc).WorkingArea;
+            int x = loc.X - 120;
+            int y = loc.Y + 10;
+            if (x + 550 > screen.Right) x = screen.Right - 555;
+            if (x < screen.Left) x = screen.Left + 10;
+            if (y + 440 > screen.Bottom) y = screen.Bottom - 450;
+            if (y < screen.Top) y = screen.Top + 10;
+
+            answerForm.Location = new Point(x, y);
+            if (!answerForm.Visible) answerForm.Show();
+            answerForm.BringToFront();
+
+            answerForm.SolveImage(bmp, mode);
+        }
+
+        private void ExportStudySheet()
+        {
+            try
+            {
+                string html = HistoryManager.ExportStudySheetHtml();
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string exportFile = Path.Combine(desktopPath, "QuizGenie_Study_Sheet_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".html");
+                File.WriteAllText(exportFile, html, Encoding.UTF8);
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = exportFile,
+                    UseShellExecute = true
+                });
+
+                MessageBox.Show("طھظ… طھطµط¯ظٹط± ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط© ط§ظ„ط´ط§ظ…ظ„ ظˆظپطھط­ظ‡ ظپظٹ ط§ظ„ظ…طھطµظپط­ ط¨ظ†ط¬ط§ط­!\n\nط§ظ„ظ…ظ„ظپ ط¹ظ„ظ‰ ط³ط·ط­ ط§ظ„ظ…ظƒطھط¨:\n" + Path.GetFileName(exportFile), "ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط© - QuizGenie", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("طھط¹ط°ط± طھطµط¯ظٹط± ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط©: " + ex.Message, "QuizGenie", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ToggleDesktopSpeech()
+        {
+            if (isDesktopSpeaking)
+            {
+                try
+                {
+                    if (desktopSynth != null) desktopSynth.SpeakAsyncCancelAll();
+                }
+                catch { }
+                isDesktopSpeaking = false;
+                if (btnSpeakDesktop != null)
+                {
+                    btnSpeakDesktop.Text = "ًں”ٹ ط§ط³طھظ…ط§ط¹ طµظˆطھظٹ";
+                    btnSpeakDesktop.BackColor = Color.FromArgb(30, 41, 59);
+                }
+            }
+            else
+            {
+                string textToRead = txtAnswer.Text;
+                if (string.IsNullOrWhiteSpace(textToRead)) return;
+
+                textToRead = textToRead.Replace("ًںژ¯", "").Replace("âڑ،", "").Replace("ًں“ک", "")
+                                       .Replace("ًں“گ", "").Replace("ًں”چ", "").Replace("ًں’،", "")
+                                       .Replace("âœ“", "").Replace("â‌Œ", "").Replace("*", "").Replace("#", "");
+
+                try
+                {
+                    if (desktopSynth == null)
+                    {
+                        desktopSynth = new System.Speech.Synthesis.SpeechSynthesizer();
+                        desktopSynth.SpeakCompleted += (s, e) => {
+                            isDesktopSpeaking = false;
+                            if (!this.IsDisposed)
+                            {
+                                this.BeginInvoke((Action)(() => {
+                                    if (btnSpeakDesktop != null)
+                                    {
+                                        btnSpeakDesktop.Text = "ًں”ٹ ط§ط³طھظ…ط§ط¹ طµظˆطھظٹ";
+                                        btnSpeakDesktop.BackColor = Color.FromArgb(30, 41, 59);
+                                    }
+                                }));
+                            }
+                        };
+                    }
+                    desktopSynth.SpeakAsyncCancelAll();
+                    desktopSynth.SpeakAsync(textToRead);
+                    isDesktopSpeaking = true;
+                    if (btnSpeakDesktop != null)
+                    {
+                        btnSpeakDesktop.Text = "âڈ¹ï¸ڈ ط¥ظٹظ‚ط§ظپ ط§ظ„طµظˆطھ";
+                        btnSpeakDesktop.BackColor = Color.FromArgb(239, 68, 68);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("طھط¹ط°ط± طھط´ط؛ظٹظ„ ط§ظ„طµظˆطھ: " + ex.Message, "QuizGenie Audio", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
         public void OpenFloatingAnswer(Point loc, string text, string mode)
         {
             if (answerForm == null || answerForm.IsDisposed)
@@ -2442,17 +2606,171 @@ namespace QuizGenie
                 answer = await CallGeminiAsync(systemPrompt, question, DEFAULT_GEMINI_KEY, mode);
             }
 
-            return answer.Trim();
+            string finalAns = answer.Trim();
+            try
+            {
+                string c = (mode == "concise") ? finalAns : "";
+                string d = (mode == "detailed") ? finalAns : "";
+                string subj = currentConfig != null ? currentConfig.Subject : "general";
+                HistoryManager.AddEntry(question, c, d, subj, false);
+            }
+            catch { }
+            return finalAns;
+        }
+
+        public async Task<string> SolveImageDirectAsync(Bitmap bmp, string mode)
+        {
+            string base64Jpeg;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                base64Jpeg = Convert.ToBase64String(ms.ToArray());
+            }
+
+            string systemPrompt = BuildSystemPrompt(mode);
+            string gemKey = (currentConfig != null && !string.IsNullOrWhiteSpace(currentConfig.GeminiKey))
+                ? currentConfig.GeminiKey.Trim()
+                : DEFAULT_GEMINI_KEY;
+
+            string answer = await CallGeminiVisionAsync(systemPrompt, base64Jpeg, gemKey, mode);
+            string finalAns = answer.Trim();
+
+            try
+            {
+                string c = (mode == "concise") ? finalAns : "";
+                string d = (mode == "detailed") ? finalAns : "";
+                string subj = currentConfig != null ? currentConfig.Subject : "general";
+                HistoryManager.AddEntry("[ط³ط¤ط§ظ„ ظ…طµظˆط± ظ…ظ† ط§ظ„ط´ط§ط´ط© ًں“¸]", c, d, subj, true);
+            }
+            catch { }
+
+            return finalAns;
+        }
+
+        private async Task<string> CallGeminiVisionAsync(string sys, string base64Jpeg, string key, string mode = "concise")
+        {
+            key = (key ?? "").Trim().Trim('"', '\'');
+            if (string.IsNullOrWhiteSpace(key)) key = DEFAULT_GEMINI_KEY;
+
+            string[] candidateModels = new string[] {
+                workingGeminiModel,
+                "gemini-3-flash-preview",
+                "gemini-3.5-flash",
+                "gemini-flash-latest"
+            };
+
+            Exception lastEx = null;
+            for (int i = 0; i < candidateModels.Length; i++)
+            {
+                string m = candidateModels[i];
+                if (i > 0 && m == workingGeminiModel) continue;
+
+                try
+                {
+                    string url = "https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + Uri.EscapeDataString(key);
+                    var req = (HttpWebRequest)WebRequest.Create(url);
+                    req.Method = "POST";
+                    req.ContentType = "application/json";
+                    req.Timeout = 15000;
+
+                    var payload = new
+                    {
+                        contents = new object[]
+                        {
+                            new
+                            {
+                                role = "user",
+                                parts = new object[]
+                                {
+                                    new
+                                    {
+                                        inlineData = new
+                                        {
+                                            mimeType = "image/jpeg",
+                                            data = base64Jpeg
+                                        }
+                                    },
+                                    new
+                                    {
+                                        text = sys + "\n\nط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ط·ظ„ظˆط¨ ط­ظ„ظ‡ ظ…ظˆط¬ظˆط¯ ظپظٹ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط±ظپظ‚ط©. ظ‚ظ… ط¨ظ‚ط±ط§ط،طھظ‡ ظˆط§ط³طھط®ط±ط§ط¬ظ‡ ظˆط­ظ„ظ‡ ط¨ط¯ظ‚ط© ظ…ط·ظ„ظ‚ط©:"
+                                    }
+                                }
+                            }
+                        },
+                        generationConfig = new
+                        {
+                            temperature = (mode == "detailed") ? 0.25 : 0.1,
+                            maxOutputTokens = (mode == "detailed") ? 1500 : 350
+                        }
+                    };
+
+                    var serializer = new JavaScriptSerializer();
+                    serializer.MaxJsonLength = 20971520;
+                    string json = serializer.Serialize(payload);
+                    byte[] bytes = Encoding.UTF8.GetBytes(json);
+                    req.ContentLength = bytes.Length;
+
+                    using (var st = await req.GetRequestStreamAsync())
+                    {
+                        await st.WriteAsync(bytes, 0, bytes.Length);
+                    }
+
+                    using (var resp = (HttpWebResponse)await req.GetResponseAsync())
+                    using (var rd = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string respJson = await rd.ReadToEndAsync();
+                        var data = serializer.Deserialize<Dictionary<string, object>>(respJson);
+                        if (data.ContainsKey("candidates"))
+                        {
+                            var candList = (ArrayList)data["candidates"];
+                            if (candList.Count > 0)
+                            {
+                                var firstCand = (Dictionary<string, object>)candList[0];
+                                if (firstCand.ContainsKey("content"))
+                                {
+                                    var cContent = (Dictionary<string, object>)firstCand["content"];
+                                    if (cContent.ContainsKey("parts"))
+                                    {
+                                        var parts = (ArrayList)cContent["parts"];
+                                        if (parts.Count > 0)
+                                        {
+                                            var firstPart = (Dictionary<string, object>)parts[0];
+                                            if (firstPart.ContainsKey("text"))
+                                            {
+                                                workingGeminiModel = m;
+                                                return firstPart["text"].ToString();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastEx = ex;
+                }
+            }
+            throw lastEx ?? new Exception("طھط¹ط°ط± ط§ظ„ط§طھطµط§ظ„ ط¨ظ†ظ…ط§ط°ط¬ ظپط­طµ ط§ظ„طµظˆط± ظپظٹ Gemini.");
         }
 
         protected override void WndProc(ref Message m)
         {
             const int WM_HOTKEY = 0x0312;
-            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == GlobalSelectionMonitor.HOTKEY_ID)
+            if (m.Msg == WM_HOTKEY)
             {
-                if (selectionMonitor != null)
+                int id = m.WParam.ToInt32();
+                if (id == GlobalSelectionMonitor.HOTKEY_ID)
                 {
-                    selectionMonitor.TriggerCaptureAndNotify(Cursor.Position);
+                    if (selectionMonitor != null)
+                    {
+                        selectionMonitor.TriggerCaptureAndNotify(Cursor.Position);
+                    }
+                }
+                else if (id == GlobalSelectionMonitor.HOTKEY_SNIP_ID || id == GlobalSelectionMonitor.HOTKEY_F2_ID)
+                {
+                    StartScreenSnip();
                 }
             }
             base.WndProc(ref m);
@@ -3779,5 +4097,154 @@ namespace QuizGenie
         public string release_title { get; set; }
         public string download_url { get; set; }
         public object[] release_notes { get; set; }
+    }
+
+    public class HistoryItem
+    {
+        public string Id { get; set; }
+        public string Timestamp { get; set; }
+        public string Question { get; set; }
+        public string ConciseAnswer { get; set; }
+        public string DetailedAnswer { get; set; }
+        public string Subject { get; set; }
+        public bool IsImage { get; set; }
+    }
+
+    public static class HistoryManager
+    {
+        private static readonly object _sync = new object();
+
+        private static string GetHistoryPath()
+        {
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuizGenie");
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            return Path.Combine(dir, "quizgenie_history.json");
+        }
+
+        public static List<HistoryItem> LoadHistory()
+        {
+            lock (_sync)
+            {
+                string path = GetHistoryPath();
+                if (!File.Exists(path)) return new List<HistoryItem>();
+                try
+                {
+                    string json = File.ReadAllText(path, Encoding.UTF8);
+                    var ser = new JavaScriptSerializer();
+                    ser.MaxJsonLength = 20971520;
+                    var list = ser.Deserialize<List<HistoryItem>>(json);
+                    return list ?? new List<HistoryItem>();
+                }
+                catch { return new List<HistoryItem>(); }
+            }
+        }
+
+        public static void AddEntry(string question, string concise, string detailed, string subject, bool isImage)
+        {
+            lock (_sync)
+            {
+                var list = LoadHistory();
+                var existing = list.Find(h => h.Question == question);
+                if (existing != null)
+                {
+                    if (!string.IsNullOrEmpty(concise)) existing.ConciseAnswer = concise;
+                    if (!string.IsNullOrEmpty(detailed)) existing.DetailedAnswer = detailed;
+                    existing.Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                }
+                else
+                {
+                    var item = new HistoryItem
+                    {
+                        Id = Guid.NewGuid().ToString("N").Substring(0, 8),
+                        Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Question = question,
+                        ConciseAnswer = concise,
+                        DetailedAnswer = detailed,
+                        Subject = subject ?? "general",
+                        IsImage = isImage
+                    };
+                    list.Insert(0, item);
+                    if (list.Count > 500) list.RemoveRange(500, list.Count - 500);
+                }
+
+                try
+                {
+                    string path = GetHistoryPath();
+                    var ser = new JavaScriptSerializer();
+                    ser.MaxJsonLength = 20971520;
+                    string json = ser.Serialize(list);
+                    File.WriteAllText(path, json, Encoding.UTF8);
+                }
+                catch { }
+            }
+        }
+
+        public static void ClearHistory()
+        {
+            lock (_sync)
+            {
+                try
+                {
+                    string path = GetHistoryPath();
+                    if (File.Exists(path)) File.Delete(path);
+                }
+                catch { }
+            }
+        }
+
+        public static string ExportStudySheetHtml()
+        {
+            var list = LoadHistory();
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("<!DOCTYPE html><html dir='rtl' lang='ar'><head><meta charset='utf-8'>");
+            sb.AppendLine("<title>ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط© ظˆط§ظ„ظ…ط±ط§ط¬ط¹ط© ط§ظ„ط´ط§ظ…ظ„ط© - QuizGenie</title>");
+            sb.AppendLine("<style>");
+            sb.AppendLine("body { font-family: system-ui, -apple-system, sans-serif; background: #0b0f19; color: #f1f5f9; padding: 30px; line-height: 1.6; }");
+            sb.AppendLine(".container { max-width: 900px; margin: 0 auto; }");
+            sb.AppendLine(".header { text-align: center; border-bottom: 2px solid #38bdf8; padding-bottom: 20px; margin-bottom: 30px; }");
+            sb.AppendLine(".title { font-size: 28px; font-weight: bold; color: #38bdf8; margin: 0; }");
+            sb.AppendLine(".subtitle { color: #94a3b8; font-size: 14px; margin-top: 5px; }");
+            sb.AppendLine(".card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }");
+            sb.AppendLine(".q-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px; }");
+            sb.AppendLine(".badge { background: #0284c7; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }");
+            sb.AppendLine(".date { color: #64748b; font-size: 12px; }");
+            sb.AppendLine(".question { font-size: 16px; font-weight: bold; color: #f8fafc; margin-bottom: 12px; white-space: pre-wrap; }");
+            sb.AppendLine(".ans-concise { background: #064e3b; border-right: 4px solid #10b981; padding: 12px; border-radius: 6px; margin-bottom: 10px; white-space: pre-wrap; font-size: 14px; color: #a7f3d0; }");
+            sb.AppendLine(".ans-detailed { background: #312e81; border-right: 4px solid #8b5cf6; padding: 12px; border-radius: 6px; white-space: pre-wrap; font-size: 14px; color: #ddd6fe; }");
+            sb.AppendLine("@media print { body { background: #fff; color: #000; } .card { border: 1px solid #ccc; background: #fff; color: #000; } .ans-concise { background: #e6fffa; color: #065f46; } .ans-detailed { background: #f3f0ff; color: #4c1d95; } }");
+            sb.AppendLine("</style></head><body>");
+            sb.AppendLine("<div class='container'>");
+            sb.AppendLine("<div class='header'><h1 class='title'>âڑ، ظ…ظ„ط®طµ ط§ظ„ظ…ط°ط§ظƒط±ط© ط§ظ„ط°ظƒظٹ - QuizGenie</h1><div class='subtitle'>طھظ… طھطµط¯ظٹط±ظ‡ ظپظٹ " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " | ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط£ط³ط¦ظ„ط©: " + list.Count + "</div></div>");
+
+            if (list.Count == 0)
+            {
+                sb.AppendLine("<div style='text-align: center; color: #94a3b8; padding: 40px;'>ظ„ط§ طھظˆط¬ط¯ ط£ط³ط¦ظ„ط© ظ…ط³ط¬ظ„ط© ظپظٹ ط§ظ„ط³ط¬ظ„ ط­طھظ‰ ط§ظ„ط¢ظ†. ط§ط¨ط¯ط£ ط¨ط­ظ„ ط§ظ„ط£ط³ط¦ظ„ط© ظ„طھط¸ظ‡ط± ظ‡ظ†ط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹!</div>");
+            }
+            else
+            {
+                int idx = 1;
+                foreach (var item in list)
+                {
+                    sb.AppendLine("<div class='card'>");
+                    sb.AppendLine("<div class='q-header'>");
+                    sb.AppendLine("<span class='badge'>ط³ط¤ط§ظ„ #" + (idx++) + (item.IsImage ? " (طµظˆط±ط© ًں“¸)" : "") + " - " + (item.Subject ?? "ط¹ط§ظ…") + "</span>");
+                    sb.AppendLine("<span class='date'>" + item.Timestamp + "</span>");
+                    sb.AppendLine("</div>");
+                    sb.AppendLine("<div class='question'>" + System.Security.SecurityElement.Escape(item.Question) + "</div>");
+                    if (!string.IsNullOrEmpty(item.ConciseAnswer))
+                    {
+                        sb.AppendLine("<div class='ans-concise'><strong>ًںژ¯ ط§ظ„ط­ظ„ ط§ظ„ظ…ط¨ط§ط´ط± ط§ظ„ط­ط§ط³ظ…:</strong><br/>" + System.Security.SecurityElement.Escape(item.ConciseAnswer) + "</div>");
+                    }
+                    if (!string.IsNullOrEmpty(item.DetailedAnswer))
+                    {
+                        sb.AppendLine("<div class='ans-detailed'><strong>ًں“– ط§ظ„ط´ط±ط­ ظˆط§ظ„طھظپظ†ظٹط¯ ط§ظ„ط£ظƒط§ط¯ظٹظ…ظٹ:</strong><br/>" + System.Security.SecurityElement.Escape(item.DetailedAnswer) + "</div>");
+                    }
+                    sb.AppendLine("</div>");
+                }
+            }
+
+            sb.AppendLine("</div></body></html>");
+            return sb.ToString();
+        }
     }
 }
