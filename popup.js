@@ -984,4 +984,111 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // 14. أزرار وأدوات ماسح الامتحانات الشامل والتناظر اللفظي
+  const scannerModeConciseBtn = document.getElementById('scannerModeConciseBtn');
+  const scannerModeDetailedBtn = document.getElementById('scannerModeDetailedBtn');
+  const btnTriggerLiveScan = document.getElementById('btnTriggerLiveScan');
+  const btnTriggerAreaSnip = document.getElementById('btnTriggerAreaSnip');
+  const btnClearPageHighlights = document.getElementById('btnClearPageHighlights');
+  const quickAnalogyInput = document.getElementById('quickAnalogyInput');
+  const btnSolveQuickAnalogy = document.getElementById('btnSolveQuickAnalogy');
+
+  let currentScannerMode = 'concise';
+
+  function renderScannerMode(mode) {
+    currentScannerMode = mode;
+    if (mode === 'detailed') {
+      if (scannerModeDetailedBtn) {
+        scannerModeDetailedBtn.style.background = '#0284c7';
+        scannerModeDetailedBtn.style.borderColor = '#38bdf8';
+        scannerModeDetailedBtn.style.color = '#fff';
+      }
+      if (scannerModeConciseBtn) {
+        scannerModeConciseBtn.style.background = '#111827';
+        scannerModeConciseBtn.style.borderColor = '#334155';
+        scannerModeConciseBtn.style.color = '#cbd5e1';
+      }
+    } else {
+      if (scannerModeConciseBtn) {
+        scannerModeConciseBtn.style.background = '#0284c7';
+        scannerModeConciseBtn.style.borderColor = '#38bdf8';
+        scannerModeConciseBtn.style.color = '#fff';
+      }
+      if (scannerModeDetailedBtn) {
+        scannerModeDetailedBtn.style.background = '#111827';
+        scannerModeDetailedBtn.style.borderColor = '#334155';
+        scannerModeDetailedBtn.style.color = '#cbd5e1';
+      }
+    }
+  }
+
+  if (scannerModeConciseBtn) {
+    scannerModeConciseBtn.addEventListener('click', () => {
+      renderScannerMode('concise');
+      chrome.storage.local.set({ scannerDefaultMode: 'concise' });
+    });
+  }
+
+  if (scannerModeDetailedBtn) {
+    scannerModeDetailedBtn.addEventListener('click', () => {
+      renderScannerMode('detailed');
+      chrome.storage.local.set({ scannerDefaultMode: 'detailed' });
+    });
+  }
+
+  if (btnTriggerLiveScan) {
+    btnTriggerLiveScan.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'TRIGGER_EXAM_SCAN',
+            mode: currentScannerMode
+          }, () => {
+            if (!chrome.runtime.lastError) window.close();
+          });
+        }
+      });
+    });
+  }
+
+  if (btnTriggerAreaSnip) {
+    btnTriggerAreaSnip.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'START_SCREEN_AREA_SNIP',
+            mode: currentScannerMode
+          }, () => {
+            if (!chrome.runtime.lastError) window.close();
+          });
+        }
+      });
+    });
+  }
+
+  if (btnClearPageHighlights) {
+    btnClearPageHighlights.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'CLEAR_EXAM_HIGHLIGHTS'
+          });
+        }
+      });
+    });
+  }
+
+  if (btnSolveQuickAnalogy && quickAnalogyInput) {
+    btnSolveQuickAnalogy.addEventListener('click', () => {
+      const q = quickAnalogyInput.value.trim();
+      if (!q) {
+        quickAnalogyInput.focus();
+        return;
+      }
+      quickQuestionInput.value = `ما هي العلاقة والحل الصحيح للتناظر اللفظي: ${q}`;
+      handleSolve('concise');
+      if (quickResultBox) quickResultBox.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
 });
