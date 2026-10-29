@@ -636,15 +636,44 @@ chrome.runtime.onMessage.addListener((request) => {
     }
   }
 
-  // ط¹ظ†ط¯ ط·ظ„ط¨ ظ…ط³ط­ ظˆط­ظ„ طµظپط­ط© ط§ظ„ط§ظ…طھط­ط§ظ† ظ…ظ† ظˆط§ط¬ظ‡ط© ط§ظ„ط£ط¯ط§ط© ط£ظˆ ط§ظ„ط§ط®طھطµط§ط±
+  // عند طلب مسح وحل صفحة الامتحان من واجهة الأداة أو الاختصار
   if (request.action === 'TRIGGER_EXAM_SCAN') {
     scanAndSolveCurrentExam(request.mode || currentMode || 'concise');
   }
 
-  // ظ…ط³ط­ ط§ظ„طھط¸ظ„ظٹظ„ط§طھ ط§ظ„ظ…ظ„ظˆظ†ط©
+  // عند طلب أداة تحديد وقص الشاشة بالكامل
+  if (request.action === 'START_SCREEN_AREA_SNIP') {
+    startFullScreenAreaSnip(request.mode || currentMode || 'concise');
+  }
+
+  // مسح التظليلات الملونة
   if (request.action === 'CLEAR_EXAM_HIGHLIGHTS') {
     clearAllExamHighlights();
   }
+});
+
+// التفكير الاستباقي الحي المسبق أثناء حركة التحديد (Pre-computation 0s)
+let preSolveDebounceTimer = null;
+document.addEventListener('selectionchange', () => {
+  if (!extensionEnabled || !fabEnabled) return;
+  clearTimeout(preSolveDebounceTimer);
+  preSolveDebounceTimer = setTimeout(() => {
+    try {
+      const sel = window.getSelection();
+      const txt = sel ? sel.toString().trim() : '';
+      if (txt.length >= 4 && txt !== currentQuestionCache.text) {
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({
+            action: 'PRE_SOLVE',
+            text: txt,
+            mode: currentMode,
+            subject: subject,
+            targetLanguage: targetLanguage
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }, 180);
 });
 
 // مراقبة تحديد النصوص في الصفحة
@@ -1185,43 +1214,45 @@ function ensureHighlightStylesInPage() {
   if (document.getElementById('quizgenie-page-highlight-styles')) return;
   const style = document.createElement('style');
   style.id = 'quizgenie-page-highlight-styles';
-  style.textContent = 
-    .quizgenie-highlight-question {
+  style.textContent = `
+    .quizgenie-question-ring-red, .quizgenie-highlight-question {
       position: relative !important;
-      outline: 2.5px solid #fbbf24 !important;
-      outline-offset: 3px !important;
-      background-color: rgba(251, 191, 36, 0.12) !important;
+      outline: 3.5px solid #ef4444 !important;
+      outline-offset: 4px !important;
+      background-color: rgba(239, 68, 68, 0.12) !important;
       border-radius: 8px !important;
-      box-shadow: 0 0 16px rgba(251, 191, 36, 0.35) !important;
+      box-shadow: 0 0 22px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.35) !important;
+      animation: qgPulseRedRing 1.8s infinite ease-in-out !important;
       transition: all 0.3s ease !important;
     }
-    .quizgenie-highlight-question::before {
-      content: "ًںژ¯ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظƒطھط´ظپ" !important;
+    .quizgenie-question-ring-red::before, .quizgenie-highlight-question::before {
+      content: "ًں”´ طھظ… ظپط­طµ ظˆظ‚ط±ط§ط،ط© ظ‡ط°ط§ ط§ظ„ط³ط¤ط§ظ„" !important;
       position: absolute !important;
-      top: -22px !important;
+      top: -24px !important;
       right: 0 !important;
-      background: #f59e0b !important;
-      color: #0f172a !important;
+      background: #ef4444 !important;
+      color: #ffffff !important;
       font-size: 11px !important;
       font-weight: 800 !important;
       padding: 2px 8px !important;
-      border-radius: 4px !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+      border-radius: 6px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
       z-index: 2147483640 !important;
       font-family: system-ui, -apple-system, sans-serif !important;
+      white-space: nowrap !important;
     }
-    .quizgenie-highlight-correct {
+    .quizgenie-correct-answer-glow, .quizgenie-highlight-correct {
       position: relative !important;
-      outline: 3px solid #10b981 !important;
-      outline-offset: 3px !important;
-      background-color: rgba(16, 185, 129, 0.18) !important;
+      outline: 3.5px solid #10b981 !important;
+      outline-offset: 4px !important;
+      background-color: rgba(16, 185, 129, 0.2) !important;
       border-radius: 8px !important;
-      box-shadow: 0 0 22px rgba(16, 185, 129, 0.6) !important;
-      animation: qgPulseGreen 1.5s infinite alternate !important;
+      box-shadow: 0 0 26px rgba(16, 185, 129, 0.95), inset 0 0 12px rgba(16, 185, 129, 0.45) !important;
+      animation: qgGlowGreenAnswer 1.8s infinite ease-in-out !important;
       transition: all 0.3s ease !important;
     }
-    .quizgenie-highlight-correct::after {
-      content: "âœ” ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©" !important;
+    .quizgenie-correct-answer-glow::after, .quizgenie-highlight-correct::after {
+      content: "âœ“ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط§ظ„ظ…ط¹طھظ…ط¯" !important;
       position: absolute !important;
       left: 8px !important;
       top: 50% !important;
@@ -1235,13 +1266,14 @@ function ensureHighlightStylesInPage() {
       box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4) !important;
       z-index: 2147483640 !important;
       font-family: system-ui, -apple-system, sans-serif !important;
+      white-space: nowrap !important;
     }
     .quizgenie-highlight-wrong {
       position: relative !important;
-      outline: 1.5px dashed rgba(239, 68, 68, 0.65) !important;
+      outline: 1.5px dashed rgba(239, 68, 68, 0.5) !important;
       outline-offset: 2px !important;
-      background-color: rgba(239, 68, 68, 0.06) !important;
-      opacity: 0.65 !important;
+      background-color: rgba(239, 68, 68, 0.05) !important;
+      opacity: 0.6 !important;
       border-radius: 6px !important;
       transition: all 0.3s ease !important;
     }
@@ -1256,22 +1288,34 @@ function ensureHighlightStylesInPage() {
       font-weight: 900 !important;
       font-family: system-ui, -apple-system, sans-serif !important;
     }
-    @keyframes qgPulseGreen {
-      from { box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
-      to { box-shadow: 0 0 25px rgba(16, 185, 129, 0.85), 0 0 6px #10b981; }
+    @keyframes qgPulseRedRing {
+      0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 5px rgba(239, 68, 68, 0.2); outline-color: #ef4444; }
+      50% { box-shadow: 0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 12px rgba(239, 68, 68, 0.5); outline-color: #f87171; }
+      100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 5px rgba(239, 68, 68, 0.2); outline-color: #ef4444; }
     }
-  ;
+    @keyframes qgGlowGreenAnswer {
+      0% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.6), inset 0 0 6px rgba(16, 185, 129, 0.3); outline-color: #10b981; }
+      50% { box-shadow: 0 0 28px rgba(16, 185, 129, 1), inset 0 0 14px rgba(16, 185, 129, 0.6); outline-color: #34d399; }
+      100% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.6), inset 0 0 6px rgba(16, 185, 129, 0.3); outline-color: #10b981; }
+    }
+  `;
   document.head.appendChild(style);
 }
 
 function clearAllExamHighlights() {
-  document.querySelectorAll('.quizgenie-highlight-question').forEach(el => el.classList.remove('quizgenie-highlight-question'));
-  document.querySelectorAll('.quizgenie-highlight-correct').forEach(el => el.classList.remove('quizgenie-highlight-correct'));
+  document.querySelectorAll('.quizgenie-question-ring-red, .quizgenie-highlight-question').forEach(el => {
+    el.classList.remove('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+  });
+  document.querySelectorAll('.quizgenie-correct-answer-glow, .quizgenie-highlight-correct').forEach(el => {
+    el.classList.remove('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
+  });
   document.querySelectorAll('.quizgenie-highlight-wrong').forEach(el => el.classList.remove('quizgenie-highlight-wrong'));
   const banner = document.getElementById('quizgenie-exam-scan-banner');
   if (banner) banner.remove();
   const modal = document.getElementById('quizgenie-scan-result-card');
   if (modal) modal.remove();
+  const overlay = document.getElementById('quizgenie-snip-overlay');
+  if (overlay) overlay.remove();
 }
 
 function scanAndSolveCurrentExam(preferredMode = 'concise') {
@@ -1286,7 +1330,7 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
   // 1. ظپط­طµ ط¥ط°ط§ ظƒط§ظ† ظ‡ظ†ط§ظƒ ظ†طµ ظ…ط­ط¯ط¯ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ط§ظ„ظ…ط§ظˆط³
   const selText = window.getSelection() ? window.getSelection().toString().trim() : '';
 
-  // 2. طھط¬ظ…ظٹط¹ ط®ظٹط§ط±ط§طھ ط§ظ„ط±ط§ط¯ظٹظˆ (Radio buttons) ط§ظ„طھظپط§ط¹ظ„ظٹط©
+  // 2. طھط¬ظ…ظٹط¹ ط®ظٹط§ط±ط§طھ ط§ظ„ط±ط§ط¯ظٹظˆ (Radio buttons) ظپظٹ ط§ظ„طµظپط­ط©
   const radioInputs = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"]')).filter(r => {
     const rect = r.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
@@ -1295,7 +1339,7 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
   if (radioInputs.length > 0) {
     for (const r of radioInputs) {
       const container = r.closest('label, li, tr, [class*="option"], [class*="choice"]') || r.parentElement;
-      const text = (container ? container.innerText : '').replace(/^[A-Za-z0-9\u0600-\u06FF][\.\-\x29]\s*/, '').trim();
+      const text = (container ? container.innerText : '').replace(/^[A-Da-dط£-ط¯1-4][\.\-\)]\s*/, '').trim();
       if (text && !optionsList.includes(text)) {
         optionsList.push(text);
         optionElements.push(container || r);
@@ -1315,50 +1359,54 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
     }
   }
 
-  // 3. ط§ظ„ط¨ط­ط« ط¹ظ† ظ†طµ ط§ظ„ط³ط¤ط§ظ„
+  // 3. ط§ظ„ط¨ط­ط« ط§ظ„ط°ظƒظٹ ط¹ظ† ط±ط£ط³ ط§ظ„ط³ط¤ط§ظ„ (ظ…ط¹ ط§ط³طھط¨ط¹ط§ط¯ ط£ظٹ ط¹ظ†ط§طµط± طھظ‚ط¹ ط¯ط§ط®ظ„ ط®ظٹط§ط±ط§طھ ط§ظ„ط¥ط¬ط§ط¨ط©)
   if (selText && selText.length > 2) {
     questionText = selText;
     const anchor = window.getSelection().anchorNode;
     questionElement = anchor ? (anchor.nodeType === 3 ? anchor.parentElement : anchor) : null;
   } else {
-    // ط§ظ„ط¨ط­ط« ط¹ظ† ط­ط§ظˆظٹط§طھ ط§ظ„ط³ط¤ط§ظ„ ظ…ط«ظ„ ط§ظ„ط¹ظ†ط§ظˆظٹظ†
+    // ط£) ظپط­طµ ط¹ظ†ط§طµط± ط§ظ„ط¹ظ†ط§ظˆظٹظ† ط§ظ„طھظٹ ظ„ط§ طھظ‚ط¹ ط¯ط§ط®ظ„ ط§ظ„ط®ظٹط§ط±ط§طھ
     const questionCandidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, [class*="question"], [class*="prompt"], [class*="stem"], [class*="title"]')).filter(q => {
       const t = q.innerText.trim();
-      return t.length > 2 && t.length < 400 && !optionsList.includes(t) && q.getBoundingClientRect().height > 0;
+      const isInsideOption = optionElements.some(opt => opt.contains(q));
+      return t.length > 2 && t.length < 400 && !isInsideOption && !optionsList.includes(t) && q.getBoundingClientRect().height > 0;
     });
 
     if (questionCandidates.length > 0) {
       questionElement = questionCandidates[0];
       questionText = questionElement.innerText.trim();
     } else {
-      // ط§ظ„ط¨ط­ط« ط¹ظ† ط£ظٹ ظ†طµ طھظ†ط§ط¸ط± ظ„ظپط¸ظٹ (ظƒظ„ظ…ط© : ظƒظ„ظ…ط©)
-      const allDivs = Array.from(document.querySelectorAll('div, p, span')).filter(el => {
-        const t = el.innerText.trim();
-        return t.includes(':') && t.length < 60 && el.children.length === 0 && el.getBoundingClientRect().height > 0;
+      // ط¨) ط§ظ„ط¨ط­ط« ط¹ظ† ظ†طµظˆطµ ط§ظ„طھظ†ط§ط¸ط± ط§ظ„ظ„ظپط¸ظٹ (ظ…ط«ظ„: ظ„ط­ط§ط، : ط´ط¬ط±ط©) ط®ط§ط±ط¬ ظ‚ط§ط¦ظ…ط© ط§ظ„ط®ظٹط§ط±ط§طھ
+      const allDivs = Array.from(document.querySelectorAll('div, p, span, b, strong')).filter(el => {
+        const t = el.innerText ? el.innerText.trim() : '';
+        const isInsideOption = optionElements.some(opt => opt.contains(el) || el.contains(opt));
+        return /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(t) && t.length < 60 && !isInsideOption && el.getBoundingClientRect().height > 0;
       });
       if (allDivs.length > 0) {
-        questionElement = allDivs[0];
+        questionElement = allDivs[allDivs.length - 1] || allDivs[0];
         questionText = questionElement.innerText.trim();
       }
     }
   }
 
   if (!questionText && optionsList.length === 0) {
-    showScanFeedbackBanner('âڑ ï¸ڈ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط³ط¤ط§ظ„ ط£ظˆ ط®ظٹط§ط±ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹. ظٹظ…ظƒظ†ظƒ طھط¸ظ„ظٹظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ظ…ط§ظˆط³ ط£ظˆ ط§ظ„ط¶ط؛ط· ط¹ظ„ظ‰ F2 ظ„ظ„ظ‚طµ.', '#f59e0b');
+    showScanFeedbackBanner('âڑ ï¸ڈ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط³ط¤ط§ظ„ ط£ظˆ ط®ظٹط§ط±ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹. ظٹظ…ظƒظ†ظƒ طھط¸ظ„ظٹظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ظ…ط§ظˆط³ ط£ظˆ طھط´ط؛ظٹظ„ ط§ظ„طھط­ط¯ظٹط¯ ط§ظ„ط­ط±.', '#f59e0b');
     return;
   }
 
-  // طھط·ط¨ظٹظ‚ ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£طµظپط± ط¹ظ„ظ‰ ط§ظ„ط³ط¤ط§ظ„ ظپظˆط±ط§ظ‹
+  // طھط·ط¨ظٹظ‚ ط§ظ„ط¯ط§ط¦ط±ط© / ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£ط­ظ…ط± ط§ظ„ظ…طھظˆظ‡ط¬ ظپظˆط±ط§ظ‹ ط¹ظ„ظ‰ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظ‚ط±ظˆط،
   if (questionElement) {
-    questionElement.classList.add('quizgenie-highlight-question');
+    questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
     questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ظپظٹ 0 ط«ط§ظ†ظٹط© ظˆطھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط±ط§طھ...', '#0284c7');
+  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ ظپظٹ 0 ط«ط§ظ†ظٹط© ظˆطھط­ط¯ظٹط¯ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­...', '#0284c7');
 
   chrome.runtime.sendMessage({
-    action: 'EXAM_SCAN_SOLVE',
+    action: 'SOLVE_EXAM_SCAN',
+    question: questionText,
     questionText: questionText,
+    options: optionsList,
     optionsList: optionsList,
     mode: preferredMode || 'concise',
     subject: subject,
@@ -1370,21 +1418,211 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
       return;
     }
 
-    const data = response.data;
-    const correctIndex = data.correctIndex;
+    const data = response.data || response.result || {};
+    const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
 
-    // طھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط¨ط§ظ„ط£ط®ط¶ط± ظˆط§ظ„ط®ظٹط§ط±ط§طھ ط§ظ„ط®ط§ط·ط¦ط© ط¨ط§ظ„ط£ط­ظ…ط±
+    // طھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط¨ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£ط®ط¶ط± ط§ظ„ظ…طھظˆظ‡ط¬
     if (optionElements.length > 0) {
       for (let i = 0; i < optionElements.length; i++) {
         if (i === correctIndex) {
-          optionElements[i].classList.add('quizgenie-highlight-correct');
+          optionElements[i].classList.add('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
+          try {
+            const inputInside = optionElements[i].querySelector('input[type="radio"]') || (optionElements[i].tagName === 'INPUT' ? optionElements[i] : null);
+            if (inputInside) inputInside.checked = true;
+          } catch (e) {}
         } else {
           optionElements[i].classList.add('quizgenie-highlight-wrong');
         }
       }
     }
 
-    showScanResultModal(questionText, data.correctText, data.rawAnswer, preferredMode);
+    showScanResultModal(questionText, data.correctText || optionsList[correctIndex] || '', data.explanation || data.rawAnswer || '', preferredMode, data.relation);
+  });
+}
+
+function startFullScreenAreaSnip(preferredMode = 'concise') {
+  clearAllExamHighlights();
+  const existing = document.getElementById('quizgenie-snip-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'quizgenie-snip-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2147483646;
+    cursor: crosshair;
+    user-select: none;
+    direction: rtl;
+    font-family: system-ui, sans-serif;
+  `;
+
+  const topBar = document.createElement('div');
+  topBar.style.cssText = `
+    position: fixed;
+    top: 20px; left: 50%; transform: translateX(-50%);
+    background: #0f172a;
+    border: 1.5px solid #38bdf8;
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    display: flex; align-items: center; gap: 14px;
+    z-index: 2147483647;
+  `;
+  topBar.innerHTML = `
+    <span>ًںژ¯ ط§ط³ط­ط¨ ط¨ط§ظ„ظ…ط§ظˆط³ ظ„طھط­ط¯ظٹط¯ ظ…ظ†ط·ظ‚ط© ط§ظ„ط³ط¤ط§ظ„ ظˆط§ظ„ط®ظٹط§ط±ط§طھ ظ…ط¹ط§ظ‹</span>
+    <button id="qg-snip-auto-btn" style="background:#0284c7; border:none; color:#fff; padding:5px 12px; border-radius:20px; font-weight:700; cursor:pointer;">âڑ، ظ…ط³ط­ طھظ„ظ‚ط§ط¦ظٹ ظƒط§ظ…ظ„</button>
+    <button id="qg-snip-cancel-btn" style="background:#334155; border:none; color:#cbd5e1; padding:5px 10px; border-radius:20px; cursor:pointer;">ط¥ظ„ط؛ط§ط، (Esc)</button>
+  `;
+  overlay.appendChild(topBar);
+
+  const selectionBox = document.createElement('div');
+  selectionBox.style.cssText = `
+    position: fixed;
+    border: 2px dashed #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+    display: none;
+    pointer-events: none;
+    z-index: 2147483647;
+    border-radius: 6px;
+  `;
+  overlay.appendChild(selectionBox);
+
+  let startX = 0, startY = 0, isDragging = false;
+
+  overlay.addEventListener('mousedown', (e) => {
+    if (e.target.closest('#qg-snip-auto-btn') || e.target.closest('#qg-snip-cancel-btn')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = true;
+    selectionBox.style.left = startX + 'px';
+    selectionBox.style.top = startY + 'px';
+    selectionBox.style.width = '0px';
+    selectionBox.style.height = '0px';
+    selectionBox.style.display = 'block';
+  });
+
+  overlay.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const minX = Math.min(startX, currentX);
+    const minY = Math.min(startY, currentY);
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+
+    selectionBox.style.left = minX + 'px';
+    selectionBox.style.top = minY + 'px';
+    selectionBox.style.width = width + 'px';
+    selectionBox.style.height = height + 'px';
+  });
+
+  overlay.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const rect = selectionBox.getBoundingClientRect();
+    overlay.remove();
+
+    if (rect.width > 30 && rect.height > 20) {
+      processSnipSelectionRect(rect, preferredMode);
+    }
+  });
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', onKey);
+    }
+  };
+  document.addEventListener('keydown', onKey);
+
+  topBar.querySelector('#qg-snip-cancel-btn').addEventListener('click', () => overlay.remove());
+  topBar.querySelector('#qg-snip-auto-btn').addEventListener('click', () => {
+    overlay.remove();
+    scanAndSolveCurrentExam(preferredMode);
+  });
+
+  document.body.appendChild(overlay);
+}
+
+function processSnipSelectionRect(rect, preferredMode) {
+  ensureHighlightStylesInPage();
+  clearAllExamHighlights();
+
+  // Find all elements fully or partially inside rect
+  const allElements = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, input'));
+  const insideElements = allElements.filter(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return false;
+    return (r.left >= rect.left - 20 && r.right <= rect.right + 20 &&
+            r.top >= rect.top - 20 && r.bottom <= rect.bottom + 20);
+  });
+
+  // Extract options and question from inside elements
+  const optionsList = [];
+  const optionElements = [];
+  let questionElement = null;
+  let questionText = '';
+
+  for (const el of insideElements) {
+    const isRadio = el.tagName === 'INPUT' && el.type === 'radio';
+    const isChoice = el.classList.contains('choice') || el.classList.contains('option') || el.tagName === 'LI' || el.tagName === 'LABEL';
+    if (isRadio || isChoice) {
+      const text = el.innerText ? el.innerText.trim() : '';
+      if (text && text.length < 120 && !optionsList.includes(text)) {
+        optionsList.push(text);
+        optionElements.push(el);
+      }
+    }
+  }
+
+  // Find question element (not in options)
+  for (const el of insideElements) {
+    const text = el.innerText ? el.innerText.trim() : '';
+    const isOpt = optionElements.some(opt => opt.contains(el) || el.contains(opt));
+    if (!isOpt && text && text.length > 2 && text.length < 300) {
+      questionElement = el;
+      questionText = text;
+      break;
+    }
+  }
+
+  if (!questionText && optionsList.length > 0) {
+    questionText = optionsList.shift();
+    questionElement = optionElements.shift();
+  }
+
+  if (questionElement) {
+    questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+  }
+
+  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ طھط­ظ„ظٹظ„ ط§ظ„ظ…ظ†ط·ظ‚ط© ط§ظ„ظ…ط­ط¯ط¯ط© ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ...', '#0284c7');
+
+  chrome.runtime.sendMessage({
+    action: 'SOLVE_EXAM_SCAN',
+    question: questionText,
+    questionText: questionText,
+    options: optionsList,
+    optionsList: optionsList,
+    mode: preferredMode || 'concise',
+    subject: subject,
+    targetLanguage: targetLanguage
+  }, (response) => {
+    if (chrome.runtime.lastError || !response || !response.success) {
+      showScanFeedbackBanner('â‌Œ طھط¹ط°ط± ط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ط­ط¯ط¯.', '#ef4444');
+      return;
+    }
+    const data = response.data || response.result || {};
+    const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
+
+    if (optionElements[correctIndex]) {
+      optionElements[correctIndex].classList.add('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
+    }
+    showScanResultModal(questionText, data.correctText || optionsList[correctIndex] || '', data.explanation || data.rawAnswer || '', preferredMode, data.relation);
   });
 }
 
@@ -1393,7 +1631,7 @@ function showScanFeedbackBanner(message, bgColor) {
   if (!banner) {
     banner = document.createElement('div');
     banner.id = 'quizgenie-exam-scan-banner';
-    banner.style.cssText = 
+    banner.style.cssText = `
       position: fixed;
       top: 15px;
       left: 50%;
@@ -1411,7 +1649,7 @@ function showScanFeedbackBanner(message, bgColor) {
       align-items: center;
       gap: 10px;
       transition: all 0.3s ease;
-    ;
+    `;
     document.body.appendChild(banner);
   }
   banner.style.background = bgColor;
@@ -1421,17 +1659,17 @@ function showScanFeedbackBanner(message, bgColor) {
   }, 4000);
 }
 
-function showScanResultModal(questionText, correctText, rawAnswer, mode) {
+function showScanResultModal(questionText, correctText, rawAnswer, mode, relation) {
   const existing = document.getElementById('quizgenie-scan-result-card');
   if (existing) existing.remove();
 
   const card = document.createElement('div');
   card.id = 'quizgenie-scan-result-card';
-  card.style.cssText = 
+  card.style.cssText = `
     position: fixed;
     bottom: 25px;
     right: 25px;
-    width: 340px;
+    width: 360px;
     max-width: 90vw;
     background: #0b0f19;
     border: 2px solid #10b981;
@@ -1444,37 +1682,36 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode) {
     color: #f1f5f9;
     padding: 16px;
     animation: qgFadeIn 0.25s ease-out;
-  ;
+  `;
 
-  card.innerHTML = 
+  card.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #1e293b; padding-bottom:8px;">
       <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-size:18px;">ًںژ¯</span>
-        <strong style="font-size:13px; color:#38bdf8;">طھظ… ط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ظˆطھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط±ط§طھ</strong>
+        <strong style="font-size:13px; color:#38bdf8;">طھظ… ظپط­طµ ط§ظ„ط³ط¤ط§ظ„ ظˆطھط­ط¯ظٹط¯ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­</strong>
       </div>
       <button id="qg-close-scan-card" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
     </div>
     <div style="margin-bottom:8px;">
-      <span style="font-size:11px; color:#fbbf24; font-weight:700;">ًںں، ط§ظ„ط³ط¤ط§ظ„:</span>
-      <div style="font-size:12px; color:#e2e8f0; margin-top:2px;"></div>
+      <span style="font-size:11px; color:#ef4444; font-weight:700;">ًں”´ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظ‚ط±ظˆط،:</span>
+      <div style="font-size:12.5px; color:#e2e8f0; margin-top:2px; font-weight:600;">${questionText || ''}</div>
     </div>
+    ${relation ? `<div style="font-size:11px; color:#38bdf8; margin-bottom:6px; background:rgba(56,189,248,0.1); padding:4px 8px; border-radius:6px;">ًں’، ط§ظ„ط¹ظ„ط§ظ‚ط©: ${relation}</div>` : ''}
     <div style="background:rgba(16,185,129,0.15); border:1.5px solid #10b981; border-radius:10px; padding:10px; margin-bottom:10px;">
-      <span style="font-size:11px; color:#34d399; font-weight:700;">ًںں¢ ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©:</span>
-      <div style="font-size:14px; font-weight:800; color:#ffffff; margin-top:3px;"></div>
+      <span style="font-size:11px; color:#34d399; font-weight:700;">ًںں¢ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط§ظ„ظ…ط¹طھظ…ط¯:</span>
+      <div style="font-size:14px; font-weight:800; color:#ffffff; margin-top:3px;">${correctText || ''}</div>
     </div>
-    <div style="max-height:120px; overflow-y:auto; font-size:11.5px; color:#cbd5e1; line-height:1.5; margin-bottom:12px; white-space:pre-wrap;"></div>
+    <div style="max-height:130px; overflow-y:auto; font-size:11.5px; color:#cbd5e1; line-height:1.5; margin-bottom:12px; white-space:pre-wrap;">${rawAnswer || ''}</div>
     <div style="display:flex; gap:8px;">
       <button id="qg-voice-tts-btn" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">ًں”ٹ ط§ط³طھظ…ط§ط¹</button>
       <button id="qg-clear-highlights-btn" style="flex:1; background:#0284c7; border:none; color:#fff; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">âœ– ظ…ط³ط­ ط§ظ„طھظ„ظˆظٹظ†</button>
     </div>
-  ;
+  `;
 
   document.body.appendChild(card);
 
   card.querySelector('#qg-close-scan-card').addEventListener('click', () => card.remove());
-  card.querySelector('#qg-clear-highlights-btn').addEventListener('click', () => {
-    clearAllExamHighlights();
-  });
+  card.querySelector('#qg-clear-highlights-btn').addEventListener('click', () => clearAllExamHighlights());
 
   const ttsBtn = card.querySelector('#qg-voice-tts-btn');
   ttsBtn.addEventListener('click', () => {
@@ -1484,7 +1721,7 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode) {
         ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹';
         return;
       }
-      const utter = new SpeechSynthesisUtterance((correctText ? 'ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط© ظ‡ظٹ ' + correctText + '. ' : '') + rawAnswer);
+      const utter = new SpeechSynthesisUtterance((correctText ? 'ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ظ‡ظˆ ' + correctText + '. ' : '') + rawAnswer);
       utter.lang = 'ar-SA';
       utter.rate = 1.0;
       utter.onend = () => { ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹'; };
@@ -1493,3 +1730,27 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode) {
     }
   });
 }
+
+// ط²ط± ط§ظ„ظ…ط§ط³ط­ ط§ظ„ط¹ط§ط¦ظ… ط¹ظ„ظ‰ طµظپط­ط§طھ ط§ظ„ط§ط®طھط¨ط§ط±ط§طھ
+function initExamScannerFab() {
+  if (document.getElementById('quizgenie-exam-scanner-pill')) return;
+  const pill = document.createElement('button');
+  pill.id = 'quizgenie-exam-scanner-pill';
+  pill.className = 'quizgenie-scanner-fab';
+  pill.innerHTML = `
+    <span style="font-size:15px;">ًں”چ</span>
+    <span>ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط§ظ…طھط­ط§ظ†</span>
+  `;
+  pill.addEventListener('click', () => {
+    scanAndSolveCurrentExam(currentMode);
+  });
+  document.body.appendChild(pill);
+}
+
+// طھظپط¹ظٹظ„ ط§ظ„ط²ط± ط§ظ„ط¹ط§ط¦ظ… ظ„ظ„ط§ظ…طھط­ط§ظ†ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ ظˆط¬ظˆط¯ ظ…ط¤ط´ط±ط§طھ ط§ظ„ط§ط®طھط¨ط§ط±
+setTimeout(() => {
+  const isExamPage = document.querySelector('input[type="radio"], [role="radio"], [class*="exam"], [class*="quiz"], [class*="question"]');
+  if (isExamPage && extensionEnabled && fabEnabled) {
+    initExamScannerFab();
+  }
+}, 1000);
