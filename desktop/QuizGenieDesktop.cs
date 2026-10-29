@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -2133,7 +2133,34 @@ namespace QuizGenie
             if (pnlCardOpenAI != null) pnlCardOpenAI.Invalidate();
         }
         private static readonly string DEFAULT_GEMINI_KEY = Encoding.UTF8.GetString(Convert.FromBase64String("QVEuQWI4Uk42TFl6UW1xLWtGNFg2R3gyTTY4WG1hQk5BWjVjRk5vSVJyNW9samZTQVRkb0E="));
-        private static string workingGeminiModel = "gemini-3.5-flash";
+        private static string workingGeminiModel = "gemini-3-flash-preview";
+        public static string speculativeCachedQuestion = null;
+        public static string speculativeConciseAnswer = null;
+        public static string speculativeDetailedAnswer = null;
+
+        public void PrecomputeSpeculative(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            string q = text.Trim();
+            if (q.Length < 4) return;
+            if (speculativeCachedQuestion == q) return;
+
+            speculativeCachedQuestion = q;
+            speculativeConciseAnswer = null;
+            speculativeDetailedAnswer = null;
+
+            Task.Run(async () => {
+                try {
+                    string ans = await SolveTextDirectAsync(q, "concise");
+                    if (speculativeCachedQuestion == q) {
+                        speculativeConciseAnswer = ans;
+                        if (answerForm != null && !answerForm.IsDisposed) {
+                            answerForm.SetPrecomputedAnswer(q, ans, "concise");
+                        }
+                    }
+                } catch { }
+            });
+        }
         private static string workingGroqModel = "llama-3.1-8b-instant";
 
         private static Image GetEmbeddedLogo()
@@ -2357,6 +2384,7 @@ namespace QuizGenie
                         fabForm = new FloatingFabForm(this);
 
                     fabForm.SetCapturedText(text);
+                    PrecomputeSpeculative(text);
 
                     var screen = Screen.FromPoint(pt).WorkingArea;
                     int x = pt.X + 8;
@@ -2554,6 +2582,15 @@ namespace QuizGenie
         {
             string srv = currentConfig != null ? (currentConfig.ActiveServer ?? "free") : "free";
             string systemPrompt = BuildSystemPrompt(mode);
+            if (System.Text.RegularExpressions.Regex.IsMatch(question, @"[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+"))
+            {
+                systemPrompt += "\n\n[قواعد التناظر اللفظي - اختبار القدرات]:\n" +
+                                "السؤال عبارة عن زوج كلمات متناظرة.\n" +
+                                "1. استنتج بدقة الجملة الرابطة بين الكلمتين.\n" +
+                                "2. حدد اتجاه العلاقة بدقة (من اليمين لليسار أو العكس).\n" +
+                                "3. استبعد الخيارات المعكوسة أو العلاقات غير المتطابقة.\n" +
+                                "4. اختر الخيار المتطابق تماماً في نوع العلاقة واتجاهها.";
+            }
             string answer = "";
 
             // Rocket-speed priority: If Groq or Gemini key is configured, use it for 0.1s instant answer!
@@ -2655,6 +2692,7 @@ namespace QuizGenie
             string[] candidateModels = new string[] {
                 workingGeminiModel,
                 "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite",
                 "gemini-3.5-flash",
                 "gemini-flash-latest"
             };
@@ -2839,8 +2877,9 @@ namespace QuizGenie
 
             string[] candidateModels = new string[] {
                 workingGeminiModel,
-                "gemini-3.5-flash",
                 "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite",
+                "gemini-3.5-flash",
                 "gemini-flash-latest"
             };
 
