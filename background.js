@@ -161,6 +161,29 @@ chrome.runtime.onInstalled.addListener((details) => {
   } catch (err) {
     console.warn('Context menus warning:', err);
   }
+
+  // إعادة حقن السكربت في الصفحات المفتوحة مسبقاً لتعمل الأداة فوراً دون الحاجة لإعادة تحميل الصفحة
+  try {
+    if (chrome.scripting) {
+      chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }, (tabs) => {
+        if (!tabs || chrome.runtime.lastError) return;
+        for (const tab of tabs) {
+          if (tab.id && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js']
+            }).catch(() => {});
+            chrome.scripting.insertCSS({
+              target: { tabId: tab.id },
+              files: ['content.css']
+            }).catch(() => {});
+          }
+        }
+      });
+    }
+  } catch (injErr) {
+    console.warn('Script injection error:', injErr);
+  }
 });
 
 // Update notification click handler
@@ -392,15 +415,15 @@ ${langDesc}`;
   throw new Error('لم يتم استلام إجابة صحيحة من السيرفر.');
 }
 
-let workingGeminiModel = 'gemini-3.5-flash';
+let workingGeminiModel = 'gemini-3-flash-preview';
 let workingGroqModel = 'llama-3.1-8b-instant';
-const GEMINI_CANDIDATE_MODELS = ['gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+const GEMINI_CANDIDATE_MODELS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
 const GROQ_CANDIDATE_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
 
 // 1. Google Gemini API (Ultra-Fast 1.2s)
 async function solveViaGemini(systemPrompt, userText, apiKey, mode = 'concise') {
   const cleanKey = (apiKey && apiKey.trim()) ? apiKey.trim() : DEFAULT_GEMINI_KEY;
-  const models = [workingGeminiModel, 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+  const models = [workingGeminiModel, 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
   const distinctModels = Array.from(new Set(models));
   let lastErr = null;
 
@@ -613,7 +636,7 @@ async function testServerConnection(server, apiKey) {
   // Test Gemini
   if (srv === 'gemini' || srv === 'other' || srv === 'google' || srv === 'free' || srv === 'free_backup' || srv === 'backup') {
     const activeKey = cleanKey || DEFAULT_GEMINI_KEY;
-    const candidateModels = [workingGeminiModel, 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+    const candidateModels = [workingGeminiModel, 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
     const distinctModels = Array.from(new Set(candidateModels));
     let lastMsg = '';
 
