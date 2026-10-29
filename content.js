@@ -493,7 +493,11 @@ function initShadowHost() {
 }
 
 function getLogoUrl() {
-  return chrome.runtime.getURL('icons/icon48.png');
+  try {
+    return (chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('icons/icon48.png') : '';
+  } catch (e) {
+    return '';
+  }
 }
 
 const CONTENT_LANG_LABELS = {
@@ -579,16 +583,23 @@ function getLangLabel(lang) {
 }
 
 // مزامنة حالة التفعيل والخادم والمادة واللغة مع الخلفية
-chrome.runtime.sendMessage({ action: 'GET_STATE' }, (response) => {
-  if (response) {
-    if (response.enabled !== undefined) extensionEnabled = response.enabled;
-    if (response.fabEnabled !== undefined) fabEnabled = response.fabEnabled;
-    if (response.serverType) serverType = response.serverType;
-    if (response.subject) subject = response.subject;
-    if (response.defaultMode) currentMode = response.defaultMode;
-    if (response.targetLanguage) targetLanguage = response.targetLanguage;
+try {
+  if (chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ action: 'GET_STATE' }, (response) => {
+      if (chrome.runtime.lastError) return;
+      if (response) {
+        if (response.enabled !== undefined) extensionEnabled = response.enabled;
+        if (response.fabEnabled !== undefined) fabEnabled = response.fabEnabled;
+        if (response.serverType) serverType = response.serverType;
+        if (response.subject) subject = response.subject;
+        if (response.defaultMode) currentMode = response.defaultMode;
+        if (response.targetLanguage) targetLanguage = response.targetLanguage;
+      }
+    });
   }
-});
+} catch (e) {
+  console.warn('Init state error:', e);
+}
 
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === 'STATE_UPDATED') {
