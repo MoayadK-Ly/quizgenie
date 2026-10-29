@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuizGenie - مساعد حل الأسئلة الذكي",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "مساعد ذكي لتحليل النصوص وحل الأسئلة بالذكاء الاصطناعي مجاناً بالكامل.",
   "permissions": [
     "storage",
@@ -44,7 +44,10 @@
       "resources": [
         "content.css",
         "icons/*",
-        "update.html"
+        "update.html",
+        "customizer.html",
+        "customizer.css",
+        "customizer.js"
       ],
       "matches": [
         "*://*/*"
