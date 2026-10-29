@@ -437,6 +437,19 @@
             </label>
           </div>
 
+          <!-- شكل حواف بطاقات وخيارات الأداة -->
+          <div class="tool-shape-selector-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #38bdf8;">📐 شكل حواف خيارات وبطاقات الأداة:</span>
+              <a href="#" id="linkOpenCustomizerPage" style="font-size: 11px; color: #94a3b8; text-decoration: none;">🎨 تخصيص متقدم</a>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+              <button type="button" class="btn-tool-shape" data-shape="sharp" id="btnToolShapeSharp" style="padding: 6px 4px; font-size: 11px; font-weight: 700; background: #1e293b; color: #cbd5e1; border: 1.5px solid #475569; border-radius: 4px; cursor: pointer;">⬛ حادة 4px</button>
+              <button type="button" class="btn-tool-shape active" data-shape="smooth" id="btnToolShapeSmooth" style="padding: 6px 4px; font-size: 11px; font-weight: 700; background: rgba(2, 132, 199, 0.25); color: #38bdf8; border: 1.5px solid #0284c7; border-radius: 10px; cursor: pointer;">🟦 ناعمة 12px</button>
+              <button type="button" class="btn-tool-shape" data-shape="capsule" id="btnToolShapeCapsule" style="padding: 6px 4px; font-size: 11px; font-weight: 700; background: #1e293b; color: #cbd5e1; border: 1.5px solid #475569; border-radius: 18px; cursor: pointer;">💊 كبسولية 24px</button>
+            </div>
+          </div>
+
           <!-- خيارات نوع الإجابة المطلوبة -->
           <div class="modes-grid">
             <button type="button" class="mode-card mode-card-concise active" id="modeConciseBtn" data-mode="concise">
