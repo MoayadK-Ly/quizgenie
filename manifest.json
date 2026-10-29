@@ -1,7 +1,7 @@
-﻿{
+{
   "manifest_version": 3,
   "name": "QuizGenie - مساعد حل الأسئلة الذكي",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "مساعد ذكي لتحليل النصوص وحل الأسئلة بالذكاء الاصطناعي مجاناً بالكامل.",
   "permissions": [
     "storage",
