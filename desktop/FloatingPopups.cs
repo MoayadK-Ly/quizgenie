@@ -1173,4 +1173,345 @@ namespace QuizGenie
             }
         }
     }
+
+    // =========================================================================
+    // 6. محدد الشاشة للحل المباشر المستمر (Live Direct Screen Selector)
+    // =========================================================================
+    public class LiveDirectDesktopSelectorForm : Form
+    {
+        private MainForm mainForm;
+        private Point startPoint;
+        private Point currentPoint;
+        private bool isSelecting = false;
+
+        public LiveDirectDesktopSelectorForm(MainForm parent)
+        {
+            this.mainForm = parent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.StartPosition = FormStartPosition.Manual;
+            this.Location = SystemInformation.VirtualScreen.Location;
+            this.Size = SystemInformation.VirtualScreen.Size;
+            this.TopMost = true;
+            this.ShowInTaskbar = false;
+            this.Cursor = Cursors.Cross;
+            this.DoubleBuffered = true;
+            this.BackColor = Color.Black;
+            this.Opacity = 0.55;
+
+            Panel pnlBar = new Panel
+            {
+                Size = new Size(540, 48),
+                Location = new Point((Width - 540) / 2, 20),
+                BackColor = Color.FromArgb(15, 23, 42),
+                Cursor = Cursors.Default
+            };
+            UITheme.ApplyRoundedCard(pnlBar, 24, Color.FromArgb(2, 132, 199), 1.5f);
+
+            Label lblTitle = new Label
+            {
+                Text = "⚡ الحل المباشر: اسحب بالماوس لتحديد منطقة الأسئلة، أو:",
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(56, 189, 248),
+                Location = new Point(200, 14),
+                Size = new Size(325, 22),
+                RightToLeft = RightToLeft.Yes
+            };
+            pnlBar.Controls.Add(lblTitle);
+
+            Button btnFull = new Button
+            {
+                Text = "🖥️ كامل الشاشة",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(2, 132, 199),
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(85, 9),
+                Size = new Size(110, 30),
+                Cursor = Cursors.Hand
+            };
+            btnFull.FlatAppearance.BorderSize = 0;
+            UITheme.ApplyRoundedCard(btnFull, 14, Color.Transparent);
+            btnFull.Click += (s, e) => {
+                this.Close();
+                this.Dispose();
+                mainForm.LaunchLiveDirectHud(SystemInformation.VirtualScreen);
+            };
+            pnlBar.Controls.Add(btnFull);
+
+            Button btnCancel = new Button
+            {
+                Text = "إلغاء (Esc)",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+                ForeColor = Color.FromArgb(203, 213, 225),
+                BackColor = Color.FromArgb(51, 65, 85),
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(10, 9),
+                Size = new Size(70, 30),
+                Cursor = Cursors.Hand
+            };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            UITheme.ApplyRoundedCard(btnCancel, 14, Color.Transparent);
+            btnCancel.Click += (s, e) => {
+                this.Close();
+                this.Dispose();
+            };
+            pnlBar.Controls.Add(btnCancel);
+
+            this.Controls.Add(pnlBar);
+
+            this.KeyPreview = true;
+            this.KeyDown += (s, e) => {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    this.Close();
+                    this.Dispose();
+                }
+            };
+
+            this.MouseDown += (s, e) => {
+                if (e.Button == MouseButtons.Left && !pnlBar.Bounds.Contains(e.Location))
+                {
+                    isSelecting = true;
+                    startPoint = Cursor.Position;
+                    currentPoint = Cursor.Position;
+                    this.Invalidate();
+                }
+            };
+
+            this.MouseMove += (s, e) => {
+                if (isSelecting)
+                {
+                    currentPoint = Cursor.Position;
+                    this.Invalidate();
+                }
+            };
+
+            this.MouseUp += (s, e) => {
+                if (isSelecting && e.Button == MouseButtons.Left)
+                {
+                    isSelecting = false;
+                    Rectangle rect = GetSelectionRectangle();
+                    this.Visible = false;
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(50);
+
+                    this.Close();
+                    this.Dispose();
+
+                    if (rect.Width > 35 && rect.Height > 35)
+                    {
+                        mainForm.LaunchLiveDirectHud(rect);
+                    }
+                    else
+                    {
+                        mainForm.LaunchLiveDirectHud(SystemInformation.VirtualScreen);
+                    }
+                }
+            };
+        }
+
+        private Rectangle GetSelectionRectangle()
+        {
+            int x = Math.Min(startPoint.X, currentPoint.X);
+            int y = Math.Min(startPoint.Y, currentPoint.Y);
+            int w = Math.Abs(startPoint.X - currentPoint.X);
+            int h = Math.Abs(startPoint.Y - currentPoint.Y);
+            return new Rectangle(x, y, w, h);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            if (isSelecting)
+            {
+                Rectangle rect = GetSelectionRectangle();
+                Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
+
+                using (Pen pen = new Pen(Color.FromArgb(56, 189, 248), 2f))
+                {
+                    pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                    g.DrawRectangle(pen, localRect);
+                }
+                using (Brush b = new SolidBrush(Color.FromArgb(35, 56, 189, 248)))
+                {
+                    g.FillRectangle(b, localRect);
+                }
+
+                using (Font df = new Font("Segoe UI", 9f, FontStyle.Bold))
+                using (Brush dbg = new SolidBrush(Color.FromArgb(2, 132, 199)))
+                using (Brush dtext = new SolidBrush(Color.White))
+                {
+                    string dim = string.Format("{0} × {1} بكسل", rect.Width, rect.Height);
+                    var dsize = g.MeasureString(dim, df);
+                    g.FillRectangle(dbg, localRect.Right - (int)dsize.Width - 8, localRect.Bottom + 4, dsize.Width + 6, dsize.Height + 2);
+                    g.DrawString(dim, df, dtext, localRect.Right - (int)dsize.Width - 5, localRect.Bottom + 5);
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // 7. شريط التحكم أعلى اليمين (زر الإيقاف + العلامة الحمراء المؤشرة)
+    // =========================================================================
+    public class LiveDirectHudForm : Form
+    {
+        private MainForm mainForm;
+        private Rectangle monitoredRect;
+        private System.Windows.Forms.Timer scanTimer;
+        private System.Windows.Forms.Timer pulseTimer;
+        private Label lblCircle;
+        private bool isPulseRed = false;
+        private long lastBitmapHash = 0;
+        private bool isProcessingStep = false;
+
+        public LiveDirectHudForm(MainForm parent, Rectangle rect)
+        {
+            this.mainForm = parent;
+            this.monitoredRect = rect;
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.StartPosition = FormStartPosition.Manual;
+            var screen = Screen.PrimaryScreen.WorkingArea;
+            this.Location = new Point(screen.Right - 225, screen.Top + 18);
+            this.Size = new Size(210, 80);
+            this.TopMost = true;
+            this.ShowInTaskbar = false;
+            this.BackColor = Color.FromArgb(15, 23, 42);
+            this.RightToLeft = RightToLeft.Yes;
+            this.RightToLeftLayout = true;
+            UITheme.ApplyRoundedCard(this, 14, Color.FromArgb(239, 68, 68), 1.5f);
+
+            // زر الإيقاف فوق يمين
+            Button btnStop = new Button
+            {
+                Text = "⏹️ إيقاف الحل المباشر",
+                Location = new Point(10, 8),
+                Size = new Size(190, 34),
+                BackColor = Color.FromArgb(220, 38, 38),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnStop.FlatAppearance.BorderSize = 0;
+            UITheme.ApplyRoundedCard(btnStop, 16, Color.FromArgb(248, 113, 113), 1f);
+            btnStop.Click += (s, e) => StopLiveDirect();
+            this.Controls.Add(btnStop);
+
+            // شريط المؤشر تحته (علامة دائرية حمراء تؤشر وتعني أن الميزة مفعلة)
+            Panel pnlIndicator = new Panel
+            {
+                Location = new Point(10, 48),
+                Size = new Size(190, 24),
+                BackColor = Color.FromArgb(24, 32, 47)
+            };
+            UITheme.ApplyRoundedCard(pnlIndicator, 12, Color.FromArgb(71, 85, 105), 1f);
+
+            lblCircle = new Label
+            {
+                Text = "●",
+                Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(239, 68, 68),
+                Location = new Point(164, 1),
+                Size = new Size(22, 22),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            pnlIndicator.Controls.Add(lblCircle);
+
+            Label lblStatus = new Label
+            {
+                Text = "الحل المباشر مفعّل (نشط)",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(254, 205, 211),
+                Location = new Point(8, 3),
+                Size = new Size(155, 18),
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            pnlIndicator.Controls.Add(lblStatus);
+            this.Controls.Add(pnlIndicator);
+
+            // مؤقت وميض الدائرة الحمراء
+            pulseTimer = new System.Windows.Forms.Timer();
+            pulseTimer.Interval = 550;
+            pulseTimer.Tick += (s, e) => {
+                isPulseRed = !isPulseRed;
+                lblCircle.ForeColor = isPulseRed ? Color.FromArgb(239, 68, 68) : Color.FromArgb(127, 29, 29);
+            };
+            pulseTimer.Start();
+
+            // مؤقت الرصد والفحص المستمر كل 1.5 ثانية
+            scanTimer = new System.Windows.Forms.Timer();
+            scanTimer.Interval = 1500;
+            scanTimer.Tick += async (s, e) => await CheckAndSolveFrameAsync();
+            scanTimer.Start();
+
+            // فحص أولي فوري
+            Task.Run(async () => {
+                await Task.Delay(400);
+                if (this.IsHandleCreated) this.BeginInvoke(new Action(async () => await CheckAndSolveFrameAsync()));
+            });
+        }
+
+        public void StopLiveDirect()
+        {
+            if (scanTimer != null) { scanTimer.Stop(); scanTimer.Dispose(); }
+            if (pulseTimer != null) { pulseTimer.Stop(); pulseTimer.Dispose(); }
+            this.Close();
+            this.Dispose();
+        }
+
+        private async Task CheckAndSolveFrameAsync()
+        {
+            if (isProcessingStep || this.IsDisposed) return;
+            isProcessingStep = true;
+
+            try
+            {
+                int w = Math.Max(monitoredRect.Width, 50);
+                int h = Math.Max(monitoredRect.Height, 50);
+
+                Bitmap bmp = new Bitmap(w, h);
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(monitoredRect.Location, Point.Empty, monitoredRect.Size);
+                }
+
+                long currentHash = ComputeSimpleHash(bmp);
+                if (currentHash != lastBitmapHash)
+                {
+                    lastBitmapHash = currentHash;
+                    Point spawnPt = new Point(Math.Min(monitoredRect.Right + 10, Screen.PrimaryScreen.WorkingArea.Right - 360), Math.Max(monitoredRect.Top, Screen.PrimaryScreen.WorkingArea.Top + 20));
+                    mainForm.OpenFloatingAnswerWithImage(spawnPt, bmp, "concise");
+                }
+                else
+                {
+                    bmp.Dispose();
+                }
+            }
+            catch { }
+            finally
+            {
+                isProcessingStep = false;
+            }
+        }
+
+        private long ComputeSimpleHash(Bitmap bmp)
+        {
+            long hash = 0;
+            int stepX = Math.Max(1, bmp.Width / 12);
+            int stepY = Math.Max(1, bmp.Height / 12);
+            for (int x = 0; x < bmp.Width; x += stepX)
+            {
+                for (int y = 0; y < bmp.Height; y += stepY)
+                {
+                    Color c = bmp.GetPixel(x, y);
+                    hash = (hash * 31) + c.ToArgb();
+                }
+            }
+            return hash;
+        }
+    }
 }
