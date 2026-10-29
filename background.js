@@ -312,7 +312,101 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(err => sendResponse({ success: false, message: err.message || 'فشل فحص الاتصال بالسيرفر.' }));
     return true;
   }
+
+  // التجهيز الفوري المسبق في الخلفية في 0 ثانية أثناء التحديد
+  if (request.action === 'PREFETCH_QUESTION') {
+    const text = (request.text || '').trim();
+    if (text.length > 3) {
+      chrome.storage.local.get(['serverType', 'geminiKey', 'subject', 'targetLanguage'], (settings) => {
+        const safe = settings || {};
+        const srv = safe.serverType || 'gemini';
+        const gKey = safe.geminiKey || DEFAULT_GEMINI_KEY;
+        const subj = request.subject || safe.subject || 'general';
+        const lang = request.targetLanguage || safe.targetLanguage || 'ar';
+        solveQuestionDispatcher(text, 'concise', subj, lang, srv, gKey, '', '', '').catch(() => {});
+        solveQuestionDispatcher(text, 'detailed', subj, lang, srv, gKey, '', '', '').catch(() => {});
+      });
+    }
+    sendResponse({ prefetching: true });
+    return false;
+  }
+
+  // ماسح الاختبارات الذكي مع تلوين السؤال والخيارات
+  if (request.action === 'EXAM_SCAN_SOLVE') {
+    chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey', 'subject', 'targetLanguage'], async (settings) => {
+      if (chrome.runtime.lastError || !settings) settings = {};
+      const qText = (request.questionText || '').trim();
+      const options = request.optionsList || [];
+      const mode = request.mode || 'concise';
+      const subj = request.subject || settings.subject || 'general';
+      const lang = request.targetLanguage || settings.targetLanguage || 'ar';
+      let server = request.serverType || settings.serverType || 'gemini';
+      if (server === 'free' || server === 'free_backup') server = 'gemini';
+      const geminiKey = request.geminiKey || settings.geminiKey || DEFAULT_GEMINI_KEY;
+
+      try {
+        const result = await solveExamWithStructuredOptions(qText, options, mode, subj, lang, server, geminiKey);
+        sendResponse({ success: true, data: result });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message || 'فشل فحص وحل السؤال.' });
+      }
+    });
+    return true;
+  }
 });
+
+// محرك حل أسئلة الاختبارات المنظمة والتناظر اللفظي بدقة متناهية
+async function solveExamWithStructuredOptions(questionText, optionsList, mode, subject, targetLanguage, serverType, geminiKey) {
+  let optionsBlock = '';
+  if (optionsList && optionsList.length > 0) {
+    optionsBlock = optionsList.map((opt, idx) => `الخيار (${idx + 1}): ${opt}`).join('\n');
+  }
+
+  const prompt = `أنت خبير حل اختبارات قياس والقدرات والامتحانات المدرسية والجامعية فائق الذكاء في QuizGenie.
+مهمتك: قراءة نص السؤال والخيارات المحددة، ثم استخراج الخيار الصحيح بنسبة 100% وتفنيد الخيارات الخاطئة.
+
+⚠️ قواعد التمييز الصارمة لمنع الخلط بين السؤال والخيارات:
+1. نص السؤال الأساسي المطلوب حله هو: "${questionText}".
+2. لا تعتبر أي خيار من الخيارات أدناه سؤالاً، بل هي بدائل مقترحة للإجابة فقط.
+3. إذا كان السؤال بصيغة تناظر لفظي (مثل: س : ص)، فحدد نوع العلاقة وسهم الاتجاه أولاً وطابقها مع الخيارات.
+
+الخيارات المعطاة:
+${optionsBlock}
+
+المطلوب إخراجه بالتنسيق الإلزامي التالي:
+🎯 الخيار الصحيح: [رقم الخيار الصحيح من 1 إلى ${optionsList.length}] - [نص الخيار الصحيح بالكامل]
+⚡ الجملة الرابطة والعلاقة: [العلاقة الدقيقة التي تربط بين الكلمات أو قانون المسألة]
+🔍 استبعاد الخيارات الخاطئة: [سبب مقتضب جداً لاستبعاد كل خيار خاطئ]
+${mode === 'detailed' ? '📘 شرح وتأسيس علمي مفصل: [شرح وافٍ للخطوات والقوانين]' : ''}`;
+
+  const rawAnswer = await solveViaGemini(prompt, questionText, geminiKey, mode);
+  
+  // استخراج رقم الخيار الصحيح المكتشف بدقة
+  let matchedIndex = -1;
+  const matchNum = rawAnswer.match(/🎯\s*الخيار الصحيح:\s*(\d+)/i) || rawAnswer.match(/الخيار\s*\(?(\d+)\)?/i);
+  if (matchNum && matchNum[1]) {
+    const num = parseInt(matchNum[1], 10) - 1;
+    if (num >= 0 && num < optionsList.length) {
+      matchedIndex = num;
+    }
+  }
+  
+  if (matchedIndex === -1 && optionsList.length > 0) {
+    for (let i = 0; i < optionsList.length; i++) {
+      if (rawAnswer.includes(optionsList[i].trim())) {
+        matchedIndex = i;
+        break;
+      }
+    }
+  }
+
+  return {
+    rawAnswer: rawAnswer,
+    correctIndex: matchedIndex,
+    correctText: (matchedIndex >= 0) ? optionsList[matchedIndex] : '',
+    totalOptions: optionsList.length
+  };
+}
 
 // Central Dispatcher
 async function solveQuestionDispatcher(questionText, mode, subject, targetLanguage, serverType, geminiKey, openaiKey, deepseekKey, groqKey) {
