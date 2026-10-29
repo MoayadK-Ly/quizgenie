@@ -6,26 +6,33 @@ const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42TFl6UW1xLWtGNFg2R3gyTTY4WG1hQk5BWjV
 const answerCache = new Map();
 
 // Auto-migrate settings immediately on worker load
-chrome.storage.local.get([
-  'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
-  'serverType', 'geminiKey'
-], (data) => {
-  const updates = {};
-  if (!data.geminiKey || !data.geminiKey.trim()) {
-    updates.geminiKey = DEFAULT_GEMINI_KEY;
-  }
-  if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') {
-    updates.serverType = 'gemini';
-  }
-  if (data.enabled === undefined) updates.enabled = true;
-  if (data.fabEnabled === undefined) updates.fabEnabled = true;
-  if (!data.subject) updates.subject = 'general';
-  if (!data.defaultMode) updates.defaultMode = 'concise';
-  if (!data.targetLanguage) updates.targetLanguage = 'ar';
-  if (Object.keys(updates).length > 0) {
-    chrome.storage.local.set(updates);
-  }
-});
+try {
+  chrome.storage.local.get([
+    'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
+    'serverType', 'geminiKey'
+  ], (data) => {
+    if (chrome.runtime.lastError || !data) data = {};
+    const updates = {};
+    if (!data.geminiKey || typeof data.geminiKey !== 'string' || !data.geminiKey.trim()) {
+      updates.geminiKey = DEFAULT_GEMINI_KEY;
+    }
+    if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') {
+      updates.serverType = 'gemini';
+    }
+    if (data.enabled === undefined) updates.enabled = true;
+    if (data.fabEnabled === undefined) updates.fabEnabled = true;
+    if (!data.subject) updates.subject = 'general';
+    if (!data.defaultMode) updates.defaultMode = 'concise';
+    if (!data.targetLanguage) updates.targetLanguage = 'ar';
+    if (Object.keys(updates).length > 0) {
+      chrome.storage.local.set(updates, () => {
+        if (chrome.runtime.lastError) {}
+      });
+    }
+  });
+} catch (e) {
+  console.warn('Storage init fallback:', e);
+}
 
 const LANGUAGE_PROMPT_NAMES = {
   'ar': 'العربية الفصحى',
@@ -93,6 +100,7 @@ chrome.runtime.onInstalled.addListener(() => {
     'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
     'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
   ], (data) => {
+    if (chrome.runtime.lastError || !data) data = {};
     const updates = {};
     if (data.enabled === undefined) updates.enabled = true;
     if (data.fabEnabled === undefined) updates.fabEnabled = true;
@@ -135,6 +143,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   const mode = (info.menuItemId === 'qg_detailed_solve') ? 'detailed' : 'concise';
 
   chrome.storage.local.get(['subject', 'targetLanguage', 'serverType'], (data) => {
+    if (chrome.runtime.lastError || !data) data = {};
     const targetLanguage = data.targetLanguage || 'ar';
     const subject = data.subject || 'general';
     const serverType = (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType;
@@ -156,6 +165,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
       'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
     ], (data) => {
+      if (chrome.runtime.lastError || !data) data = {};
       sendResponse({
         enabled: data.enabled !== false,
         fabEnabled: data.fabEnabled !== false,
@@ -177,17 +187,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
       'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
     ], (current) => {
+      if (chrome.runtime.lastError || !current) current = {};
+      const reqData = request.data || {};
       const updated = {
-        enabled: (request.data.enabled !== undefined) ? request.data.enabled : (current.enabled !== false),
-        fabEnabled: (request.data.fabEnabled !== undefined) ? request.data.fabEnabled : (current.fabEnabled !== false),
-        subject: request.data.subject || current.subject || 'general',
-        defaultMode: request.data.defaultMode || current.defaultMode || 'concise',
-        targetLanguage: request.data.targetLanguage || current.targetLanguage || 'ar',
-        serverType: request.data.serverType || current.serverType || 'gemini',
-        geminiKey: (request.data.geminiKey !== undefined && request.data.geminiKey.trim()) ? request.data.geminiKey.trim() : (current.geminiKey || DEFAULT_GEMINI_KEY),
-        openaiKey: (request.data.openaiKey !== undefined) ? request.data.openaiKey : (current.openaiKey || ''),
-        deepseekKey: (request.data.deepseekKey !== undefined) ? request.data.deepseekKey : (current.deepseekKey || ''),
-        groqKey: (request.data.groqKey !== undefined) ? request.data.groqKey : (current.groqKey || '')
+        enabled: (reqData.enabled !== undefined) ? reqData.enabled : (current.enabled !== false),
+        fabEnabled: (reqData.fabEnabled !== undefined) ? reqData.fabEnabled : (current.fabEnabled !== false),
+        subject: reqData.subject || current.subject || 'general',
+        defaultMode: reqData.defaultMode || current.defaultMode || 'concise',
+        targetLanguage: reqData.targetLanguage || current.targetLanguage || 'ar',
+        serverType: reqData.serverType || current.serverType || 'gemini',
+        geminiKey: (reqData.geminiKey !== undefined && reqData.geminiKey.trim()) ? reqData.geminiKey.trim() : (current.geminiKey || DEFAULT_GEMINI_KEY),
+        openaiKey: (reqData.openaiKey !== undefined) ? reqData.openaiKey : (current.openaiKey || ''),
+        deepseekKey: (reqData.deepseekKey !== undefined) ? reqData.deepseekKey : (current.deepseekKey || ''),
+        groqKey: (reqData.groqKey !== undefined) ? reqData.groqKey : (current.groqKey || '')
       };
 
       chrome.storage.local.set(updated, () => {
@@ -210,6 +222,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Process question text
   if (request.action === 'PROCESS_TEXT') {
     chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'], (settings) => {
+      if (chrome.runtime.lastError || !settings) settings = {};
       const mode = request.mode || 'concise';
       const subj = request.subject || 'general';
       const lang = request.targetLanguage || 'ar';
