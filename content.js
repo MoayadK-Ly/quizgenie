@@ -635,6 +635,16 @@ chrome.runtime.onMessage.addListener((request) => {
       showResponsePanel(request.text, currentMode);
     }
   }
+
+  // ط¹ظ†ط¯ ط·ظ„ط¨ ظ…ط³ط­ ظˆط­ظ„ طµظپط­ط© ط§ظ„ط§ظ…طھط­ط§ظ† ظ…ظ† ظˆط§ط¬ظ‡ط© ط§ظ„ط£ط¯ط§ط© ط£ظˆ ط§ظ„ط§ط®طھطµط§ط±
+  if (request.action === 'TRIGGER_EXAM_SCAN') {
+    scanAndSolveCurrentExam(request.mode || currentMode || 'concise');
+  }
+
+  // ظ…ط³ط­ ط§ظ„طھط¸ظ„ظٹظ„ط§طھ ط§ظ„ظ…ظ„ظˆظ†ط©
+  if (request.action === 'CLEAR_EXAM_HIGHLIGHTS') {
+    clearAllExamHighlights();
+  }
 });
 
 // مراقبة تحديد النصوص في الصفحة
@@ -667,6 +677,7 @@ function handleSelectionEvent(e) {
       if (!rect || (rect.width === 0 && rect.height === 0)) return;
 
       selectedTextCache = text;
+      triggerPrefetch(text);
       showFAB(rect);
     } else if (!menuElement && !panelElement) {
       removeFAB();
@@ -676,7 +687,14 @@ function handleSelectionEvent(e) {
 
 // زر Escape للإغلاق
 document.addEventListener('keydown', (e) => {
+  // Alt+Q: طھط´ط؛ظٹظ„ ظ…ط§ط³ط­ ط§ظ„ط§ظ…طھط­ط§ظ† ظˆطھظ„ظˆظٹظ† ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ط£طµظپط± ظˆط§ظ„ط¥ط¬ط§ط¨ط© ط¨ط§ظ„ط£ط®ط¶ط± ظˆط§ظ„ط®ط·ط£ ط¨ط§ظ„ط£ط­ظ…ط±
+  if (e.altKey && (e.key === 'q' || e.key === 'Q' || e.key === 'ط¶')) {
+    e.preventDefault();
+    scanAndSolveCurrentExam(currentMode || 'concise');
+  }
+
   if (e.key === 'Escape') {
+    clearAllExamHighlights();
     if (panelElement) removePanel();
     else if (menuElement) removeMenu();
     else if (fabElement) removeFAB();
@@ -1134,4 +1152,344 @@ function renderAnswerContent(markdownText, container) {
       container.appendChild(contentText);
     }
   }
+}
+
+// =========================================================================
+// QuizGenie - Smart Exam Scanner & Live Tri-Color Visual Feedback System
+// ًںں، Question = Yellow Glow
+// ًں”´ Wrong Options = Red Tint + âœ–
+// ًںں¢ Correct Option = Emerald Green Pulse + âœ”
+// =========================================================================
+
+let prefetchDebounce = null;
+function triggerPrefetch(text) {
+  if (!text || text.length < 3) return;
+  clearTimeout(prefetchDebounce);
+  prefetchDebounce = setTimeout(() => {
+    try {
+      if (chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({
+          action: 'PREFETCH_QUESTION',
+          text: text,
+          subject: subject,
+          targetLanguage: targetLanguage
+        }, () => {
+          if (chrome.runtime.lastError) {}
+        });
+      }
+    } catch (e) {}
+  }, 120);
+}
+
+function ensureHighlightStylesInPage() {
+  if (document.getElementById('quizgenie-page-highlight-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'quizgenie-page-highlight-styles';
+  style.textContent = 
+    .quizgenie-highlight-question {
+      position: relative !important;
+      outline: 2.5px solid #fbbf24 !important;
+      outline-offset: 3px !important;
+      background-color: rgba(251, 191, 36, 0.12) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 0 16px rgba(251, 191, 36, 0.35) !important;
+      transition: all 0.3s ease !important;
+    }
+    .quizgenie-highlight-question::before {
+      content: "ًںژ¯ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظƒطھط´ظپ" !important;
+      position: absolute !important;
+      top: -22px !important;
+      right: 0 !important;
+      background: #f59e0b !important;
+      color: #0f172a !important;
+      font-size: 11px !important;
+      font-weight: 800 !important;
+      padding: 2px 8px !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+      z-index: 2147483640 !important;
+      font-family: system-ui, -apple-system, sans-serif !important;
+    }
+    .quizgenie-highlight-correct {
+      position: relative !important;
+      outline: 3px solid #10b981 !important;
+      outline-offset: 3px !important;
+      background-color: rgba(16, 185, 129, 0.18) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.6) !important;
+      animation: qgPulseGreen 1.5s infinite alternate !important;
+      transition: all 0.3s ease !important;
+    }
+    .quizgenie-highlight-correct::after {
+      content: "âœ” ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©" !important;
+      position: absolute !important;
+      left: 8px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      background: #059669 !important;
+      color: #ffffff !important;
+      font-size: 11px !important;
+      font-weight: bold !important;
+      padding: 3px 9px !important;
+      border-radius: 20px !important;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4) !important;
+      z-index: 2147483640 !important;
+      font-family: system-ui, -apple-system, sans-serif !important;
+    }
+    .quizgenie-highlight-wrong {
+      position: relative !important;
+      outline: 1.5px dashed rgba(239, 68, 68, 0.65) !important;
+      outline-offset: 2px !important;
+      background-color: rgba(239, 68, 68, 0.06) !important;
+      opacity: 0.65 !important;
+      border-radius: 6px !important;
+      transition: all 0.3s ease !important;
+    }
+    .quizgenie-highlight-wrong::after {
+      content: "âœ–" !important;
+      position: absolute !important;
+      left: 8px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      color: #ef4444 !important;
+      font-size: 13px !important;
+      font-weight: 900 !important;
+      font-family: system-ui, -apple-system, sans-serif !important;
+    }
+    @keyframes qgPulseGreen {
+      from { box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+      to { box-shadow: 0 0 25px rgba(16, 185, 129, 0.85), 0 0 6px #10b981; }
+    }
+  ;
+  document.head.appendChild(style);
+}
+
+function clearAllExamHighlights() {
+  document.querySelectorAll('.quizgenie-highlight-question').forEach(el => el.classList.remove('quizgenie-highlight-question'));
+  document.querySelectorAll('.quizgenie-highlight-correct').forEach(el => el.classList.remove('quizgenie-highlight-correct'));
+  document.querySelectorAll('.quizgenie-highlight-wrong').forEach(el => el.classList.remove('quizgenie-highlight-wrong'));
+  const banner = document.getElementById('quizgenie-exam-scan-banner');
+  if (banner) banner.remove();
+  const modal = document.getElementById('quizgenie-scan-result-card');
+  if (modal) modal.remove();
+}
+
+function scanAndSolveCurrentExam(preferredMode = 'concise') {
+  ensureHighlightStylesInPage();
+  clearAllExamHighlights();
+
+  let questionText = '';
+  let questionElement = null;
+  const optionsList = [];
+  const optionElements = [];
+
+  // 1. ظپط­طµ ط¥ط°ط§ ظƒط§ظ† ظ‡ظ†ط§ظƒ ظ†طµ ظ…ط­ط¯ط¯ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ط§ظ„ظ…ط§ظˆط³
+  const selText = window.getSelection() ? window.getSelection().toString().trim() : '';
+
+  // 2. طھط¬ظ…ظٹط¹ ط®ظٹط§ط±ط§طھ ط§ظ„ط±ط§ط¯ظٹظˆ (Radio buttons) ط§ظ„طھظپط§ط¹ظ„ظٹط©
+  const radioInputs = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"]')).filter(r => {
+    const rect = r.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  });
+
+  if (radioInputs.length > 0) {
+    for (const r of radioInputs) {
+      const container = r.closest('label, li, tr, [class*="option"], [class*="choice"]') || r.parentElement;
+      const text = (container ? container.innerText : '').replace(/^[A-Za-z0-9\u0600-\u06FF][\.\-\x29]\s*/, '').trim();
+      if (text && !optionsList.includes(text)) {
+        optionsList.push(text);
+        optionElements.push(container || r);
+      }
+    }
+  }
+
+  // ط¥ط°ط§ ظ„ظ… ظ†ط¬ط¯ ط®ظٹط§ط±ط§طھ ط±ط§ط¯ظٹظˆطŒ ظ†ط¨ط­ط« ط¹ظ† ط¹ظ†ط§طµط± ط§ظ„ظ‚ظˆط§ط¦ظ… ظˆط§ظ„ط®ظٹط§ط±ط§طھ ط§ظ„ط´ط§ط¦ط¹ط©
+  if (optionsList.length === 0) {
+    const candidateChoices = Array.from(document.querySelectorAll('[class*="choice"], [class*="option"], [class*="answer"], li')).filter(el => {
+      const t = el.innerText.trim();
+      return t.length > 1 && t.length < 120 && (el.getBoundingClientRect().height > 0);
+    });
+    for (const el of candidateChoices.slice(0, 4)) {
+      optionsList.push(el.innerText.trim());
+      optionElements.push(el);
+    }
+  }
+
+  // 3. ط§ظ„ط¨ط­ط« ط¹ظ† ظ†طµ ط§ظ„ط³ط¤ط§ظ„
+  if (selText && selText.length > 2) {
+    questionText = selText;
+    const anchor = window.getSelection().anchorNode;
+    questionElement = anchor ? (anchor.nodeType === 3 ? anchor.parentElement : anchor) : null;
+  } else {
+    // ط§ظ„ط¨ط­ط« ط¹ظ† ط­ط§ظˆظٹط§طھ ط§ظ„ط³ط¤ط§ظ„ ظ…ط«ظ„ ط§ظ„ط¹ظ†ط§ظˆظٹظ†
+    const questionCandidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, [class*="question"], [class*="prompt"], [class*="stem"], [class*="title"]')).filter(q => {
+      const t = q.innerText.trim();
+      return t.length > 2 && t.length < 400 && !optionsList.includes(t) && q.getBoundingClientRect().height > 0;
+    });
+
+    if (questionCandidates.length > 0) {
+      questionElement = questionCandidates[0];
+      questionText = questionElement.innerText.trim();
+    } else {
+      // ط§ظ„ط¨ط­ط« ط¹ظ† ط£ظٹ ظ†طµ طھظ†ط§ط¸ط± ظ„ظپط¸ظٹ (ظƒظ„ظ…ط© : ظƒظ„ظ…ط©)
+      const allDivs = Array.from(document.querySelectorAll('div, p, span')).filter(el => {
+        const t = el.innerText.trim();
+        return t.includes(':') && t.length < 60 && el.children.length === 0 && el.getBoundingClientRect().height > 0;
+      });
+      if (allDivs.length > 0) {
+        questionElement = allDivs[0];
+        questionText = questionElement.innerText.trim();
+      }
+    }
+  }
+
+  if (!questionText && optionsList.length === 0) {
+    showScanFeedbackBanner('âڑ ï¸ڈ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط³ط¤ط§ظ„ ط£ظˆ ط®ظٹط§ط±ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹. ظٹظ…ظƒظ†ظƒ طھط¸ظ„ظٹظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ظ…ط§ظˆط³ ط£ظˆ ط§ظ„ط¶ط؛ط· ط¹ظ„ظ‰ F2 ظ„ظ„ظ‚طµ.', '#f59e0b');
+    return;
+  }
+
+  // طھط·ط¨ظٹظ‚ ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£طµظپط± ط¹ظ„ظ‰ ط§ظ„ط³ط¤ط§ظ„ ظپظˆط±ط§ظ‹
+  if (questionElement) {
+    questionElement.classList.add('quizgenie-highlight-question');
+    questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ظپظٹ 0 ط«ط§ظ†ظٹط© ظˆطھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط±ط§طھ...', '#0284c7');
+
+  chrome.runtime.sendMessage({
+    action: 'EXAM_SCAN_SOLVE',
+    questionText: questionText,
+    optionsList: optionsList,
+    mode: preferredMode || 'concise',
+    subject: subject,
+    targetLanguage: targetLanguage
+  }, (response) => {
+    if (chrome.runtime.lastError || !response || !response.success) {
+      const err = (response && response.error) ? response.error : 'ظپط´ظ„ ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„ط®ط¯ظ…ط©';
+      showScanFeedbackBanner('â‌Œ ' + err, '#ef4444');
+      return;
+    }
+
+    const data = response.data;
+    const correctIndex = data.correctIndex;
+
+    // طھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط¨ط§ظ„ط£ط®ط¶ط± ظˆط§ظ„ط®ظٹط§ط±ط§طھ ط§ظ„ط®ط§ط·ط¦ط© ط¨ط§ظ„ط£ط­ظ…ط±
+    if (optionElements.length > 0) {
+      for (let i = 0; i < optionElements.length; i++) {
+        if (i === correctIndex) {
+          optionElements[i].classList.add('quizgenie-highlight-correct');
+        } else {
+          optionElements[i].classList.add('quizgenie-highlight-wrong');
+        }
+      }
+    }
+
+    showScanResultModal(questionText, data.correctText, data.rawAnswer, preferredMode);
+  });
+}
+
+function showScanFeedbackBanner(message, bgColor) {
+  let banner = document.getElementById('quizgenie-exam-scan-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'quizgenie-exam-scan-banner';
+    banner.style.cssText = 
+      position: fixed;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147483647;
+      padding: 10px 18px;
+      border-radius: 30px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      direction: rtl;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+    ;
+    document.body.appendChild(banner);
+  }
+  banner.style.background = bgColor;
+  banner.textContent = message;
+  setTimeout(() => {
+    if (banner && banner.parentElement) banner.remove();
+  }, 4000);
+}
+
+function showScanResultModal(questionText, correctText, rawAnswer, mode) {
+  const existing = document.getElementById('quizgenie-scan-result-card');
+  if (existing) existing.remove();
+
+  const card = document.createElement('div');
+  card.id = 'quizgenie-scan-result-card';
+  card.style.cssText = 
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 340px;
+    max-width: 90vw;
+    background: #0b0f19;
+    border: 2px solid #10b981;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.85), 0 0 25px rgba(16,185,129,0.3);
+    z-index: 2147483647;
+    direction: rtl;
+    text-align: right;
+    font-family: system-ui, sans-serif;
+    color: #f1f5f9;
+    padding: 16px;
+    animation: qgFadeIn 0.25s ease-out;
+  ;
+
+  card.innerHTML = 
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #1e293b; padding-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:18px;">ًںژ¯</span>
+        <strong style="font-size:13px; color:#38bdf8;">طھظ… ط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ظˆطھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط±ط§طھ</strong>
+      </div>
+      <button id="qg-close-scan-card" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
+    </div>
+    <div style="margin-bottom:8px;">
+      <span style="font-size:11px; color:#fbbf24; font-weight:700;">ًںں، ط§ظ„ط³ط¤ط§ظ„:</span>
+      <div style="font-size:12px; color:#e2e8f0; margin-top:2px;"></div>
+    </div>
+    <div style="background:rgba(16,185,129,0.15); border:1.5px solid #10b981; border-radius:10px; padding:10px; margin-bottom:10px;">
+      <span style="font-size:11px; color:#34d399; font-weight:700;">ًںں¢ ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©:</span>
+      <div style="font-size:14px; font-weight:800; color:#ffffff; margin-top:3px;"></div>
+    </div>
+    <div style="max-height:120px; overflow-y:auto; font-size:11.5px; color:#cbd5e1; line-height:1.5; margin-bottom:12px; white-space:pre-wrap;"></div>
+    <div style="display:flex; gap:8px;">
+      <button id="qg-voice-tts-btn" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">ًں”ٹ ط§ط³طھظ…ط§ط¹</button>
+      <button id="qg-clear-highlights-btn" style="flex:1; background:#0284c7; border:none; color:#fff; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">âœ– ظ…ط³ط­ ط§ظ„طھظ„ظˆظٹظ†</button>
+    </div>
+  ;
+
+  document.body.appendChild(card);
+
+  card.querySelector('#qg-close-scan-card').addEventListener('click', () => card.remove());
+  card.querySelector('#qg-clear-highlights-btn').addEventListener('click', () => {
+    clearAllExamHighlights();
+  });
+
+  const ttsBtn = card.querySelector('#qg-voice-tts-btn');
+  ttsBtn.addEventListener('click', () => {
+    if (window.speechSynthesis) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹';
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance((correctText ? 'ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط© ظ‡ظٹ ' + correctText + '. ' : '') + rawAnswer);
+      utter.lang = 'ar-SA';
+      utter.rate = 1.0;
+      utter.onend = () => { ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹'; };
+      ttsBtn.textContent = 'âڈ¹ ط¥ظٹظ‚ط§ظپ ط§ظ„طµظˆطھ';
+      window.speechSynthesis.speak(utter);
+    }
+  });
 }
