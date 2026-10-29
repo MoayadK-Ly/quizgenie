@@ -280,19 +280,50 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
     langDesc = `Answer strictly in [${targetName}], keeping original option letter.`;
   }
 
-  let modeDesc = '';
+  let systemPrompt = '';
   if (mode === 'detailed') {
-    modeDesc = 'الوضع: إجابة مفصلة: أجب على السؤال واشرح السبب مع تفنيد باقي الخيارات باختصار ووضوح.';
+    systemPrompt = `أنت الأستاذ الأكاديمي والخبير التعليمي الأول في QuizGenie المتخصص في الشرح المفصل والتأسيس العلمي العميق (Deep Pedagogical & Conceptual Reasoning).
+عقليتك ومنهجك في هذا الوضع مستقل تماماً عن الحل السريع، وهدفك ليس فقط تقديم الإجابة بل بناء فهم راسخ وشامل لدى الطالب لا يُنسى.
+
+منهجية التفكير والتفكيك الإلزامية في الحل المفصل:
+قم بهيكلة إجابتك بدقة وفق الأقسام التالية:
+
+📘 1. المفهوم والقاعدة الأساسية:
+- حدد بوضوح القانون، النظرية، أو القاعدة النحوية/العلمية/المنطقية المركزية التي يستند إليها هذا السؤال.
+
+📐 2. خطوات الحل والتحليل المتسلسل:
+- فكك السؤال: المعطيات والمطلوب.
+- الخطوات الإجرائية المتسلسلة (القانون المستخدم، التعويض الرياضي بالأرقام، أو التسلسل المنطقي للاشتقاق).
+
+✅ 3. الإجابة المعتمدة:
+🎯 الخيار الصحيح: [رمز الخيار] نص الخيار
+
+🔍 4. تفنيد الخيارات الأخرى (لماذا استُبعدت؟):
+- اشرح باقتضاب لماذا كل خيار من الخيارات البديلة الأخرى خاطئ لمنع التشتت والخلط في الامتحانات.
+
+💡 5. مفتاح الحل السريع (Exam Pro-Tip):
+- نصيحة ذهبية أو حيلة سريعة أو رابط ذهني لتمييز وحل هذا النوع من الأسئلة في ثوانٍ أثناء الاختبار.
+
+${subjectDesc}
+${langDesc}`;
   } else {
-    modeDesc = 'الوضع: إجابة بدون فلسفة: أخرج فقط الخيار الصحيح ومعه نص الخيار في سطر واحد لا يتجاوز 6 كلمات فقط، دون أي مقدمات أو شروحات إضافية.';
+    systemPrompt = `أنت محرك الذكاء الاصطناعي الأكاديمي فائق الدقة المخصص للحل المباشر الفوري للاختبارات (Direct Concise Solution Engine).
+عقليتك ومنهجك في هذا الوضع:
+1. التفكير الاستنتاجي السريع والحاسم: مسح السؤال فوراً وتحديد الخيار الصحيح بنسبة دقة 100%.
+2. الصرامة في الاختصار: لا تكتب أي مقدمات، لا تكتب 'بناءً على السؤال' أو 'الجواب هو' أو شروحات مطولة.
+3. التنسيق الإلزامي الصارم:
+🎯 الإجابة الصحيحة: [رمز الخيار] نص الخيار كاملاً
+⚡ تأكيد حاسم: [جملة واحدة مركزة تثبت صحة الخيار في 8 كلمات فقط]
+
+${subjectDesc}
+${langDesc}`;
   }
 
-  const systemPrompt = `${subjectDesc} ${langDesc} ${modeDesc}`;
   let finalAnswer = '';
 
   try {
     if (srv === 'gemini') {
-      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey, mode);
     } else if (srv === 'openai') {
       if (!openaiKey || !openaiKey.trim()) throw new Error('يرجى إدخال مفتاح OpenAI API.');
       finalAnswer = await solveViaOpenAI(systemPrompt, cleanText, openaiKey.trim());
@@ -301,12 +332,12 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
     } else if (srv === 'groq') {
       finalAnswer = await solveViaGroq(systemPrompt, cleanText, groqKey);
     } else {
-      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey, mode);
     }
   } catch (err) {
     console.warn(`Server ${srv} failed (${err.message}), falling back to Gemini...`);
     try {
-      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey, mode);
     } catch (gErr) {
       throw new Error(`فشل الاتصال: ${err.message}`);
     }
@@ -327,7 +358,7 @@ const GEMINI_CANDIDATE_MODELS = ['gemini-3.5-flash', 'gemini-3-flash-preview', '
 const GROQ_CANDIDATE_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
 
 // 1. Google Gemini API (Ultra-Fast 1.2s)
-async function solveViaGemini(systemPrompt, userText, apiKey) {
+async function solveViaGemini(systemPrompt, userText, apiKey, mode = 'concise') {
   const cleanKey = (apiKey && apiKey.trim()) ? apiKey.trim() : DEFAULT_GEMINI_KEY;
   const models = [workingGeminiModel, 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
   const distinctModels = Array.from(new Set(models));
@@ -350,8 +381,8 @@ async function solveViaGemini(systemPrompt, userText, apiKey) {
             }
           ],
           generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 800
+            temperature: (mode === 'detailed') ? 0.25 : 0.1,
+            maxOutputTokens: (mode === 'detailed') ? 1500 : 350
           }
         }),
         signal: controller.signal
