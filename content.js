@@ -636,6 +636,16 @@ chrome.runtime.onMessage.addListener((request) => {
     }
   }
 
+  // عند طلب الحل المباشر المستمر مع محدد الشاشة
+  if (request.action === 'START_LIVE_DIRECT_SOLVER') {
+    showLiveSelectorOverlay();
+  }
+
+  // عند طلب إيقاف الحل المباشر
+  if (request.action === 'STOP_LIVE_DIRECT_SOLVER') {
+    stopLiveDirectMode();
+  }
+
   // عند طلب مسح وحل صفحة الامتحان من واجهة الأداة أو الاختصار
   if (request.action === 'TRIGGER_EXAM_SCAN') {
     scanAndSolveCurrentExam(request.mode || currentMode || 'concise');
@@ -1929,3 +1939,337 @@ chrome.runtime.onMessage.addListener((request) => {
 
 // تحميل الثيم عند بدء الصفحة
 loadThemeSettings();
+
+// =========================================================================
+// محرك الحل المباشر المستمر مع محدد الشاشة وزر الإيقاف والعلامة الحمراء المؤشرة
+// =========================================================================
+
+let liveDirectActive = false;
+let liveDirectRegion = null;
+let liveDirectLastQuestion = '';
+let liveDirectObserver = null;
+let liveDirectCheckTimer = null;
+let isSolvingLiveStep = false;
+
+function showLiveSelectorOverlay() {
+  stopLiveDirectMode();
+  clearAllExamHighlights();
+
+  const existing = document.getElementById('quizgenie-live-selector-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'quizgenie-live-selector-overlay';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'qg-live-selector-toolbar';
+  toolbar.innerHTML = `
+    <span style="font-size: 13px; font-weight: 700; color: #38bdf8;">⚡ الحل المباشر: اسحب بالماوس لتحديد أبعاد منطقة الأسئلة، أو:</span>
+    <button type="button" id="qg-live-fullscreen-btn" style="background: linear-gradient(135deg, #0284c7, #2563eb); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+      <span>🖥️</span>
+      <span>تحديد الشاشة كاملة</span>
+    </button>
+    <button type="button" id="qg-live-cancel-btn" style="background: #334155; border: none; color: #cbd5e1; padding: 6px 12px; border-radius: 20px; font-size: 11.5px; cursor: pointer;">
+      إلغاء (Esc)
+    </button>
+  `;
+  overlay.appendChild(toolbar);
+
+  const box = document.createElement('div');
+  box.className = 'qg-live-selector-box';
+  box.style.display = 'none';
+
+  const dimTag = document.createElement('div');
+  dimTag.className = 'qg-live-selector-dimensions';
+  dimTag.textContent = '0 × 0';
+  box.appendChild(dimTag);
+  overlay.appendChild(box);
+
+  let startX = 0, startY = 0, isDragging = false;
+
+  const cancelBtn = toolbar.querySelector('#qg-live-cancel-btn');
+  const fullBtn = toolbar.querySelector('#qg-live-fullscreen-btn');
+
+  cancelBtn.addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  fullBtn.addEventListener('click', () => {
+    overlay.remove();
+    startLiveDirectMode({
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      isFullScreen: true
+    });
+  });
+
+  overlay.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.qg-live-selector-toolbar')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = true;
+    box.style.left = startX + 'px';
+    box.style.top = startY + 'px';
+    box.style.width = '0px';
+    box.style.height = '0px';
+    box.style.display = 'block';
+  });
+
+  overlay.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const minX = Math.min(startX, currentX);
+    const minY = Math.min(startY, currentY);
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+
+    box.style.left = minX + 'px';
+    box.style.top = minY + 'px';
+    box.style.width = width + 'px';
+    box.style.height = height + 'px';
+    dimTag.textContent = `${width} × ${height} بكسل`;
+  });
+
+  overlay.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const rect = box.getBoundingClientRect();
+    overlay.remove();
+
+    if (rect.width > 35 && rect.height > 35) {
+      startLiveDirectMode({
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+        isFullScreen: false
+      });
+    } else {
+      startLiveDirectMode({
+        left: 0,
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        isFullScreen: true
+      });
+    }
+  });
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', onKey);
+    }
+  };
+  document.addEventListener('keydown', onKey);
+
+  document.body.appendChild(overlay);
+}
+
+function startLiveDirectMode(region) {
+  stopLiveDirectMode();
+  ensureHighlightStylesInPage();
+
+  liveDirectActive = true;
+  liveDirectRegion = region;
+  liveDirectLastQuestion = '';
+
+  // 1. إذا كانت منطقة محددة بأبعاد، إظهار إطار المنطقة المراقبة
+  if (!region.isFullScreen) {
+    const frame = document.createElement('div');
+    frame.id = 'quizgenie-monitored-area-frame';
+    frame.style.left = region.left + 'px';
+    frame.style.top = region.top + 'px';
+    frame.style.width = region.width + 'px';
+    frame.style.height = region.height + 'px';
+    document.body.appendChild(frame);
+  }
+
+  // 2. إظهار شريط التحكم أعلى اليمين (زر الإيقاف + العلامة الدائرية الحمراء المؤشرة)
+  const hud = document.createElement('div');
+  hud.id = 'quizgenie-live-direct-hud';
+  hud.innerHTML = `
+    <button type="button" class="qg-live-stop-btn" id="qgLiveStopBtn" title="اضغط هنا لإيقاف ميزة الحل المباشر">
+      <span>⏹️</span>
+      <span>إيقاف الحل المباشر</span>
+    </button>
+    <div class="qg-live-indicator-pill">
+      <span class="qg-pulsing-red-circle"></span>
+      <span style="font-size: 11px; font-weight: 700; color: #fca5a5;">الحل المباشر مفعّل</span>
+    </div>
+  `;
+  document.body.appendChild(hud);
+
+  hud.querySelector('#qgLiveStopBtn').addEventListener('click', () => {
+    stopLiveDirectMode();
+  });
+
+  showScanFeedbackBanner('⚡ تم تفعيل الحل المباشر! يتم الرصد وحل كل سؤال فوراً...', '#0284c7');
+
+  // 3. تنفيذ الفحص والحل الأولي الفوري
+  executeLiveDirectSolveStep();
+
+  // 4. مراقبة التغيرات في الصفحة للمتابعة التلقائية مع تقدم الطالب
+  liveDirectObserver = new MutationObserver(() => {
+    if (!liveDirectActive || isSolvingLiveStep) return;
+    executeLiveDirectSolveStep();
+  });
+  liveDirectObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  // فحص دوري كل 1.5 ثانية للرصد الحي المستمر
+  liveDirectCheckTimer = setInterval(() => {
+    if (!liveDirectActive || isSolvingLiveStep) return;
+    executeLiveDirectSolveStep();
+  }, 1500);
+}
+
+function stopLiveDirectMode() {
+  liveDirectActive = false;
+  liveDirectRegion = null;
+  liveDirectLastQuestion = '';
+
+  if (liveDirectObserver) {
+    liveDirectObserver.disconnect();
+    liveDirectObserver = null;
+  }
+  if (liveDirectCheckTimer) {
+    clearInterval(liveDirectCheckTimer);
+    liveDirectCheckTimer = null;
+  }
+
+  const hud = document.getElementById('quizgenie-live-direct-hud');
+  if (hud) hud.remove();
+
+  const frame = document.getElementById('quizgenie-monitored-area-frame');
+  if (frame) frame.remove();
+
+  const overlay = document.getElementById('quizgenie-live-selector-overlay');
+  if (overlay) overlay.remove();
+
+  showScanFeedbackBanner('⏹️ تم إيقاف ميزة الحل المباشر.', '#64748b');
+}
+
+function executeLiveDirectSolveStep() {
+  if (!liveDirectActive || isSolvingLiveStep) return;
+
+  const region = liveDirectRegion;
+  if (!region) return;
+
+  // استخراج العناصر داخل المنطقة أو في كامل الشاشة
+  let candidateElements = [];
+  if (region.isFullScreen) {
+    candidateElements = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, input'));
+  } else {
+    const all = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, input'));
+    candidateElements = all.filter(el => {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return false;
+      return (r.left >= region.left - 25 && r.right <= region.right + 25 &&
+              r.top >= region.top - 25 && r.bottom <= region.bottom + 25);
+    });
+  }
+
+  // استخراج الخيارات والسؤال
+  const optionsList = [];
+  const optionElements = [];
+  let questionElement = null;
+  let questionText = '';
+
+  // 1. خيارات الراديو أو القوائم
+  for (const el of candidateElements) {
+    const isRadio = el.tagName === 'INPUT' && el.type === 'radio';
+    const isChoice = el.classList.contains('choice') || el.classList.contains('option') || el.tagName === 'LI' || el.tagName === 'LABEL';
+    if (isRadio || isChoice) {
+      const container = el.closest('label, li, tr, [class*="option"], [class*="choice"]') || el.parentElement || el;
+      const text = (container ? container.innerText : el.innerText || '').replace(/^[A-Da-dأ-د1-4][\.\-\)]\s*/, '').trim();
+      if (text && text.length < 120 && !optionsList.includes(text)) {
+        optionsList.push(text);
+        optionElements.push(container);
+      }
+    }
+  }
+
+  // 2. استخراج رأس السؤال (الذي ليس خياراً)
+  for (const el of candidateElements) {
+    const text = el.innerText ? el.innerText.trim() : '';
+    const isOpt = optionElements.some(opt => opt.contains(el) || el.contains(opt));
+    if (!isOpt && text && text.length > 2 && text.length < 350) {
+      if (/^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ)/i.test(text)) continue;
+      questionElement = el;
+      questionText = text;
+      break;
+    }
+  }
+
+  // إذا لم نجد سؤالاً صريحاً وتوفرت خيارات، نأخذ الأول كسؤال
+  if (!questionText && optionsList.length > 0) {
+    questionText = optionsList.shift();
+    questionElement = optionElements.shift();
+  }
+
+  if (!questionText || optionsList.length === 0) return;
+
+  // تحقق هل السؤال تغير فعلاً عن السؤال المحلول سابقاً
+  const questionKey = questionText.replace(/\s+/g, ' ');
+  if (questionKey === liveDirectLastQuestion) return;
+
+  liveDirectLastQuestion = questionKey;
+  isSolvingLiveStep = true;
+
+  clearAllExamHighlights();
+
+  // وضع الدائرة الحمراء المتوهجة حول السؤال المقروء
+  if (questionElement) {
+    questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+    try { questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+  }
+
+  // إرسال السؤال لحله فورياً عبر خادم الذكاء الاصطناعي
+  chrome.runtime.sendMessage({
+    action: 'SOLVE_EXAM_SCAN',
+    question: questionText,
+    questionText: questionText,
+    options: optionsList,
+    optionsList: optionsList,
+    mode: 'concise',
+    subject: subject || 'general',
+    targetLanguage: targetLanguage || 'ar'
+  }, (response) => {
+    isSolvingLiveStep = false;
+    if (chrome.runtime.lastError || !response || !response.success) {
+      return;
+    }
+
+    const data = response.data || response.result || {};
+    const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
+    const correctChoiceText = data.correctChoiceText || '';
+
+    // إضاءة الخيار الصحيح باللون الأخضر المتوهج
+    let matchedOptionElement = null;
+    if (correctIndex >= 0 && correctIndex < optionElements.length) {
+      matchedOptionElement = optionElements[correctIndex];
+    } else if (correctChoiceText) {
+      const cleanTarget = correctChoiceText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)]\s*/, '').trim();
+      for (let i = 0; i < optionsList.length; i++) {
+        const cleanOpt = optionsList[i].toLowerCase().trim();
+        if (cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) {
+          matchedOptionElement = optionElements[i];
+          break;
+        }
+      }
+    }
+
+    if (matchedOptionElement) {
+      matchedOptionElement.classList.add('quizgenie-highlight-correct');
+    }
+  });
+}
