@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -16,6 +16,69 @@ namespace QuizGenie
 {
     public static class UITheme
     {
+        public static string CurrentShapeMode = "smooth"; // "sharp" (4px), "smooth" (12px), "capsule" (24px)
+        public static int SharpRadius = 4;
+        public static int SmoothRadius = 12;
+        public static int CapsuleRadius = 24;
+
+        public static event Action OnShapeChanged;
+
+        public class RegisteredControlInfo
+        {
+            public Control Ctrl;
+            public int BaseRadius;
+            public Func<Color> BorderColorGetter;
+            public float BorderWidth;
+        }
+
+        private static List<RegisteredControlInfo> _items = new List<RegisteredControlInfo>();
+
+        public static int GetEffectiveRadius(int baseRadius, int controlHeight = 32)
+        {
+            if (CurrentShapeMode == "sharp") return SharpRadius;
+            if (CurrentShapeMode == "capsule")
+            {
+                int cap = Math.Min(controlHeight / 2, CapsuleRadius);
+                return Math.Max(cap, 18);
+            }
+            return (baseRadius > 0) ? baseRadius : SmoothRadius;
+        }
+
+        public static void SetShapeMode(string mode)
+        {
+            if (string.IsNullOrEmpty(mode)) mode = "smooth";
+            mode = mode.ToLowerInvariant();
+            if (mode != "sharp" && mode != "capsule") mode = "smooth";
+            CurrentShapeMode = mode;
+
+            for (int i = _items.Count - 1; i >= 0; i--)
+            {
+                var info = _items[i];
+                if (info.Ctrl == null || info.Ctrl.IsDisposed)
+                {
+                    _items.RemoveAt(i);
+                    continue;
+                }
+                UpdateControlRegion(info.Ctrl, info.BaseRadius);
+                info.Ctrl.Invalidate();
+            }
+
+            if (OnShapeChanged != null)
+            {
+                try { OnShapeChanged(); } catch { }
+            }
+        }
+
+        public static void UpdateControlRegion(Control ctrl, int baseRadius)
+        {
+            if (ctrl == null || ctrl.Width <= 0 || ctrl.Height <= 0) return;
+            int r = GetEffectiveRadius(baseRadius, ctrl.Height);
+            using (GraphicsPath path = CreateRoundedPath(new Rectangle(0, 0, ctrl.Width, ctrl.Height), r))
+            {
+                ctrl.Region = new Region(path);
+            }
+        }
+
         public static GraphicsPath CreateRoundedPath(Rectangle rect, int radius)
         {
             GraphicsPath path = new GraphicsPath();
@@ -40,31 +103,51 @@ namespace QuizGenie
         public static void ApplyRoundCorners(Control ctrl, int radius)
         {
             if (ctrl == null) return;
-            Action update = () =>
+            var info = new RegisteredControlInfo
             {
-                if (ctrl.Width <= 0 || ctrl.Height <= 0) return;
-                using (GraphicsPath path = CreateRoundedPath(new Rectangle(0, 0, ctrl.Width, ctrl.Height), radius))
-                {
-                    ctrl.Region = new Region(path);
-                }
+                Ctrl = ctrl,
+                BaseRadius = radius,
+                BorderColorGetter = null,
+                BorderWidth = 0
             };
-            ctrl.SizeChanged += (s, e) => update();
-            update();
+            _items.Add(info);
+
+            ctrl.SizeChanged += (s, e) => UpdateControlRegion(ctrl, radius);
+            UpdateControlRegion(ctrl, radius);
         }
 
         public static void ApplyRoundedCard(Control ctrl, int radius, Color borderColor, float borderWidth = 1f)
         {
-            if (ctrl == null) return;
-            ApplyRoundCorners(ctrl, radius);
+            ApplyRoundedCardDynamic(ctrl, radius, () => borderColor, borderWidth);
+        }
 
-            if (borderColor != Color.Transparent && borderWidth > 0)
+        public static void ApplyRoundedCardDynamic(Control ctrl, int radius, Func<Color> borderColorGetter, float borderWidth = 1f)
+        {
+            if (ctrl == null) return;
+            var info = new RegisteredControlInfo
+            {
+                Ctrl = ctrl,
+                BaseRadius = radius,
+                BorderColorGetter = borderColorGetter,
+                BorderWidth = borderWidth
+            };
+            _items.Add(info);
+
+            ctrl.SizeChanged += (s, e) => UpdateControlRegion(ctrl, radius);
+            UpdateControlRegion(ctrl, radius);
+
+            if (borderWidth > 0 && borderColorGetter != null)
             {
                 ctrl.Paint += (s, pe) =>
                 {
                     if (ctrl.Width <= 1 || ctrl.Height <= 1) return;
+                    Color col = borderColorGetter();
+                    if (col == Color.Transparent) return;
+
                     pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                    using (GraphicsPath path = CreateRoundedPath(new Rectangle(0, 0, ctrl.Width - 1, ctrl.Height - 1), radius))
-                    using (Pen pen = new Pen(borderColor, borderWidth))
+                    int r = GetEffectiveRadius(radius, ctrl.Height);
+                    using (GraphicsPath path = CreateRoundedPath(new Rectangle(0, 0, ctrl.Width - 1, ctrl.Height - 1), r))
+                    using (Pen pen = new Pen(col, borderWidth))
                     {
                         pe.Graphics.DrawPath(pen, path);
                     }
@@ -80,18 +163,7 @@ namespace QuizGenie
             lbl.ForeColor = textColor;
             lbl.TextAlign = ContentAlignment.MiddleCenter;
             int radius = lbl.Height / 2;
-            ApplyRoundCorners(lbl, radius);
-
-            lbl.Paint += (s, pe) =>
-            {
-                if (lbl.Width <= 1 || lbl.Height <= 1) return;
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedPath(new Rectangle(0, 0, lbl.Width - 1, lbl.Height - 1), radius))
-                using (Pen pen = new Pen(borderColor, 1.2f))
-                {
-                    pe.Graphics.DrawPath(pen, path);
-                }
-            };
+            ApplyRoundedCard(lbl, radius, borderColor, 1.2f);
         }
     }
 
@@ -185,6 +257,7 @@ namespace QuizGenie
 
             this.MouseEnter += (s, e) => { _isHovered = true; Invalidate(); };
             this.MouseLeave += (s, e) => { _isHovered = false; Invalidate(); };
+            UITheme.OnShapeChanged += () => { try { Invalidate(); } catch { } };
         }
 
         public void SetTheme(Color themeColor)
@@ -248,8 +321,9 @@ namespace QuizGenie
 
             Color bg = _isHovered ? Color.FromArgb(39, 52, 74) : Color.FromArgb(24, 32, 47);
             Rectangle rect = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
+            int effRadius = UITheme.GetEffectiveRadius(_borderRadius, this.Height);
 
-            using (GraphicsPath path = UITheme.CreateRoundedPath(rect, _borderRadius))
+            using (GraphicsPath path = UITheme.CreateRoundedPath(rect, effRadius))
             {
                 using (SolidBrush br = new SolidBrush(bg))
                 {
@@ -405,6 +479,10 @@ namespace QuizGenie
         private Panel pnlAccSettingsBody;
         private CheckBox chkAlwaysOnTop;
         private Button btnChromeStatus;
+        private Button btnShapeSharp;
+        private Button btnShapeSmooth;
+        private Button btnShapeCapsule;
+        private Button btnOpenWebCustomizer;
 
         // قائمة 5: حل سؤال فوري وسريع
         private Panel pnlAccSolverHeader;
@@ -823,12 +901,7 @@ namespace QuizGenie
             pnlCardFree.Size = new Size(cardW, 60);
             pnlCardFree.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardFree.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardFree, 11);
-            pnlCardFree.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardFree.Width - 1, pnlCardFree.Height - 1), 11))
-                using (Pen pen = new Pen(cardFreeBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardFree, 11, () => cardFreeBorderColor, 1.4f);
 
             rbFree = new RadioButton();
             rbFree.Text = "🌐 الخادم المجاني";
@@ -867,12 +940,7 @@ namespace QuizGenie
             pnlCardFreeBackup.Size = new Size(cardW, 60);
             pnlCardFreeBackup.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardFreeBackup.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardFreeBackup, 11);
-            pnlCardFreeBackup.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardFreeBackup.Width - 1, pnlCardFreeBackup.Height - 1), 11))
-                using (Pen pen = new Pen(cardFreeBackupBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardFreeBackup, 11, () => cardFreeBackupBorderColor, 1.4f);
 
             rbFreeBackup = new RadioButton();
             rbFreeBackup.Text = "🛡️ الخادم المجاني الاحتياطي";
@@ -911,12 +979,7 @@ namespace QuizGenie
             pnlCardDeepSeek.Size = new Size(cardW, 128);
             pnlCardDeepSeek.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardDeepSeek.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardDeepSeek, 11);
-            pnlCardDeepSeek.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardDeepSeek.Width - 1, pnlCardDeepSeek.Height - 1), 11))
-                using (Pen pen = new Pen(cardDeepSeekBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardDeepSeek, 11, () => cardDeepSeekBorderColor, 1.4f);
 
             rbDeepSeek = new RadioButton();
             rbDeepSeek.Text = "🧠 خادم ديب سيك (DeepSeek R1)";
@@ -1008,12 +1071,7 @@ namespace QuizGenie
             pnlCardGroq.Size = new Size(cardW, 128);
             pnlCardGroq.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardGroq.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardGroq, 11);
-            pnlCardGroq.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardGroq.Width - 1, pnlCardGroq.Height - 1), 11))
-                using (Pen pen = new Pen(cardGroqBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardGroq, 11, () => cardGroqBorderColor, 1.4f);
 
             rbGroq = new RadioButton();
             rbGroq.Text = "⚡ خادم جروك فائق السرعة (Groq Llama 3.3)";
@@ -1105,12 +1163,7 @@ namespace QuizGenie
             pnlCardGemini.Size = new Size(cardW, 128);
             pnlCardGemini.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardGemini.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardGemini, 11);
-            pnlCardGemini.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardGemini.Width - 1, pnlCardGemini.Height - 1), 11))
-                using (Pen pen = new Pen(cardGeminiBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardGemini, 11, () => cardGeminiBorderColor, 1.4f);
 
             rbGemini = new RadioButton();
             rbGemini.Text = "⚡ الخادم الآخر (Google Gemini)";
@@ -1202,12 +1255,7 @@ namespace QuizGenie
             pnlCardOpenAI.Size = new Size(cardW, 128);
             pnlCardOpenAI.BackColor = Color.FromArgb(11, 15, 25);
             pnlCardOpenAI.Cursor = Cursors.Hand;
-            UITheme.ApplyRoundCorners(pnlCardOpenAI, 11);
-            pnlCardOpenAI.Paint += (s, pe) => {
-                pe.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath p = UITheme.CreateRoundedPath(new Rectangle(0, 0, pnlCardOpenAI.Width - 1, pnlCardOpenAI.Height - 1), 11))
-                using (Pen pen = new Pen(cardOpenAIBorderColor, 1.4f)) { pe.Graphics.DrawPath(pen, p); }
-            };
+            UITheme.ApplyRoundedCardDynamic(pnlCardOpenAI, 11, () => cardOpenAIBorderColor, 1.4f);
 
             rbOpenAI = new RadioButton();
             rbOpenAI.Text = "🤖 خادم شات جي بي تي (ChatGPT / OpenAI)";
@@ -1381,7 +1429,7 @@ namespace QuizGenie
         private void BuildAccordionSettings(int itemW)
         {
             pnlAccSettingsHeader = CreateAccordionHeader(
-                itemW, "⚙️", "إعدادات وتخصيص المساعد", "تثبيت النافذة وربط قوقل كروم",
+                itemW, "⚙️", "إعدادات وتخصيص المساعد", "تثبيت النافذة وشكل الحواف وربط كروم",
                 "عادي", Color.FromArgb(34, 211, 238), Color.FromArgb(22, 78, 99),
                 out lblAccSettingsBadge, out lblAccSettingsChevron,
                 ToggleSettings
@@ -1389,7 +1437,7 @@ namespace QuizGenie
             pnlMain.Controls.Add(pnlAccSettingsHeader);
 
             pnlAccSettingsBody = new Panel();
-            pnlAccSettingsBody.Size = new Size(itemW, 125);
+            pnlAccSettingsBody.Size = new Size(itemW, 238);
             pnlAccSettingsBody.BackColor = Color.FromArgb(15, 23, 42);
             pnlAccSettingsBody.BorderStyle = BorderStyle.None;
             pnlAccSettingsBody.Visible = false;
@@ -1409,7 +1457,7 @@ namespace QuizGenie
 
             chkFloatingPopup = new CheckBox();
             chkFloatingPopup.Text = "⚡ تفعيل زر الحل العائم عند تحديد النصوص في أي برنامج";
-            chkFloatingPopup.Location = new Point(14, 42);
+            chkFloatingPopup.Location = new Point(14, 40);
             chkFloatingPopup.Size = new Size(itemW - 28, 26);
             chkFloatingPopup.ForeColor = Color.FromArgb(56, 189, 248);
             chkFloatingPopup.Cursor = Cursors.Hand;
@@ -1422,17 +1470,127 @@ namespace QuizGenie
             pnlAccSettingsBody.Controls.Add(chkFloatingPopup);
 
             btnChromeStatus = new Button();
-            btnChromeStatus.Location = new Point(14, 76);
-            btnChromeStatus.Size = new Size(itemW - 28, 38);
+            btnChromeStatus.Location = new Point(14, 70);
+            btnChromeStatus.Size = new Size(itemW - 28, 34);
             btnChromeStatus.FlatStyle = FlatStyle.Flat;
             btnChromeStatus.FlatAppearance.BorderSize = 0;
             btnChromeStatus.Cursor = Cursors.Hand;
-            btnChromeStatus.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            btnChromeStatus.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             UITheme.ApplyRoundedCard(btnChromeStatus, 14, Color.FromArgb(16, 185, 129), 1.2f);
             btnChromeStatus.Click += BtnChromeStatus_Click;
             pnlAccSettingsBody.Controls.Add(btnChromeStatus);
 
+            // عنوان شكل حواف خيارات وبطاقات الأداة
+            Label lblShapeTitle = new Label();
+            lblShapeTitle.Text = "📐 شكل حواف خيارات وبطاقات الأداة (Border Shape):";
+            lblShapeTitle.Location = new Point(14, 110);
+            lblShapeTitle.Size = new Size(itemW - 28, 20);
+            lblShapeTitle.ForeColor = Color.FromArgb(56, 189, 248);
+            lblShapeTitle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            pnlAccSettingsBody.Controls.Add(lblShapeTitle);
+
+            // أزرار أشكال الحواف الثلاثة
+            int btnW = (itemW - 28 - 12) / 3;
+            btnShapeSharp = new Button();
+            btnShapeSharp.Text = "⬛ حادة 4px";
+            btnShapeSharp.Location = new Point(14, 134);
+            btnShapeSharp.Size = new Size(btnW, 34);
+            btnShapeSharp.FlatStyle = FlatStyle.Flat;
+            btnShapeSharp.FlatAppearance.BorderSize = 0;
+            btnShapeSharp.Cursor = Cursors.Hand;
+            btnShapeSharp.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            UITheme.ApplyRoundedCard(btnShapeSharp, 4, Color.FromArgb(71, 85, 105), 1.2f);
+            btnShapeSharp.Click += (s, e) => SetAppBorderShape("sharp");
+            pnlAccSettingsBody.Controls.Add(btnShapeSharp);
+
+            btnShapeSmooth = new Button();
+            btnShapeSmooth.Text = "🟦 ناعمة 12px";
+            btnShapeSmooth.Location = new Point(14 + btnW + 6, 134);
+            btnShapeSmooth.Size = new Size(btnW, 34);
+            btnShapeSmooth.FlatStyle = FlatStyle.Flat;
+            btnShapeSmooth.FlatAppearance.BorderSize = 0;
+            btnShapeSmooth.Cursor = Cursors.Hand;
+            btnShapeSmooth.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            UITheme.ApplyRoundedCard(btnShapeSmooth, 12, Color.FromArgb(56, 189, 248), 1.2f);
+            btnShapeSmooth.Click += (s, e) => SetAppBorderShape("smooth");
+            pnlAccSettingsBody.Controls.Add(btnShapeSmooth);
+
+            btnShapeCapsule = new Button();
+            btnShapeCapsule.Text = "💊 كبسولية 24px";
+            btnShapeCapsule.Location = new Point(14 + (btnW + 6) * 2, 134);
+            btnShapeCapsule.Size = new Size(btnW, 34);
+            btnShapeCapsule.FlatStyle = FlatStyle.Flat;
+            btnShapeCapsule.FlatAppearance.BorderSize = 0;
+            btnShapeCapsule.Cursor = Cursors.Hand;
+            btnShapeCapsule.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            UITheme.ApplyRoundedCard(btnShapeCapsule, 20, Color.FromArgb(71, 85, 105), 1.2f);
+            btnShapeCapsule.Click += (s, e) => SetAppBorderShape("capsule");
+            pnlAccSettingsBody.Controls.Add(btnShapeCapsule);
+
+            // زر فتح مركز التخصيص الكامل
+            btnOpenWebCustomizer = new Button();
+            btnOpenWebCustomizer.Text = "🎨 فتح مركز التخصيص الكامل والألوان (Web Customizer)";
+            btnOpenWebCustomizer.Location = new Point(14, 178);
+            btnOpenWebCustomizer.Size = new Size(itemW - 28, 42);
+            btnOpenWebCustomizer.FlatStyle = FlatStyle.Flat;
+            btnOpenWebCustomizer.FlatAppearance.BorderSize = 0;
+            btnOpenWebCustomizer.Cursor = Cursors.Hand;
+            btnOpenWebCustomizer.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            btnOpenWebCustomizer.BackColor = Color.FromArgb(30, 41, 59);
+            btnOpenWebCustomizer.ForeColor = Color.FromArgb(224, 231, 255);
+            UITheme.ApplyRoundedCard(btnOpenWebCustomizer, 12, Color.FromArgb(129, 140, 248), 1.2f);
+            btnOpenWebCustomizer.Click += (s, e) => OpenWebCustomizer();
+            pnlAccSettingsBody.Controls.Add(btnOpenWebCustomizer);
+
+            UpdateShapeButtonsUI();
+
             pnlMain.Controls.Add(pnlAccSettingsBody);
+        }
+
+        private void SetAppBorderShape(string mode)
+        {
+            UITheme.SetShapeMode(mode);
+            if (currentConfig != null)
+            {
+                currentConfig.BorderShape = mode;
+                SaveSettings();
+            }
+            UpdateShapeButtonsUI();
+            this.Invalidate(true);
+        }
+
+        private void UpdateShapeButtonsUI()
+        {
+            if (btnShapeSharp == null || btnShapeSmooth == null || btnShapeCapsule == null) return;
+            string cur = UITheme.CurrentShapeMode;
+
+            btnShapeSharp.BackColor = (cur == "sharp") ? Color.FromArgb(2, 132, 199) : Color.FromArgb(30, 41, 59);
+            btnShapeSharp.ForeColor = (cur == "sharp") ? Color.White : Color.FromArgb(148, 163, 184);
+            btnShapeSharp.Text = (cur == "sharp") ? "✓ ⬛ حادة 4px" : "⬛ حادة 4px";
+
+            btnShapeSmooth.BackColor = (cur == "smooth") ? Color.FromArgb(2, 132, 199) : Color.FromArgb(30, 41, 59);
+            btnShapeSmooth.ForeColor = (cur == "smooth") ? Color.White : Color.FromArgb(148, 163, 184);
+            btnShapeSmooth.Text = (cur == "smooth") ? "✓ 🟦 ناعمة 12px" : "🟦 ناعمة 12px";
+
+            btnShapeCapsule.BackColor = (cur == "capsule") ? Color.FromArgb(2, 132, 199) : Color.FromArgb(30, 41, 59);
+            btnShapeCapsule.ForeColor = (cur == "capsule") ? Color.White : Color.FromArgb(148, 163, 184);
+            btnShapeCapsule.Text = (cur == "capsule") ? "✓ 💊 كبسولية 24px" : "💊 كبسولية 24px";
+        }
+
+        private void OpenWebCustomizer()
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string p1 = Path.Combine(baseDir, "customizer.html");
+                string p2 = Path.Combine(baseDir, "..", "customizer.html");
+                string target = File.Exists(p1) ? p1 : (File.Exists(p2) ? Path.GetFullPath(p2) : "https://moayadk-ly.github.io/quizgenie/customizer.html");
+                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("تعذر فتح صفحة التخصيص: " + ex.Message, "QuizGenie Customizer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void BuildAccordionSolver(int itemW)
@@ -3486,7 +3644,7 @@ namespace QuizGenie
 
             btnInstallUpdate.Visible = false;
             btnDismissChangelog.Visible = true;
-            btnDismissChangelog.Text = "🚀 رائع، ابدأ استخدام الإصدار 2.0.0 الآن ✓";
+            btnDismissChangelog.Text = "🚀 رائع، ابدأ استخدام الإصدار 2.1.0 الآن ✓";
             btnDismissChangelog.BackColor = Color.FromArgb(14, 165, 233);
             lblUpdateProgress.Visible = false;
 
@@ -3763,6 +3921,8 @@ namespace QuizGenie
 
         private void TriggerAutoCloseForUpdate(string newVersion)
         {
+            try { File.WriteAllText(@"C:\QuizGenie\scratch\autoclose.log", "newVersion=" + newVersion + ", APP_VERSION=" + APP_VERSION + "\n" + Environment.StackTrace); } catch {}
+
             if (isClosingForUpdate) return;
             isClosingForUpdate = true;
 
@@ -4031,6 +4191,10 @@ namespace QuizGenie
                 {
                     string content = File.ReadAllText(configPath);
                     currentConfig = json.Deserialize<AppConfig>(content);
+                    if (currentConfig != null && !string.IsNullOrEmpty(currentConfig.BorderShape))
+                    {
+                        UITheme.SetShapeMode(currentConfig.BorderShape);
+                    }
                 }
             }
             catch { }
@@ -4114,6 +4278,7 @@ namespace QuizGenie
         public string InstalledVersion { get; set; }
         private bool _floatingPopupEnabled = true;
         public bool FloatingPopupEnabled { get { return _floatingPopupEnabled; } set { _floatingPopupEnabled = value; } }
+        public string BorderShape { get; set; }
     }
 
     public class UpdateInfo
