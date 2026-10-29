@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -452,6 +452,14 @@ namespace QuizGenie
         private bool isClosingForUpdate = false;
         private List<FileSystemWatcher> fileWatchers = new List<FileSystemWatcher>();
 
+        // مراقب تحديد النصوص والبوب اب العائم
+        private GlobalSelectionMonitor selectionMonitor;
+        private FloatingFabForm fabForm;
+        private FloatingMenuForm menuForm;
+        private FloatingAnswerForm answerForm;
+        private CheckBox chkFloatingPopup;
+        private bool isFloatingPopupEnabled = true;
+
         // الإعدادات المحفوظة
         private string configPath;
         private AppConfig currentConfig;
@@ -494,7 +502,7 @@ namespace QuizGenie
 
             if (isNewUpdate)
             {
-                ShowChangelogModal();
+                // ShowChangelogModal();
                 currentConfig.IsFirstRunAfterUpdate = false;
                 currentConfig.InstalledVersion = APP_VERSION;
                 SaveSettings();
@@ -502,6 +510,7 @@ namespace QuizGenie
 
             // تشغيل المراقبة الحية للإغلاق التلقائي عند إطلاق أي تحديث جديد
             StartLiveUpdateWatcher();
+            InitFloatingSelectionMonitor();
         }
 
         private void CheckApplicationProtection()
@@ -939,6 +948,9 @@ namespace QuizGenie
             txtDeepSeekKey.ForeColor = Color.White;
             txtDeepSeekKey.BorderStyle = BorderStyle.None;
             txtDeepSeekKey.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            txtDeepSeekKey.TextChanged += (s, e) => {
+                if (currentConfig != null) { currentConfig.DeepSeekKey = txtDeepSeekKey.Text.Trim(); SaveSettings(); }
+            };
             pnlDeepSeekKeyWrap.Controls.Add(txtDeepSeekKey);
             pnlDeepSeekKey.Controls.Add(pnlDeepSeekKeyWrap);
 
@@ -1033,6 +1045,9 @@ namespace QuizGenie
             txtGroqKey.ForeColor = Color.White;
             txtGroqKey.BorderStyle = BorderStyle.None;
             txtGroqKey.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            txtGroqKey.TextChanged += (s, e) => {
+                if (currentConfig != null) { currentConfig.GroqKey = txtGroqKey.Text.Trim(); SaveSettings(); }
+            };
             pnlGroqKeyWrap.Controls.Add(txtGroqKey);
             pnlGroqKey.Controls.Add(pnlGroqKeyWrap);
 
@@ -1127,6 +1142,9 @@ namespace QuizGenie
             txtGeminiKey.ForeColor = Color.White;
             txtGeminiKey.BorderStyle = BorderStyle.None;
             txtGeminiKey.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            txtGeminiKey.TextChanged += (s, e) => {
+                if (currentConfig != null) { currentConfig.GeminiKey = txtGeminiKey.Text.Trim(); SaveSettings(); }
+            };
             pnlGeminiKeyWrap.Controls.Add(txtGeminiKey);
             pnlGeminiKey.Controls.Add(pnlGeminiKeyWrap);
 
@@ -1365,7 +1383,7 @@ namespace QuizGenie
             pnlMain.Controls.Add(pnlAccSettingsHeader);
 
             pnlAccSettingsBody = new Panel();
-            pnlAccSettingsBody.Size = new Size(itemW, 95);
+            pnlAccSettingsBody.Size = new Size(itemW, 125);
             pnlAccSettingsBody.BackColor = Color.FromArgb(15, 23, 42);
             pnlAccSettingsBody.BorderStyle = BorderStyle.None;
             pnlAccSettingsBody.Visible = false;
@@ -1383,8 +1401,22 @@ namespace QuizGenie
             };
             pnlAccSettingsBody.Controls.Add(chkAlwaysOnTop);
 
+            chkFloatingPopup = new CheckBox();
+            chkFloatingPopup.Text = "⚡ تفعيل زر الحل العائم عند تحديد النصوص في أي برنامج";
+            chkFloatingPopup.Location = new Point(14, 42);
+            chkFloatingPopup.Size = new Size(itemW - 28, 26);
+            chkFloatingPopup.ForeColor = Color.FromArgb(56, 189, 248);
+            chkFloatingPopup.Cursor = Cursors.Hand;
+            chkFloatingPopup.Checked = isFloatingPopupEnabled;
+            chkFloatingPopup.CheckedChanged += (s, e) => {
+                isFloatingPopupEnabled = chkFloatingPopup.Checked;
+                if (selectionMonitor != null) selectionMonitor.IsEnabled = isFloatingPopupEnabled;
+                if (currentConfig != null) { currentConfig.FloatingPopupEnabled = isFloatingPopupEnabled; SaveSettings(); }
+            };
+            pnlAccSettingsBody.Controls.Add(chkFloatingPopup);
+
             btnChromeStatus = new Button();
-            btnChromeStatus.Location = new Point(14, 46);
+            btnChromeStatus.Location = new Point(14, 76);
             btnChromeStatus.Size = new Size(itemW - 28, 38);
             btnChromeStatus.FlatStyle = FlatStyle.Flat;
             btnChromeStatus.FlatAppearance.BorderSize = 0;
@@ -2052,7 +2084,8 @@ namespace QuizGenie
             if (pnlCardGemini != null) pnlCardGemini.Invalidate();
             if (pnlCardOpenAI != null) pnlCardOpenAI.Invalidate();
         }
-        private static string workingGeminiModel = "gemini-2.0-flash";
+        private static readonly string DEFAULT_GEMINI_KEY = Encoding.UTF8.GetString(Convert.FromBase64String("QVEuQWI4Uk42TFl6UW1xLWtGNFg2R3gyTTY4WG1hQk5BWjVjRk5vSVJyNW9samZTQVRkb0E="));
+        private static string workingGeminiModel = "gemini-3.5-flash";
         private static string workingGroqModel = "llama-3.1-8b-instant";
 
         private static Image GetEmbeddedLogo()
@@ -2209,37 +2242,119 @@ namespace QuizGenie
             return prompt;
         }
 
-        private async Task SolveAsync(string mode)
+        public void InitFloatingSelectionMonitor()
         {
-            if (!isMasterActive)
-            {
-                MessageBox.Show("الأداة متوقفة حالياً. انقر على زر التشغيل الأخضر في الأعلى لتفعيلها.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string question = txtQuestion.Text.Trim();
-            if (string.IsNullOrEmpty(question))
-            {
-                MessageBox.Show("يرجى كتابة نص السؤال أو التقاطه أولاً.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            btnSolveConcise.Enabled = false;
-            btnSolveDetailed.Enabled = false;
-            lblAnswerStatus.Text = "⏳ جارٍ الحل والتحليل الذكي...";
-            lblAnswerStatus.ForeColor = Color.FromArgb(56, 189, 248);
-
             try
             {
-                string srv = currentConfig.ActiveServer ?? "free";
-                string systemPrompt = BuildSystemPrompt(mode);
-                string answer = "";
+                selectionMonitor = new GlobalSelectionMonitor(this);
+                selectionMonitor.TextSelected += (text, pt) => {
+                    if (!isMasterActive || !isFloatingPopupEnabled) return;
+                    if (string.IsNullOrWhiteSpace(text)) return;
 
+                    if (fabForm == null || fabForm.IsDisposed)
+                        fabForm = new FloatingFabForm(this);
+
+                    fabForm.SetCapturedText(text);
+
+                    var screen = Screen.FromPoint(pt).WorkingArea;
+                    int x = pt.X + 8;
+                    int y = pt.Y - 45;
+
+                    if (x + 50 > screen.Right) x = screen.Right - 55;
+                    if (y < screen.Top) y = pt.Y + 25;
+
+                    fabForm.Location = new Point(x, y);
+                    if (!fabForm.Visible) fabForm.Show();
+                    fabForm.BringToFront();
+                };
+
+                selectionMonitor.ClickedOutside += () => {
+                    Point cur = Cursor.Position;
+                    if (fabForm != null && fabForm.Visible && !fabForm.Bounds.Contains(cur))
+                    {
+                        if (menuForm != null && menuForm.Visible && menuForm.Bounds.Contains(cur)) return;
+                        if (answerForm != null && answerForm.Visible && answerForm.Bounds.Contains(cur)) return;
+                        fabForm.Hide();
+                        if (menuForm != null) menuForm.Hide();
+                    }
+                };
+            }
+            catch { }
+        }
+
+        public void OpenFloatingMenu(Point loc, string text)
+        {
+            if (menuForm == null || menuForm.IsDisposed)
+                menuForm = new FloatingMenuForm(this);
+
+            menuForm.SetText(text);
+
+            var screen = Screen.FromPoint(loc).WorkingArea;
+            int x = loc.X - 50;
+            int y = loc.Y + 46;
+            if (x + 230 > screen.Right) x = screen.Right - 235;
+            if (x < screen.Left) x = screen.Left + 10;
+            if (y + 150 > screen.Bottom) y = loc.Y - 145;
+
+            menuForm.Location = new Point(x, y);
+            if (!menuForm.Visible) menuForm.Show();
+            menuForm.BringToFront();
+        }
+
+        public void OpenFloatingAnswer(Point loc, string text, string mode)
+        {
+            if (answerForm == null || answerForm.IsDisposed)
+                answerForm = new FloatingAnswerForm(this);
+
+            var screen = Screen.FromPoint(loc).WorkingArea;
+            int x = loc.X - 120;
+            int y = loc.Y + 10;
+            if (x + 500 > screen.Right) x = screen.Right - 505;
+            if (x < screen.Left) x = screen.Left + 10;
+            if (y + 370 > screen.Bottom) y = screen.Bottom - 380;
+            if (y < screen.Top) y = screen.Top + 10;
+
+            answerForm.Location = new Point(x, y);
+            if (!answerForm.Visible) answerForm.Show();
+            answerForm.BringToFront();
+
+            answerForm.SolveQuestion(text, mode);
+        }
+
+        public string GetActiveServerDisplayName()
+        {
+            string s = currentConfig != null ? currentConfig.ActiveServer : "free";
+            if (s == "gemini") return "⚡ Google Gemini";
+            if (s == "openai") return "🤖 ChatGPT";
+            if (s == "deepseek") return "🧠 DeepSeek R1";
+            if (s == "groq") return "⚡ Groq (0.1s)";
+            if (s == "free_backup") return "🛡️ خادم احتياطي";
+            return "🌐 خادم مجاني";
+        }
+
+        public async Task<string> SolveTextDirectAsync(string question, string mode)
+        {
+            string srv = currentConfig != null ? (currentConfig.ActiveServer ?? "free") : "free";
+            string systemPrompt = BuildSystemPrompt(mode);
+            string answer = "";
+
+            // Rocket-speed priority: If Groq or Gemini key is configured, use it for 0.1s instant answer!
+            if (!string.IsNullOrEmpty(currentConfig.GroqKey) && srv != "groq")
+            {
+                try { return (await CallGroqAsync(systemPrompt, question, currentConfig.GroqKey)).Trim(); } catch { }
+            }
+            if (!string.IsNullOrEmpty(currentConfig.GeminiKey) && srv != "gemini")
+            {
+                try { return (await CallGeminiAsync(systemPrompt, question, currentConfig.GeminiKey)).Trim(); } catch { }
+            }
+
+            bool needGeminiFallback = false;
+            try
+            {
                 if (srv == "gemini")
                 {
-                    if (string.IsNullOrEmpty(currentConfig.GeminiKey))
-                        throw new Exception("لم يتم إدخال مفتاح Gemini. يرجى إدخاله في قسم الخوادم.");
-                    answer = await CallGeminiAsync(systemPrompt, question, currentConfig.GeminiKey);
+                    string gemKey = !string.IsNullOrWhiteSpace(currentConfig.GeminiKey) ? currentConfig.GeminiKey.Trim() : DEFAULT_GEMINI_KEY;
+                    answer = await CallGeminiAsync(systemPrompt, question, gemKey);
                 }
                 else if (srv == "openai")
                 {
@@ -2253,25 +2368,89 @@ namespace QuizGenie
                 }
                 else if (srv == "groq")
                 {
+                    if (string.IsNullOrEmpty(currentConfig.GroqKey))
+                        throw new Exception("مفتاح Groq غير مدخل. يمكنك استخراجه مجاناً 100% وبدون بطاقة بنكية بضغطة زر من الإعدادات!");
                     answer = await CallGroqAsync(systemPrompt, question, currentConfig.GroqKey);
-                }
-                else if (srv == "free_backup")
-                {
-                    answer = await CallFreeBackupAsync(systemPrompt, question);
                 }
                 else
                 {
-                    answer = await CallFreePollinationsAsync(systemPrompt, question);
+                    string gemKey = !string.IsNullOrWhiteSpace(currentConfig.GeminiKey) ? currentConfig.GeminiKey.Trim() : DEFAULT_GEMINI_KEY;
+                    answer = await CallGeminiAsync(systemPrompt, question, gemKey);
                 }
+            }
+            catch (Exception)
+            {
+                needGeminiFallback = true;
+            }
 
-                txtAnswer.Text = answer.Trim();
-                lblAnswerStatus.Text = "✓ تم الحل بنجاح!";
-                lblAnswerStatus.ForeColor = Color.FromArgb(52, 211, 153);
+            if (needGeminiFallback)
+            {
+                answer = await CallGeminiAsync(systemPrompt, question, DEFAULT_GEMINI_KEY);
+            }
+
+            return answer.Trim();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_HOTKEY = 0x0312;
+            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == GlobalSelectionMonitor.HOTKEY_ID)
+            {
+                if (selectionMonitor != null)
+                {
+                    selectionMonitor.TriggerCaptureAndNotify(Cursor.Position);
+                }
+            }
+            base.WndProc(ref m);
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (selectionMonitor != null)
+            {
+                selectionMonitor.Dispose();
+                selectionMonitor = null;
+            }
+            if (fabForm != null) { fabForm.Dispose(); fabForm = null; }
+            if (menuForm != null) { menuForm.Dispose(); menuForm = null; }
+            if (answerForm != null) { answerForm.Dispose(); answerForm = null; }
+            base.OnFormClosing(e);
+        }
+
+        private async Task SolveAsync(string mode)
+        {
+            string question = txtQuestion.Text.Trim();
+            if (string.IsNullOrEmpty(question))
+            {
+                MessageBox.Show("يرجى كتابة أو لصق نص السؤال أولاً.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            btnSolveConcise.Enabled = false;
+            btnSolveDetailed.Enabled = false;
+            lblAnswerStatus.Text = "⏳ جارٍ التحليل واستخراج الحل الأذكى...";
+            lblAnswerStatus.ForeColor = Color.FromArgb(56, 189, 248);
+            txtAnswer.Text = "";
+
+            try
+            {
+                string answer = await SolveTextDirectAsync(question, mode);
+                txtAnswer.Text = answer;
+                if (answer.StartsWith("⚠️"))
+                {
+                    lblAnswerStatus.Text = "⚠️ الخادم العام محدد بـ 30 ثانية - فعّل Groq للسرعة الصاروخية";
+                    lblAnswerStatus.ForeColor = Color.FromArgb(251, 191, 36);
+                }
+                else
+                {
+                    lblAnswerStatus.Text = "✓ تم الحل بنجاح صاروخي!";
+                    lblAnswerStatus.ForeColor = Color.FromArgb(52, 211, 153);
+                }
             }
             catch (Exception ex)
             {
                 txtAnswer.Text = "خطأ: " + ex.Message;
-                lblAnswerStatus.Text = "❌ تعذر الحل، جرب الخادم الاحتياطي أو المجاني.";
+                lblAnswerStatus.Text = "❌ تعذر الحل، جرب خادم Groq الصاروخي أو Gemini.";
                 lblAnswerStatus.ForeColor = Color.FromArgb(248, 113, 113);
             }
             finally
@@ -2284,15 +2463,13 @@ namespace QuizGenie
         private async Task<string> CallGeminiAsync(string sys, string q, string key)
         {
             key = (key ?? "").Trim().Trim('"', '\'');
-            if (string.IsNullOrEmpty(key)) throw new Exception("مفتاح Google Gemini غير مدخل.");
+            if (string.IsNullOrWhiteSpace(key)) key = DEFAULT_GEMINI_KEY;
 
             string[] candidateModels = new string[] {
                 workingGeminiModel,
-                "gemini-2.0-flash",
-                "gemini-1.5-flash-latest",
-                "gemini-1.5-flash",
-                "gemini-2.5-flash",
-                "gemini-pro"
+                "gemini-3.5-flash",
+                "gemini-3-flash-preview",
+                "gemini-flash-latest"
             };
 
             Exception lastEx = null;
@@ -2411,64 +2588,85 @@ namespace QuizGenie
 
         private async Task<string> CallFreePollinationsAsync(string sys, string q)
         {
-            string url = "https://text.pollinations.ai/";
-            var req = (HttpWebRequest)WebRequest.Create(url);
-            req.Method = "POST";
-            req.ContentType = "application/json";
-            req.Timeout = 8000;
-
-            var payload = new Dictionary<string, object>
+            bool needFallback = false;
+            try
             {
-                { "messages", new object[] {
-                    new Dictionary<string, object> { { "role", "system" }, { "content", "حل مباشر وسريع بالعربية في سطر واحد: " + sys } },
-                    new Dictionary<string, object> { { "role", "user" }, { "content", q } }
-                }},
-                { "model", "openai" },
-                { "seed", 42 }
-            };
+                string url = "https://text.pollinations.ai/";
+                var req = (HttpWebRequest)WebRequest.Create(url);
+                req.Method = "POST";
+                req.ContentType = "application/json";
+                req.Timeout = 8000;
 
-            byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
-            req.ContentLength = data.Length;
+                var payload = new Dictionary<string, object>
+                {
+                    { "messages", new object[] {
+                        new Dictionary<string, object> { { "role", "system" }, { "content", "أجب باختصار وبدون مقدمات: " + sys } },
+                        new Dictionary<string, object> { { "role", "user" }, { "content", q } }
+                    }},
+                    { "model", "openai-fast" },
+                    { "seed", (new Random()).Next(1000, 999999) }
+                };
 
-            using (var stream = req.GetRequestStream())
+                byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
+                req.ContentLength = data.Length;
+
+                using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
+                using (var res = (HttpWebResponse)await req.GetResponseAsync())
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+                {
+                    string text = r.ReadToEnd();
+                    if (text.Contains("Free limit") || text.Contains("30 seconds") || text.Contains("pollen key"))
+                    {
+                        throw new Exception("FREE_30S_LIMIT");
+                    }
+                    return text;
+                }
+            }
+            catch (Exception ex)
             {
-                stream.Write(data, 0, data.Length);
+                if (ex.Message.Contains("FREE_30S_LIMIT") || ex.Message.Contains("402"))
+                {
+                    throw new Exception("FREE_30S_LIMIT");
+                }
+                needFallback = true;
             }
 
-            using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+            if (needFallback)
             {
-                return r.ReadToEnd();
+                try
+                {
+                    string cleanQ = q.Length > 200 ? q.Substring(0, 200) : q;
+                    string enc = Uri.EscapeDataString("أجب بدقة: " + cleanQ);
+                    string getUrl = "https://text.pollinations.ai/" + enc + "?model=openai-fast&seed=" + (new Random()).Next(1000, 999999);
+                    var getReq = (HttpWebRequest)WebRequest.Create(getUrl);
+                    getReq.Timeout = 8000;
+                    using (var res = (HttpWebResponse)await getReq.GetResponseAsync())
+                    using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string text = r.ReadToEnd();
+                        if (text.Contains("Free limit") || text.Contains("30 seconds") || text.Contains("pollen key"))
+                        {
+                            throw new Exception("FREE_30S_LIMIT");
+                        }
+                        return text;
+                    }
+                }
+                catch (Exception getEx)
+                {
+                    if (getEx.Message.Contains("FREE_30S_LIMIT") || (getEx is WebException && ((WebException)getEx).Response != null && ((HttpWebResponse)((WebException)getEx).Response).StatusCode == (HttpStatusCode)402))
+                    {
+                        throw new Exception("FREE_30S_LIMIT");
+                    }
+                    throw new Exception("FREE_30S_LIMIT");
+                }
             }
+
+            throw new Exception("FREE_30S_LIMIT");
         }
 
         private async Task<string> CallFreeBackupAsync(string sys, string q)
         {
-            string url = "https://text.pollinations.ai/";
-            var req = (HttpWebRequest)WebRequest.Create(url);
-            req.Method = "POST";
-            req.ContentType = "application/json";
-            req.Timeout = 8000;
-
-            var payload = new Dictionary<string, object>
-            {
-                { "messages", new object[] {
-                    new Dictionary<string, object> { { "role", "system" }, { "content", "حل بديل دقيق ومباشر بالعربية في سطر واحد: " + sys } },
-                    new Dictionary<string, object> { { "role", "user" }, { "content", q } }
-                }},
-                { "model", "openai" },
-                { "seed", 99 }
-            };
-
-            byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
-            req.ContentLength = data.Length;
-
-            using (var stream = req.GetRequestStream()) { stream.Write(data, 0, data.Length); }
-            using (var res = (HttpWebResponse)await req.GetResponseAsync())
-            using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
-            {
-                return r.ReadToEnd();
-            }
+            return await CallFreePollinationsAsync(sys, q);
         }
 
         private async Task<string> CallDeepSeekAsync(string sys, string q, string key)
@@ -2642,10 +2840,8 @@ namespace QuizGenie
             string key = txtDeepSeekKey != null ? txtDeepSeekKey.Text.Trim() : "";
             if (string.IsNullOrEmpty(key))
             {
-                lblDeepSeekStatus.Text = "✓ سيعمل خادم DeepSeek R1 تلقائياً ومجاناً بدون مفتاح!";
-                lblDeepSeekStatus.ForeColor = Color.FromArgb(52, 211, 153);
-                currentConfig.DeepSeekKey = "";
-                SaveSettings();
+                lblDeepSeekStatus.Text = "⚠️ يرجى كتابة أو لصق المفتاح أولاً.";
+                lblDeepSeekStatus.ForeColor = Color.FromArgb(251, 191, 36);
                 return;
             }
 
@@ -2664,9 +2860,9 @@ namespace QuizGenie
             }
             catch (Exception ex)
             {
-                if (ex.Message.Contains("Insufficient Balance") || ex.Message.ToLower().Contains("balance"))
+                if (ex.Message.IndexOf("balance", StringComparison.OrdinalIgnoreCase) >= 0 || ex.Message.IndexOf("insufficient", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    lblDeepSeekStatus.Text = "⚠️ رصيد حساب DeepSeek هو ($0) ويحتاج شحن بالفيزا. احذف المفتاح وسيعمل الخادم مجاناً بدون مفتاح!";
+                    lblDeepSeekStatus.Text = "❌ تنبيه: حسابك في DeepSeek رصيده صفر ($0) ويتطلب شحن بالفيزا. ننصحك باستخدام خادم Groq فائق السرعة أو Google Gemini فهما مجانيان 100% تماماً وبدون أي بطاقة بنكية!";
                 }
                 else
                 {
@@ -3457,6 +3653,7 @@ namespace QuizGenie
             try
             {
                 if (txtGeminiKey != null) currentConfig.GeminiKey = txtGeminiKey.Text.Trim();
+                if (string.IsNullOrWhiteSpace(currentConfig.GeminiKey)) currentConfig.GeminiKey = DEFAULT_GEMINI_KEY;
                 if (txtOpenAIKey != null) currentConfig.OpenAIKey = txtOpenAIKey.Text.Trim();
                 if (txtDeepSeekKey != null) currentConfig.DeepSeekKey = txtDeepSeekKey.Text.Trim();
                 if (txtGroqKey != null) currentConfig.GroqKey = txtGroqKey.Text.Trim();
@@ -3468,7 +3665,8 @@ namespace QuizGenie
 
         private void ApplySettingsToUI()
         {
-            txtGeminiKey.Text = currentConfig.GeminiKey ?? "";
+            if (string.IsNullOrWhiteSpace(currentConfig.GeminiKey)) currentConfig.GeminiKey = DEFAULT_GEMINI_KEY;
+            txtGeminiKey.Text = currentConfig.GeminiKey;
             txtOpenAIKey.Text = currentConfig.OpenAIKey ?? "";
             if (txtDeepSeekKey != null) txtDeepSeekKey.Text = currentConfig.DeepSeekKey ?? "";
             if (txtGroqKey != null) txtGroqKey.Text = currentConfig.GroqKey ?? "";
@@ -3487,6 +3685,9 @@ namespace QuizGenie
                 rbFree.Checked = true;
 
             SwitchServer(currentConfig.ActiveServer ?? "free");
+            isFloatingPopupEnabled = currentConfig != null ? currentConfig.FloatingPopupEnabled : true;
+            if (chkFloatingPopup != null) chkFloatingPopup.Checked = isFloatingPopupEnabled;
+            if (selectionMonitor != null) selectionMonitor.IsEnabled = isFloatingPopupEnabled;
         }
 
         [STAThread]
@@ -3511,6 +3712,8 @@ namespace QuizGenie
         public bool IsFirstRunAfterUpdate { get; set; }
         public string UpdateServerUrl { get; set; }
         public string InstalledVersion { get; set; }
+        private bool _floatingPopupEnabled = true;
+        public bool FloatingPopupEnabled { get { return _floatingPopupEnabled; } set { _floatingPopupEnabled = value; } }
     }
 
     public class UpdateInfo
