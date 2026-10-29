@@ -458,54 +458,61 @@
         </div>
       </div>
 
-      <!-- القائمة 5: ماسح الاختبارات الذكي والتلوين الثلاثي -->
+      <!-- القائمة الجديدة: ماسح الامتحانات الشامل والتناظر اللفظي الذكي -->
       <div class="accordion-item item-scanner" id="accItemExamScanner">
         <div class="accordion-header" data-target="accItemExamScanner">
           <div class="accordion-title-group">
-            <span class="accordion-icon icon-scanner">🎯</span>
+            <span class="accordion-icon" style="color: #38bdf8;">🔍</span>
             <div class="accordion-text">
-              <span class="accordion-title">ماسح الاختبارات الذكي والتلوين الثلاثي</span>
-              <span class="accordion-subtitle">🟡 السؤال | 🟢 الصحيح | 🔴 الخاطئ</span>
+              <span class="accordion-title">ماسح الامتحانات الشامل الذكي</span>
+              <span class="accordion-subtitle">حل الشاشة، التناظر اللفظي، والدوائر الحمراء</span>
             </div>
           </div>
           <div class="accordion-meta">
-            <span class="accordion-badge" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);">Alt+Q</span>
+            <span class="accordion-badge" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid #0284c7;">جديد ⚡</span>
             <span class="accordion-chevron">▾</span>
           </div>
         </div>
         <div class="accordion-body">
-          <div style="background:rgba(15,23,42,0.7); border:1px solid #334155; border-radius:10px; padding:10px; margin-bottom:12px;">
-            <div style="font-size:11.5px; font-weight:700; color:#38bdf8; margin-bottom:6px;">🎨 نظام التمييز اللوني الذكي في صفحة الامتحان:</div>
-            <div style="display:flex; flex-direction:column; gap:6px; font-size:11px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#fbbf24; box-shadow:0 0 6px #fbbf24;"></span>
-                <span style="color:#fde68a;"><strong>إطار أصفر ذهبي:</strong> يحدد نص السؤال المؤكد الذي تم اكتشافه.</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#10b981; box-shadow:0 0 6px #10b981;"></span>
-                <span style="color:#6ee7b7;"><strong>إطار أخضر متوهج:</strong> يضيء خيار الإجابة الصحيحة مع علامة ✔️.</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#ef4444;"></span>
-                <span style="color:#fca5a5;"><strong>إطار أحمر متقطع:</strong> يستبعد الخيارات الخاطئة والمضللة مع علامة ✖.</span>
-              </div>
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b; border-radius: 10px; padding: 10px; margin-bottom: 12px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">🎯 اختيار نمط الحل المسبق للماسح:</div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" id="scannerModeConciseBtn" style="flex: 1; padding: 7px; font-size: 11.5px; background: #0284c7; border: 1px solid #38bdf8; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 700;">⚡ مباشر بدون فلسفة</button>
+              <button type="button" id="scannerModeDetailedBtn" style="flex: 1; padding: 7px; font-size: 11.5px; background: #111827; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600;">📖 مفصل مع الشرح</button>
             </div>
           </div>
 
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <button id="btnTriggerExamScan" type="button" style="flex:2; background:linear-gradient(135deg, #0284c7, #4f46e5); border:1px solid #38bdf8; color:#fff; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 15px rgba(2,132,199,0.35);">
-              <span>🎯</span>
-              <span>فحص وتلوين السؤال الآن (Alt+Q)</span>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+            <button type="button" id="btnTriggerLiveScan" style="background: linear-gradient(135deg, #0284c7, #4338ca); border: 1.5px solid #38bdf8; color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);">
+              <span>⚡</span>
+              <span>مسح وحل السؤال المعروض في الصفحة الآن</span>
             </button>
-            <button id="btnClearExamHighlights" type="button" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; padding:9px 10px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer;">
-              <span>✖ مسح</span>
+            <button type="button" id="btnTriggerAreaSnip" style="background: #111827; border: 1px solid #38bdf8; color: #38bdf8; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span>📸</span>
+              <span>تحديد منطقة حرة في الشاشة (أداة القص)</span>
+            </button>
+            <button type="button" id="btnClearPageHighlights" style="background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>✖</span>
+              <span>مسح التظليلات والدوائر من الصفحة</span>
             </button>
           </div>
-          <div style="font-size:10px; color:#94a3b8; text-align:center;">💡 يمكنك الضغط مباشرة على اختصار <strong>Alt+Q</strong> في لوحة المفاتيح أثناء الاختبار.</div>
+
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #fca5a5; line-height: 1.5; margin-bottom: 10px;">
+            🔴 <strong>نظام التمييز الصارم:</strong> السؤال المقروء يظهر حوله دائرة حمراء متوهجة، والخيار الصحيح يضيء بالأخضر المتوهج فوراً دون أي خلط.
+          </div>
+
+          <!-- خانة التناظر اللفظي السريع -->
+          <div style="border-top: 1px solid #1e293b; padding-top: 10px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: #fbbf24; margin-bottom: 6px;">⚡ محلل التناظر اللفظي السريع (القدرات):</div>
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="quickAnalogyInput" placeholder="اكتب الكلمتين هنا (مثال: لحاء : شجرة)..." style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; padding: 6px 10px; font-size: 12px; direction: rtl;" />
+              <button type="button" id="btnSolveQuickAnalogy" style="background: #f59e0b; border: none; color: #000; font-weight: 700; font-size: 11.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;">حل التناظر 🎯</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- القائمة 6: تجربة وحل فوري للسؤال من داخل الإضافة -->
+      <!-- القائمة 5: تجربة وحل فوري للسؤال من داخل الإضافة -->
       <div class="accordion-item item-solver" id="accItemQuickSolver">
         <div class="accordion-header" data-target="accItemQuickSolver">
           <div class="accordion-title-group">
