@@ -892,4 +892,61 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2000);
     });
   });
+
+  // 12. إدارة نافذة وإشعارات التحديث للإصدار 2.0.0
+  const updateAnnouncementBanner = document.getElementById('updateAnnouncementBanner');
+  const btnOpenUpdatePage = document.getElementById('btnOpenUpdatePage');
+  const updateNoticeModal = document.getElementById('updateNoticeModal');
+  const closeUpdateModalBtn = document.getElementById('closeUpdateModalBtn');
+  const btnExploreFullUpdate = document.getElementById('btnExploreFullUpdate');
+  const btnDismissUpdateModal = document.getElementById('btnDismissUpdateModal');
+
+  function openChangelogPage() {
+    try {
+      chrome.tabs.create({ url: chrome.runtime.getURL('update.html') });
+    } catch (e) {
+      console.warn('Error opening update tab:', e);
+    }
+  }
+
+  function dismissUpdateNotice() {
+    if (updateNoticeModal) updateNoticeModal.classList.add('hidden');
+    chrome.storage.local.set({ hasSeenUpdate200: true, lastSeenVersion: '2.0.0' });
+  }
+
+  if (btnOpenUpdatePage) {
+    btnOpenUpdatePage.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openChangelogPage();
+    });
+  }
+
+  if (updateAnnouncementBanner) {
+    updateAnnouncementBanner.addEventListener('click', () => {
+      openChangelogPage();
+    });
+  }
+
+  if (closeUpdateModalBtn) closeUpdateModalBtn.addEventListener('click', dismissUpdateNotice);
+  if (btnDismissUpdateModal) btnDismissUpdateModal.addEventListener('click', dismissUpdateNotice);
+  if (btnExploreFullUpdate) {
+    btnExploreFullUpdate.addEventListener('click', () => {
+      dismissUpdateNotice();
+      openChangelogPage();
+    });
+  }
+
+  // فحص ما إذا كان المستخدم لم يشاهد نافذة التحديث بعد
+  try {
+    chrome.storage.local.get(['hasSeenUpdate200', 'lastSeenVersion'], (data) => {
+      const safeData = data || {};
+      if (!safeData.hasSeenUpdate200 || safeData.lastSeenVersion !== '2.0.0') {
+        if (updateNoticeModal) {
+          updateNoticeModal.classList.remove('hidden');
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('Update modal check error:', err);
+  }
 });
