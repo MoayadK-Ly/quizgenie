@@ -118,14 +118,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     updates.pendingUpdateNotice = true;
 
     chrome.storage.local.set(updates, () => {
-      // إطلاق شاشة التحديث تلقائياً في تبويب جديد لإعلام المستخدم بكل الميزات الجديدة
-      try {
-        chrome.tabs.create({
-          url: chrome.runtime.getURL('update.html')
-        });
-      } catch (tabErr) {
-        console.warn('Failed to open update tab:', tabErr);
-      }
+      // تم إلغاء فتح التبويب التلقائي حتى لا يزعج المستخدم عند الضغط على زر التحديث أو إعادة التحميل
 
       // إرسال إشعار سطح المكتب من كروم
       try {
@@ -223,6 +216,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Message listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'SILENT_UPDATE_RELOAD') {
+    answerCache.clear();
+    chrome.storage.local.set({ lastSeenVersion: '2.1.0' }, () => {
+      sendResponse({ success: true, version: '2.1.0' });
+    });
+    return true;
+  }
+
   if (request.action === 'GET_STATE' || request.action === 'GET_SETTINGS') {
     chrome.storage.local.get([
       'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
