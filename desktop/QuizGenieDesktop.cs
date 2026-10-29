@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -309,7 +309,7 @@ namespace QuizGenie
 
     public class MainForm : Form
     {
-        public const string APP_VERSION = "2.0.0";
+        public const string APP_VERSION = "2.1.0";
         public const string DEFAULT_UPDATE_URL = "https://raw.githubusercontent.com/MoayadK-Ly/quizgenie/main/version.json";
 
         // اللوحة الرئيسية القابلة للتمرير
