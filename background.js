@@ -118,22 +118,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     updates.pendingUpdateNotice = true;
 
     chrome.storage.local.set(updates, () => {
-      // تم إلغاء فتح التبويب التلقائي حتى لا يزعج المستخدم عند الضغط على زر التحديث أو إعادة التحميل
-
-      // إرسال إشعار سطح المكتب من كروم
-      try {
-        if (chrome.notifications) {
-          chrome.notifications.create('qg_update_200', {
-            type: 'basic',
-            iconUrl: 'icons/icon128.png',
-            title: '🚀 تم تحديث QuizGenie إلى الإصدار 2.0.0!',
-            message: 'تمت إضافة نمطي تفكير منفصلين للحل، ميزة تصوير الشاشة F2، ملخص المراجعة، ونطق صوتي ذكي!',
-            priority: 2
-          });
-        }
-      } catch (notifErr) {
-        console.warn('Notification error:', notifErr);
-      }
+      // صامت تماماً بدون أي تبويبات أو إشعارات منبثقة مزعجة للمستخدم
     });
   });
 
