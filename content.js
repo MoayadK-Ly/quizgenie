@@ -1754,3 +1754,178 @@ setTimeout(() => {
     initExamScannerFab();
   }
 }, 1000);
+
+// --- مركز تخصيص المظهر وشكل الحواف والشريط العائم v2.1.0 ---
+let activeBorderShape = 'smooth';
+let activePrimaryColor = '#0284c7';
+let activeBgColor = '#0f172a';
+let activeGlowColor = '#10b981';
+let activeRingColor = '#ef4444';
+let isMiniToolbarEnabled = true;
+
+function loadThemeSettings() {
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get({
+      customBorderShape: 'smooth',
+      customPrimaryColor: '#0284c7',
+      customBgColor: '#0f172a',
+      customGlowColor: '#10b981',
+      customRingColor: '#ef4444',
+      customMiniToolbar: true
+    }, (data) => {
+      activeBorderShape = data.customBorderShape || 'smooth';
+      activePrimaryColor = data.customPrimaryColor || '#0284c7';
+      activeBgColor = data.customBgColor || '#0f172a';
+      activeGlowColor = data.customGlowColor || '#10b981';
+      activeRingColor = data.customRingColor || '#ef4444';
+      isMiniToolbarEnabled = data.customMiniToolbar !== false;
+
+      updatePageThemeVariables();
+      if (isMiniToolbarEnabled && extensionEnabled) {
+        ensureMiniExamToolbar();
+      } else {
+        removeMiniExamToolbar();
+      }
+    });
+  }
+}
+
+function updatePageThemeVariables() {
+  try {
+    let radiusPx = '12px';
+    if (activeBorderShape === 'sharp') radiusPx = '4px';
+    else if (activeBorderShape === 'capsule') radiusPx = '26px';
+
+    document.documentElement.style.setProperty('--qg-option-radius', radiusPx);
+    document.documentElement.style.setProperty('--qg-bar-primary', activePrimaryColor);
+    document.documentElement.style.setProperty('--qg-bar-bg', activeBgColor);
+    document.documentElement.style.setProperty('--qg-glow-color', activeGlowColor);
+    document.documentElement.style.setProperty('--qg-ring-color', activeRingColor);
+  } catch (e) {}
+}
+
+function ensureMiniExamToolbar() {
+  if (document.getElementById('quizgenie-mini-exam-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'quizgenie-mini-exam-bar';
+  bar.innerHTML = `
+    <span class="qg-drag-handle" title="اسحب لتحريك الشريط بحرية في الشاشة">⠿</span>
+    <button type="button" class="qg-mini-btn qg-mini-btn-concise" id="qgMiniBtnConcise" title="حل مباشر وفوري (0.0 ثانية)">⚡ مباشر</button>
+    <button type="button" class="qg-mini-btn qg-mini-btn-detailed" id="qgMiniBtnDetailed" title="حل مفصل مع الشرح">📖 مفصل</button>
+    <button type="button" class="qg-mini-btn qg-mini-btn-snip" id="qgMiniBtnSnip" title="أداة التحديد والقص الحر">✂️ قص</button>
+    <button type="button" class="qg-mini-btn-toggle" id="qgMiniBtnMinimize" title="تصغير لنقطة خفية">─</button>
+  `;
+  document.body.appendChild(bar);
+
+  // استعادة المكان المحفوظ
+  try {
+    const savedPos = JSON.parse(localStorage.getItem('quizgenie_mini_bar_pos') || 'null');
+    if (savedPos && savedPos.x !== undefined && savedPos.y !== undefined) {
+      bar.style.bottom = 'auto';
+      bar.style.left = savedPos.x + 'px';
+      bar.style.top = savedPos.y + 'px';
+    }
+  } catch (e) {}
+
+  // السحب الحر (Draggable)
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+  const handle = bar.querySelector('.qg-drag-handle');
+
+  if (handle) {
+    handle.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = bar.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+      bar.style.transition = 'none';
+      e.preventDefault();
+    });
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const newX = Math.max(10, Math.min(window.innerWidth - bar.offsetWidth - 10, initialX + dx));
+    const newY = Math.max(10, Math.min(window.innerHeight - bar.offsetHeight - 10, initialY + dy));
+    bar.style.bottom = 'auto';
+    bar.style.left = newX + 'px';
+    bar.style.top = newY + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      bar.style.transition = 'transform 0.2s, box-shadow 0.2s, opacity 0.2s';
+      const rect = bar.getBoundingClientRect();
+      localStorage.setItem('quizgenie_mini_bar_pos', JSON.stringify({ x: rect.left, y: rect.top }));
+    }
+  });
+
+  // أزرار الشريط
+  const bConcise = bar.querySelector('#qgMiniBtnConcise');
+  if (bConcise) {
+    bConcise.addEventListener('click', () => {
+      scanAndSolveCurrentExam('concise');
+    });
+  }
+
+  const bDetailed = bar.querySelector('#qgMiniBtnDetailed');
+  if (bDetailed) {
+    bDetailed.addEventListener('click', () => {
+      scanAndSolveCurrentExam('detailed');
+    });
+  }
+
+  const bSnip = bar.querySelector('#qgMiniBtnSnip');
+  if (bSnip) {
+    bSnip.addEventListener('click', () => {
+      startFullScreenAreaSnip('concise');
+    });
+  }
+
+  const btnMin = bar.querySelector('#qgMiniBtnMinimize');
+  if (btnMin) {
+    btnMin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      bar.classList.add('minimized');
+    });
+  }
+
+  bar.addEventListener('click', (e) => {
+    if (bar.classList.contains('minimized')) {
+      bar.classList.remove('minimized');
+    }
+  });
+}
+
+function removeMiniExamToolbar() {
+  const bar = document.getElementById('quizgenie-mini-exam-bar');
+  if (bar) bar.remove();
+}
+
+// الاستماع لرسائل مزامنة الثيم الحية
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.action === 'SYNC_THEME_CUSTOMIZATION') {
+    const s = request.settings || {};
+    activeBorderShape = s.customBorderShape || 'smooth';
+    activePrimaryColor = s.customPrimaryColor || '#0284c7';
+    activeBgColor = s.customBgColor || '#0f172a';
+    activeGlowColor = s.customGlowColor || '#10b981';
+    activeRingColor = s.customRingColor || '#ef4444';
+    isMiniToolbarEnabled = s.customMiniToolbar !== false;
+
+    updatePageThemeVariables();
+    if (isMiniToolbarEnabled && extensionEnabled) {
+      ensureMiniExamToolbar();
+    } else {
+      removeMiniExamToolbar();
+    }
+  }
+});
+
+// تحميل الثيم عند بدء الصفحة
+loadThemeSettings();
