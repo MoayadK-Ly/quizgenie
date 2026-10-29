@@ -2221,25 +2221,79 @@ namespace QuizGenie
             }
         }
 
+        private string GetSubjectDescription(string subj)
+        {
+            switch ((subj ?? "general").ToLower())
+            {
+                case "math": return "التخصص: رياضيات. دقة بالغة في العمليات الحسابية والمعادلات والجبر والهندسة.";
+                case "physics": return "التخصص: فيزياء. التركيز على القوانين، الوحدات الدولية، والقوى والعلاقات الفيزيائية.";
+                case "chemistry": return "التخصص: كيمياء. التركيز على التفاعلات، الروابط، التوزيع الإلكتروني، والمعادلات الموزونة.";
+                case "biology": return "التخصص: أحياء. التركيز على وظائف الأعضاء، التصنيفات الحيوية، وعلم الوراثة والخلايا.";
+                case "qudrat": return "التخصص: اختبار القدرات العامة (الكمي واللفظي، استيعاب المقروء، التناظر، إكمال الجمل).";
+                case "tahsili": return "التخصص: اختبار التحصيلي (رياضيات، فيزياء، كيمياء، أحياء للثانوية العامة).";
+                case "english": return "التخصص: لغة إنجليزية (قواعد Grammar، مفردات Vocabulary، قراءة واستيعاب Comprehension).";
+                case "arabic": return "التخصص: لغة عربية (نحو، صرف، بلاغة، إعراب، معاني المفردات).";
+                case "islamic": return "التخصص: دراسات إسلامية (فقه، توحيد، حديث، تفسير، أصول دين).";
+                case "computer": return "التخصص: حاسب آلي وتقنية معلومات (برمجة، خوارزميات، شبكات، أمن سيبراني).";
+                case "medical": return "التخصص: علوم طبية وصحية وتمريض وصيدلة.";
+                case "law": return "التخصص: قانون وأنظمة وتشريعات وحقوق.";
+                case "business": return "التخصص: إدارة أعمال واقتصاد ومحاسبة وتسويق.";
+                case "social": case "history": case "geography": return "التخصص: دراسات اجتماعية وتاريخ وجغرافيا.";
+                default: return "التخصص: أسئلة واختبارات عامة وثقافية متنوعة.";
+            }
+        }
+
+        private string BuildConcisePrompt(string subj, string lang)
+        {
+            string fieldDesc = GetSubjectDescription(subj);
+            string langRule = (lang == "en") ? "Answer in English." : "الإجابة باللغة العربية حصراً مع كتابة رمز الخيار الأصلي (مثل A أو B أو أ أو ب).";
+
+            return "أنت محرك الذكاء الاصطناعي الأكاديمي فائق الدقة المخصص للحل المباشر الفوري للاختبارات (Direct Concise Solution Engine).\n" +
+                   "عقليتك ومنهجك في هذا الوضع:\n" +
+                   "1. التفكير الاستنتاجي السريع والحاسم: مسح السؤال فوراً وتحديد الخيار الصحيح بنسبة دقة 100%.\n" +
+                   "2. الصرامة في الاختصار: لا تكتب أي مقدمات، لا تكتب 'بناءً على السؤال' أو 'الجواب هو' أو شروحات مطولة.\n" +
+                   "3. التنسيق الإلزامي الصارم:\n" +
+                   "🎯 الإجابة الصحيحة: [رمز الخيار] نص الخيار كاملاً\n" +
+                   "⚡ تأكيد حاسم: [جملة واحدة مركزة تثبت صحة الخيار في 8 كلمات فقط]\n\n" +
+                   fieldDesc + "\n" + langRule;
+        }
+
+        private string BuildDetailedPrompt(string subj, string lang)
+        {
+            string fieldDesc = GetSubjectDescription(subj);
+            string langRule = (lang == "en") ? "Provide the full explanation in English." : "الشرح باللغة العربية الأكاديمية الواضحة والمنظمة.";
+
+            return "أنت الأستاذ الأكاديمي والخبير التعليمي الأول في QuizGenie المتخصص في الشرح المفصل والتأسيس العلمي العميق (Deep Pedagogical & Conceptual Reasoning).\n" +
+                   "عقليتك ومنهجك في هذا الوضع مستقل تماماً عن الحل السريع، وهدفك ليس فقط تقديم الإجابة بل بناء فهم راسخ وشامل لدى الطالب لا يُنسى.\n\n" +
+                   "منهجية التفكير والتفكيك الإلزامية في الحل المفصل:\n" +
+                   "قم بهيكلة إجابتك بدقة وفق الأقسام التالية:\n\n" +
+                   "📘 1. المفهوم والقاعدة الأساسية:\n" +
+                   "- حدد بوضوح القانون، النظرية، أو القاعدة النحوية/العلمية/المنطقية المركزية التي يستند إليها هذا السؤال.\n\n" +
+                   "📐 2. خطوات الحل والتحليل المتسلسل:\n" +
+                   "- فكك السؤال: المعطيات والمطلوب.\n" +
+                   "- الخطوات الإجرائية المتسلسلة (القانون المستخدم، التعويض الرياضي بالأرقام، أو التسلسل المنطقي للاشتقاق).\n\n" +
+                   "✅ 3. الإجابة المعتمدة:\n" +
+                   "🎯 الخيار الصحيح: [رمز الخيار] نص الخيار\n\n" +
+                   "🔍 4. تفنيد الخيارات الأخرى (لماذا استُبعدت؟):\n" +
+                   "- اشرح باقتضاب لماذا كل خيار من الخيارات البديلة الأخرى خاطئ لمنع التشتت والخلط في الامتحانات.\n\n" +
+                   "💡 5. مفتاح الحل السريع (Exam Pro-Tip):\n" +
+                   "- نصيحة ذهبية أو حيلة سريعة أو رابط ذهني لتمييز وحل هذا النوع من الأسئلة في ثوانٍ أثناء الاختبار.\n\n" +
+                   fieldDesc + "\n" + langRule;
+        }
+
         private string BuildSystemPrompt(string mode)
         {
             string subj = currentConfig != null ? currentConfig.Subject : "general";
             string lang = currentConfig != null ? currentConfig.TargetLanguage : "ar";
 
-            string prompt = "أنت QuizGenie المساعد الأكاديمي الذكي الفائق لحل الاختبارات والأسئلة.";
             if (mode == "concise")
             {
-                prompt += " المطلوب: استخرج رمز الخيار الصحيح (مثال: أ أو B) مع نص الإجابة المختصر في سطر واحد فقط ومباشر دون أي مقدمات أو فلسفة زائدة.";
+                return BuildConcisePrompt(subj, lang);
             }
             else
             {
-                prompt += " المطلوب: قدم الحل النموذجي المفصل الدقيق خطوة بخطوة مع ذكر القوانين الرياضية أو العلمية وشرح سبب اختيار الإجابة الصحيحة بشكل منظم.";
+                return BuildDetailedPrompt(subj, lang);
             }
-
-            if (lang == "en") prompt += " Answer in English.";
-            else prompt += " الإجابة باللغة العربية.";
-
-            return prompt;
         }
 
         public void InitFloatingSelectionMonitor()
@@ -2354,7 +2408,7 @@ namespace QuizGenie
                 if (srv == "gemini")
                 {
                     string gemKey = !string.IsNullOrWhiteSpace(currentConfig.GeminiKey) ? currentConfig.GeminiKey.Trim() : DEFAULT_GEMINI_KEY;
-                    answer = await CallGeminiAsync(systemPrompt, question, gemKey);
+                    answer = await CallGeminiAsync(systemPrompt, question, gemKey, mode);
                 }
                 else if (srv == "openai")
                 {
@@ -2375,7 +2429,7 @@ namespace QuizGenie
                 else
                 {
                     string gemKey = !string.IsNullOrWhiteSpace(currentConfig.GeminiKey) ? currentConfig.GeminiKey.Trim() : DEFAULT_GEMINI_KEY;
-                    answer = await CallGeminiAsync(systemPrompt, question, gemKey);
+                    answer = await CallGeminiAsync(systemPrompt, question, gemKey, mode);
                 }
             }
             catch (Exception)
@@ -2385,7 +2439,7 @@ namespace QuizGenie
 
             if (needGeminiFallback)
             {
-                answer = await CallGeminiAsync(systemPrompt, question, DEFAULT_GEMINI_KEY);
+                answer = await CallGeminiAsync(systemPrompt, question, DEFAULT_GEMINI_KEY, mode);
             }
 
             return answer.Trim();
@@ -2460,7 +2514,7 @@ namespace QuizGenie
             }
         }
 
-        private async Task<string> CallGeminiAsync(string sys, string q, string key)
+        private async Task<string> CallGeminiAsync(string sys, string q, string key, string mode = "concise")
         {
             key = (key ?? "").Trim().Trim('"', '\'');
             if (string.IsNullOrWhiteSpace(key)) key = DEFAULT_GEMINI_KEY;
@@ -2484,17 +2538,20 @@ namespace QuizGenie
                     var req = (HttpWebRequest)WebRequest.Create(url);
                     req.Method = "POST";
                     req.ContentType = "application/json";
-                    req.Timeout = 12000;
+                    req.Timeout = 14000;
+
+                    double temp = (mode == "detailed") ? 0.25 : 0.1;
+                    int maxTokens = (mode == "detailed") ? 1500 : 350;
 
                     var payload = new Dictionary<string, object>
                     {
                         { "contents", new object[] {
                             new Dictionary<string, object> {
                                 { "role", "user" },
-                                { "parts", new object[] { new Dictionary<string, object> { { "text", sys + "\n\nالسؤال:\n" + q } } } }
+                                { "parts", new object[] { new Dictionary<string, object> { { "text", sys + "\n\nالسؤال المطلوب حله:\n" + q } } } }
                             }
                         }},
-                        { "generationConfig", new Dictionary<string, object> { { "temperature", 0.2 }, { "maxOutputTokens", 600 } } }
+                        { "generationConfig", new Dictionary<string, object> { { "temperature", temp }, { "maxOutputTokens", maxTokens } } }
                     };
 
                     byte[] data = Encoding.UTF8.GetBytes(json.Serialize(payload));
