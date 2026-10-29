@@ -9,21 +9,21 @@ const answerCache = new Map();
 try {
   chrome.storage.local.get([
     'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
-    'serverType', 'geminiKey'
+    'serverType', 'geminiKey', 'lastSeenVersion'
   ], (data) => {
-    if (chrome.runtime.lastError || !data) data = {};
+    const safeData = data || {};
     const updates = {};
-    if (!data.geminiKey || typeof data.geminiKey !== 'string' || !data.geminiKey.trim()) {
+    if (!safeData.geminiKey || typeof safeData.geminiKey !== 'string' || !safeData.geminiKey.trim()) {
       updates.geminiKey = DEFAULT_GEMINI_KEY;
     }
-    if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') {
+    if (!safeData.serverType || safeData.serverType === 'free' || safeData.serverType === 'free_backup') {
       updates.serverType = 'gemini';
     }
-    if (data.enabled === undefined) updates.enabled = true;
-    if (data.fabEnabled === undefined) updates.fabEnabled = true;
-    if (!data.subject) updates.subject = 'general';
-    if (!data.defaultMode) updates.defaultMode = 'concise';
-    if (!data.targetLanguage) updates.targetLanguage = 'ar';
+    if (safeData.enabled === undefined) updates.enabled = true;
+    if (safeData.fabEnabled === undefined) updates.fabEnabled = true;
+    if (!safeData.subject) updates.subject = 'general';
+    if (!safeData.defaultMode) updates.defaultMode = 'concise';
+    if (!safeData.targetLanguage) updates.targetLanguage = 'ar';
     if (Object.keys(updates).length > 0) {
       chrome.storage.local.set(updates, () => {
         if (chrome.runtime.lastError) {}
@@ -94,27 +94,54 @@ const SUBJECT_PROMPT_MAP = {
   'medical': 'المجال: طب وتمريض وصيدلة وعلوم صحية وطبية.'
 };
 
-// Extension installation lifecycle
-chrome.runtime.onInstalled.addListener(() => {
+// Extension installation / update lifecycle
+chrome.runtime.onInstalled.addListener((details) => {
+  const reason = details ? details.reason : 'unknown';
+
   chrome.storage.local.get([
     'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
-    'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
+    'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey', 'lastSeenVersion'
   ], (data) => {
-    if (chrome.runtime.lastError || !data) data = {};
+    const safeData = data || {};
     const updates = {};
-    if (data.enabled === undefined) updates.enabled = true;
-    if (data.fabEnabled === undefined) updates.fabEnabled = true;
-    if (!data.subject) updates.subject = 'general';
-    if (!data.defaultMode) updates.defaultMode = 'concise';
-    if (!data.targetLanguage) updates.targetLanguage = 'ar';
-    if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') updates.serverType = 'gemini';
-    if (!data.geminiKey) updates.geminiKey = DEFAULT_GEMINI_KEY;
-    if (data.openaiKey === undefined) updates.openaiKey = '';
-    if (data.deepseekKey === undefined) updates.deepseekKey = '';
-    if (data.groqKey === undefined) updates.groqKey = '';
-    if (Object.keys(updates).length > 0) {
-      chrome.storage.local.set(updates);
-    }
+    if (safeData.enabled === undefined) updates.enabled = true;
+    if (safeData.fabEnabled === undefined) updates.fabEnabled = true;
+    if (!safeData.subject) updates.subject = 'general';
+    if (!safeData.defaultMode) updates.defaultMode = 'concise';
+    if (!safeData.targetLanguage) updates.targetLanguage = 'ar';
+    if (!safeData.serverType || safeData.serverType === 'free' || safeData.serverType === 'free_backup') updates.serverType = 'gemini';
+    if (!safeData.geminiKey) updates.geminiKey = DEFAULT_GEMINI_KEY;
+    if (safeData.openaiKey === undefined) updates.openaiKey = '';
+    if (safeData.deepseekKey === undefined) updates.deepseekKey = '';
+    if (safeData.groqKey === undefined) updates.groqKey = '';
+    updates.lastSeenVersion = '2.0.0';
+    updates.pendingUpdateNotice = true;
+
+    chrome.storage.local.set(updates, () => {
+      // إطلاق شاشة التحديث تلقائياً في تبويب جديد لإعلام المستخدم بكل الميزات الجديدة
+      try {
+        chrome.tabs.create({
+          url: chrome.runtime.getURL('update.html')
+        });
+      } catch (tabErr) {
+        console.warn('Failed to open update tab:', tabErr);
+      }
+
+      // إرسال إشعار سطح المكتب من كروم
+      try {
+        if (chrome.notifications) {
+          chrome.notifications.create('qg_update_200', {
+            type: 'basic',
+            iconUrl: 'icons/icon128.png',
+            title: '🚀 تم تحديث QuizGenie إلى الإصدار 2.0.0!',
+            message: 'تمت إضافة نمطي تفكير منفصلين للحل، ميزة تصوير الشاشة F2، ملخص المراجعة، ونطق صوتي ذكي!',
+            priority: 2
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Notification error:', notifErr);
+      }
+    });
   });
 
   try {
@@ -135,6 +162,19 @@ chrome.runtime.onInstalled.addListener(() => {
     console.warn('Context menus warning:', err);
   }
 });
+
+// Update notification click handler
+if (chrome.notifications && chrome.notifications.onClicked) {
+  chrome.notifications.onClicked.addListener((notifId) => {
+    if (notifId === 'qg_update_200') {
+      try {
+        chrome.tabs.create({ url: chrome.runtime.getURL('update.html') });
+      } catch (e) {
+        console.warn('Notification click tab error:', e);
+      }
+    }
+  });
+}
 
 // Context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
