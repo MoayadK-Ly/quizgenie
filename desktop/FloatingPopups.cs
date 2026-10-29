@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -479,6 +479,33 @@ namespace QuizGenie
     // =========================================================================
     public class FloatingAnswerForm : Form
     {
+        public void SetPrecomputedAnswer(string q, string ans, string mode)
+        {
+            if (this.questionText == q)
+            {
+                if (mode == "concise") cachedConciseResult = ans;
+                if (mode == "detailed") cachedDetailedResult = ans;
+                if (this.activeMode == mode && !string.IsNullOrEmpty(ans))
+                {
+                    try
+                    {
+                        if (this.InvokeRequired)
+                        {
+                            this.BeginInvoke((Action)(() => {
+                                txtSolution.Text = ans;
+                                lblStatus.Text = "✨ تم الحل فوراً من الذاكرة الاستباقية (0.0 ثانية)";
+                            }));
+                        }
+                        else
+                        {
+                            txtSolution.Text = ans;
+                            lblStatus.Text = "✨ تم الحل فوراً من الذاكرة الاستباقية (0.0 ثانية)";
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
         [DllImport("user32.dll")]
         public static extern bool ReleaseCapture();
         [DllImport("user32.dll")]
@@ -776,6 +803,10 @@ namespace QuizGenie
                 cachedConciseResult = null;
                 cachedDetailedResult = null;
                 lastCachedQuestion = questionText;
+            }
+            if (MainForm.speculativeCachedQuestion == questionText && !string.IsNullOrEmpty(MainForm.speculativeConciseAnswer))
+            {
+                cachedConciseResult = MainForm.speculativeConciseAnswer;
             }
 
             // Return cached result if already fetched
@@ -1116,10 +1147,23 @@ namespace QuizGenie
                 Rectangle rect = GetSelectionRectangle();
                 Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
 
-                using (Pen pen = new Pen(Color.FromArgb(56, 189, 248), 2.5f))
+                using (Pen pen = new Pen(Color.FromArgb(239, 68, 68), 2.5f))
                 {
                     pen.DashStyle = DashStyle.Solid;
                     g.DrawRectangle(pen, localRect);
+                }
+                using (Font bf = new Font("Segoe UI", 9f, FontStyle.Bold))
+                using (Brush bbg = new SolidBrush(Color.FromArgb(220, 220, 38, 38)))
+                using (Brush btext = new SolidBrush(Color.White))
+                {
+                    string badge = "📌 منطقة السؤال والخيارات";
+                    var bsize = g.MeasureString(badge, bf);
+                    int bx = localRect.Right - (int)bsize.Width - 10;
+                    int by = localRect.Top - (int)bsize.Height - 6;
+                    if (by < 48) by = localRect.Top + 4;
+                    if (bx < localRect.Left) bx = localRect.Left + 4;
+                    g.FillRectangle(bbg, bx, by, bsize.Width + 8, bsize.Height + 4);
+                    g.DrawString(badge, bf, btext, bx + 4, by + 2);
                 }
 
                 using (Brush b = new SolidBrush(Color.FromArgb(45, 56, 189, 248)))
