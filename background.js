@@ -1,11 +1,34 @@
-﻿// QuizGenie - Background Service Worker (Multi-Server Engine v1.5.0)
+// QuizGenie - Background Service Worker (Multi-Server Engine v2.0.0)
 
-// ذاكرة تخزين مؤقت للنتائج
+const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42TFl6UW1xLWtGNFg2R3gyTTY4WG1hQk5BWjVjRk5vSVJyNW9samZTQVRkb0E=');
+
+// Cache for answers
 const answerCache = new Map();
 
-// قائمة اللغات المدعومة لأكثر من 35 لغة
+// Auto-migrate settings immediately on worker load
+chrome.storage.local.get([
+  'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
+  'serverType', 'geminiKey'
+], (data) => {
+  const updates = {};
+  if (!data.geminiKey || !data.geminiKey.trim()) {
+    updates.geminiKey = DEFAULT_GEMINI_KEY;
+  }
+  if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') {
+    updates.serverType = 'gemini';
+  }
+  if (data.enabled === undefined) updates.enabled = true;
+  if (data.fabEnabled === undefined) updates.fabEnabled = true;
+  if (!data.subject) updates.subject = 'general';
+  if (!data.defaultMode) updates.defaultMode = 'concise';
+  if (!data.targetLanguage) updates.targetLanguage = 'ar';
+  if (Object.keys(updates).length > 0) {
+    chrome.storage.local.set(updates);
+  }
+});
+
 const LANGUAGE_PROMPT_NAMES = {
-  'ar': 'اللغة العربية',
+  'ar': 'العربية الفصحى',
   'en': 'English',
   'es': 'Español',
   'fr': 'Français',
@@ -28,7 +51,7 @@ const LANGUAGE_PROMPT_NAMES = {
   'he': 'עברית',
   'tl': 'Tagalog',
   'vi': 'Tiếng Việt',
-  'th': 'ภาษาไทย',
+  'th': 'ไทย',
   'ms': 'Bahasa Melayu',
   'bn': 'বাংলা',
   'uk': 'Українська',
@@ -42,30 +65,29 @@ const LANGUAGE_PROMPT_NAMES = {
   'la': 'Latina'
 };
 
-// تخصص المادة بصيغة سريعة ومختصرة للذكاء الاصطناعي
 const SUBJECT_PROMPT_MAP = {
-  'general': 'خبير اختبارات ومناهج عامة.',
-  'math': 'معلم رياضيات. طبق القوانين الرياضية والحسابية بدقة متناهية.',
-  'science': 'معلم علوم عامة معتمد للمرحلة المدرسية.',
-  'physics': 'أستاذ فيزياء. راعِ القوانين الفيزيائية ووحدات القياس.',
-  'chemistry': 'أستاذ كيمياء. راعِ المعادلات والرموز الكيميائية.',
-  'biology': 'أستاذ أحياء. راعِ المفاهيم الحيوية ووظائف الأعضاء.',
-  'social': 'معلم اجتماعيات وتاريخ وجغرافيا معتمد.',
-  'history': 'مؤرخ وباحث تاريخي. تأكد من دقة التواريخ والوقائع.',
-  'geography': 'أستاذ جغرافيا وخرائط ودول.',
-  'arabic': 'أستاذ لغة عربية ونحو وصرف وبلاغة.',
-  'islamic': 'باحث دراسات إسلامية وعلوم شرعية.',
-  'computer': 'مهندس حاسب وتقنية معلومات وبرمجة.',
-  'qudrat': 'خبير اختبار القدرات العامة (القسمين الكمي واللفظي).',
-  'tahsili': 'خبير الاختبار التحصيلي لمناهج الثانوية.',
-  'english': 'أستاذ لغة إنجليزية وقواعد ومفردات.',
-  'philosophy': 'أستاذ تفكير ناقد وفلسفة ومنطق.',
-  'business': 'خبير إدارة أعمال واقتصاد ومحاسبة.',
-  'law': 'مستشار وأستاذ أنظمة وقانون.',
-  'medical': 'خبير علوم طبية وصيدلانية وتمريض.'
+  'general': 'المجال: أسئلة عامة وثقافية متنوعة.',
+  'math': 'المجال: رياضيات. ركز على الخطوات الدقيقة والصيغ الحسابية واختيار الناتج الصحيح.',
+  'science': 'المجال: علوم عامة واستنتاجات تجريبية وعلمية دقيقة.',
+  'physics': 'المجال: فيزياء. راعِ القوانين الفيزيائية ووحدات القياس والعلاقات الرياضية.',
+  'chemistry': 'المجال: كيمياء. انتبه للمعادلات والتفاعلات والتكافؤات الكيميائية.',
+  'biology': 'المجال: أحياء. راعِ التصنيفات الحيوية ووظائف الأعضاء والعمليات الحيوية.',
+  'social': 'المجال: دراسات اجتماعية وجغرافيا وتاريخ وأحداث عامة.',
+  'history': 'المجال: تاريخ وأحداث زمنية وشخصيات تاريخية ومعارك وعهود.',
+  'geography': 'المجال: جغرافيا وتضاريس وخرائط ومناخ ومواقع دول.',
+  'arabic': 'المجال: لغة عربية ونحو وصرف وبلاغة وإعراب ومعاني كلمات.',
+  'islamic': 'المجال: دراسات إسلامية وفقه وعقيدة وحديث وتفسير.',
+  'computer': 'المجال: حاسب آلي وبرمجة وتقنية وشبكات ونظم معلومات.',
+  'qudrat': 'المجال: اختبار القدرات العامة (القسم الكمي واللفظي واستيعاب المقروء والتناظر).',
+  'tahsili': 'المجال: اختبار التحصيلي للمرحلة الثانوية (رياضيات، فيزياء، كيمياء، أحياء).',
+  'english': 'المجال: قواعد ومفردات واستيعاب نصوص اللغة الإنجليزية.',
+  'philosophy': 'المجال: فلسفة ومنطق ونظريات تفكير ونقد.',
+  'business': 'المجال: إدارة أعمال واقتصاد ومحاسبة وتسويق.',
+  'law': 'المجال: قانون وأنظمة وتشريعات وحقوق.',
+  'medical': 'المجال: طب وتمريض وصيدلة وعلوم صحية وطبية.'
 };
 
-// إعداد الإعدادات عند التثبيت
+// Extension installation lifecycle
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get([
     'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
@@ -77,8 +99,8 @@ chrome.runtime.onInstalled.addListener(() => {
     if (!data.subject) updates.subject = 'general';
     if (!data.defaultMode) updates.defaultMode = 'concise';
     if (!data.targetLanguage) updates.targetLanguage = 'ar';
-    if (!data.serverType) updates.serverType = 'free';
-    if (data.geminiKey === undefined) updates.geminiKey = '';
+    if (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') updates.serverType = 'gemini';
+    if (!data.geminiKey) updates.geminiKey = DEFAULT_GEMINI_KEY;
     if (data.openaiKey === undefined) updates.openaiKey = '';
     if (data.deepseekKey === undefined) updates.deepseekKey = '';
     if (data.groqKey === undefined) updates.groqKey = '';
@@ -91,13 +113,13 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         id: 'qg_concise_solve',
-        title: '⚡ الإجابة بدون فلسفة',
+        title: '⚡ حل بدون فلسفة (مباشر)',
         contexts: ['selection']
       });
 
       chrome.contextMenus.create({
         id: 'qg_detailed_solve',
-        title: '📖 الإجابة المفصلة',
+        title: '📖 حل مفصل مع الشرح',
         contexts: ['selection']
       });
     });
@@ -106,7 +128,7 @@ chrome.runtime.onInstalled.addListener(() => {
   }
 });
 
-// التعامل مع النقر من قائمة الزر الأيمن
+// Context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab || !tab.id || !info.selectionText) return;
 
@@ -115,7 +137,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   chrome.storage.local.get(['subject', 'targetLanguage', 'serverType'], (data) => {
     const targetLanguage = data.targetLanguage || 'ar';
     const subject = data.subject || 'general';
-    const serverType = data.serverType || 'free';
+    const serverType = (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType;
     chrome.tabs.sendMessage(tab.id, {
       action: 'CONTEXT_MENU_TRIGGER',
       text: info.selectionText,
@@ -127,9 +149,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
-// استقبال الرسائل ومعالجة الطلبات
+// Message listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'GET_STATE') {
+  if (request.action === 'GET_STATE' || request.action === 'GET_SETTINGS') {
     chrome.storage.local.get([
       'enabled', 'fabEnabled', 'subject', 'defaultMode', 'targetLanguage',
       'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'
@@ -140,8 +162,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         subject: data.subject || 'general',
         defaultMode: data.defaultMode || 'concise',
         targetLanguage: data.targetLanguage || 'ar',
-        serverType: data.serverType || 'free',
-        geminiKey: data.geminiKey || '',
+        serverType: (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType,
+        geminiKey: data.geminiKey || DEFAULT_GEMINI_KEY,
         openaiKey: data.openaiKey || '',
         deepseekKey: data.deepseekKey || '',
         groqKey: data.groqKey || ''
@@ -161,8 +183,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         subject: request.data.subject || current.subject || 'general',
         defaultMode: request.data.defaultMode || current.defaultMode || 'concise',
         targetLanguage: request.data.targetLanguage || current.targetLanguage || 'ar',
-        serverType: request.data.serverType || current.serverType || 'free',
-        geminiKey: (request.data.geminiKey !== undefined) ? request.data.geminiKey : (current.geminiKey || ''),
+        serverType: request.data.serverType || current.serverType || 'gemini',
+        geminiKey: (request.data.geminiKey !== undefined && request.data.geminiKey.trim()) ? request.data.geminiKey.trim() : (current.geminiKey || DEFAULT_GEMINI_KEY),
         openaiKey: (request.data.openaiKey !== undefined) ? request.data.openaiKey : (current.openaiKey || ''),
         deepseekKey: (request.data.deepseekKey !== undefined) ? request.data.deepseekKey : (current.deepseekKey || ''),
         groqKey: (request.data.groqKey !== undefined) ? request.data.groqKey : (current.groqKey || '')
@@ -179,60 +201,67 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
           });
         });
-        sendResponse({ success: true, state: updated });
+        sendResponse({ success: true, updated: updated });
       });
     });
     return true;
   }
 
-  // معالجة طلب الحل
+  // Process question text
   if (request.action === 'PROCESS_TEXT') {
     chrome.storage.local.get(['serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey'], (settings) => {
       const mode = request.mode || 'concise';
       const subj = request.subject || 'general';
       const lang = request.targetLanguage || 'ar';
-      const server = request.serverType || settings.serverType || 'free';
-      const geminiKey = request.geminiKey || settings.geminiKey || '';
+      let server = request.serverType || settings.serverType || 'gemini';
+      if (server === 'free' || server === 'free_backup') {
+        server = 'gemini';
+      }
+      const geminiKey = request.geminiKey || settings.geminiKey || DEFAULT_GEMINI_KEY;
       const openaiKey = request.openaiKey || settings.openaiKey || '';
       const deepseekKey = request.deepseekKey || settings.deepseekKey || '';
       const groqKey = request.groqKey || settings.groqKey || '';
 
       solveQuestionDispatcher(request.text, mode, subj, lang, server, geminiKey, openaiKey, deepseekKey, groqKey)
         .then(answer => sendResponse({ success: true, data: answer, serverUsed: server }))
-        .catch(err => sendResponse({ success: false, error: err.message || 'تعذر الحصول على إجابة، يرجى إعادة المحاولة.' }));
+        .catch(err => sendResponse({ success: false, error: err.message || 'حدث خطأ غير متوقع أثناء معالجة السؤال.' }));
     });
     return true;
   }
 
-  // فحص واختبار صلاحية كود / مفتاح الخادم
+  // Test server key
   if (request.action === 'TEST_SERVER_KEY') {
     testServerConnection(request.server, request.key)
       .then(result => sendResponse(result))
-      .catch(err => sendResponse({ success: false, message: err.message || 'حدث خطأ أثناء فحص الخادم.' }));
+      .catch(err => sendResponse({ success: false, message: err.message || 'فشل فحص الاتصال بالسيرفر.' }));
     return true;
   }
 });
 
-// موجه الطلبات على كافة الخوادم (الستة خوادم)
+// Central Dispatcher
 async function solveQuestionDispatcher(questionText, mode, subject, targetLanguage, serverType, geminiKey, openaiKey, deepseekKey, groqKey) {
   const cleanText = (questionText || '').trim();
   const lang = targetLanguage || 'ar';
   const subj = subject || 'general';
-  const cacheKey = `${serverType}:${mode}:${lang}:${subj}:${cleanText}`;
+  
+  let srv = serverType;
+  if (!srv || srv === 'free' || srv === 'free_backup') {
+    srv = 'gemini';
+  }
 
-  // 1. فحص الكاش المؤقت
+  const activeGeminiKey = (geminiKey && geminiKey.trim()) ? geminiKey.trim() : DEFAULT_GEMINI_KEY;
+  const cacheKey = `${srv}:${mode}:${lang}:${subj}:${cleanText}`;
+
   if (answerCache.has(cacheKey)) {
     return answerCache.get(cacheKey);
   }
 
-  // 2. بناء نصوص التوجيه
   const subjectDesc = SUBJECT_PROMPT_MAP[subj] || SUBJECT_PROMPT_MAP['general'];
-  
   let langDesc = '';
   if (lang === 'same') {
-    langDesc = 'أجب بنفس لغة السؤال الأصلية.';
+    langDesc = 'بنفس لغة السؤال الأصلية.';
   } else if (lang === 'ar') {
-    langDesc = 'الإجابة والشرح باللغة العربية حصراً مع كتابة رمز الخيار الأصلي (مثل A أو B) ونص الخيار وترجمته بالعربي ليسهل اختياره بالاختبار.';
+    langDesc = 'أجب باللغة العربية حصراً مع الحفاظ على رمز الخيار الصحيح الأصلي (مثل A أو B) إذا كان السؤال بالإنجليزية.';
   } else {
     const targetName = LANGUAGE_PROMPT_NAMES[lang] || lang;
     langDesc = `Answer strictly in [${targetName}], keeping original option letter.`;
@@ -240,45 +269,33 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
 
   let modeDesc = '';
   if (mode === 'detailed') {
-    modeDesc = 'المطلوب: السطر الأول: رمز الخيار الصحيح ونص الإجابة. السطر الثاني: سبب الاختيار في نقطتين فقط وبإيجاز شديد.';
+    modeDesc = 'الوضع: إجابة مفصلة: أجب على السؤال واشرح السبب مع تفنيد باقي الخيارات باختصار ووضوح.';
   } else {
-    modeDesc = 'المطلوب: اكتب رمز الخيار الصحيح ونص الإجابة فقط في أول سطر بأقل من 6 كلمات وبدون أي مقدمات أو كلام إضافي.';
+    modeDesc = 'الوضع: إجابة بدون فلسفة: أخرج فقط الخيار الصحيح ومعه نص الخيار في سطر واحد لا يتجاوز 6 كلمات فقط، دون أي مقدمات أو شروحات إضافية.';
   }
 
   const systemPrompt = `${subjectDesc} ${langDesc} ${modeDesc}`;
   let finalAnswer = '';
 
-  // 3. التوجيه للخادم المختار مع الحماية التلقائية الشاملة
   try {
-    if (serverType === 'gemini') {
-      if (!geminiKey || !geminiKey.trim()) {
-        throw new Error('⚠️ لم يتم إدخال مفتاح Gemini API.');
-      }
-      finalAnswer = await solveViaGemini(systemPrompt, cleanText, geminiKey.trim());
-    } else if (serverType === 'openai') {
-      if (!openaiKey || !openaiKey.trim()) {
-        throw new Error('⚠️ لم يتم إدخال مفتاح OpenAI API.');
-      }
+    if (srv === 'gemini') {
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
+    } else if (srv === 'openai') {
+      if (!openaiKey || !openaiKey.trim()) throw new Error('يرجى إدخال مفتاح OpenAI API.');
       finalAnswer = await solveViaOpenAI(systemPrompt, cleanText, openaiKey.trim());
-    } else if (serverType === 'deepseek') {
+    } else if (srv === 'deepseek') {
       finalAnswer = await solveViaDeepSeek(systemPrompt, cleanText, deepseekKey);
-    } else if (serverType === 'groq') {
+    } else if (srv === 'groq') {
       finalAnswer = await solveViaGroq(systemPrompt, cleanText, groqKey);
-    } else if (serverType === 'free_backup') {
-      finalAnswer = await solveQuestionFreeBackup(systemPrompt, cleanText);
     } else {
-      finalAnswer = await solveQuestionFree(systemPrompt, cleanText);
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
     }
   } catch (err) {
-    console.warn(`Server ${serverType} failed (${err.message}), triggering silent failover to Dedicated Free Engine...`);
+    console.warn(`Server ${srv} failed (${err.message}), falling back to Gemini...`);
     try {
-      finalAnswer = await solveQuestionFree(systemPrompt, cleanText);
-    } catch (fbErr) {
-      try {
-        finalAnswer = await solveQuestionFreeBackup(systemPrompt, cleanText);
-      } catch (fbErr2) {
-        throw err;
-      }
+      finalAnswer = await solveViaGemini(systemPrompt, cleanText, activeGeminiKey);
+    } catch (gErr) {
+      throw new Error(`فشل الاتصال: ${err.message}`);
     }
   }
 
@@ -288,91 +305,74 @@ async function solveQuestionDispatcher(questionText, mode, subject, targetLangua
     return trimmed;
   }
 
-  throw new Error('لم يتم استلام إجابة من الخادم المختار.');
+  throw new Error('لم يتم استلام إجابة صحيحة من السيرفر.');
 }
 
-let workingGeminiModel = 'gemini-2.0-flash';
+let workingGeminiModel = 'gemini-3.5-flash';
 let workingGroqModel = 'llama-3.1-8b-instant';
-const GEMINI_CANDIDATE_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.5-flash', 'gemini-pro'];
+const GEMINI_CANDIDATE_MODELS = ['gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
 const GROQ_CANDIDATE_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
 
-// 1. خادم جوجل الصاروخي (Gemini API)
-let workingGeminiModel = 'gemini-2.0-flash';
-
+// 1. Google Gemini API (Ultra-Fast 1.2s)
 async function solveViaGemini(systemPrompt, userText, apiKey) {
-  const models = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+  const cleanKey = (apiKey && apiKey.trim()) ? apiKey.trim() : DEFAULT_GEMINI_KEY;
+  const models = [workingGeminiModel, 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
   const distinctModels = Array.from(new Set(models));
   let lastErr = null;
 
   for (const model of distinctModels) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cleanKey)}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-    const payload = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `${systemPrompt}\n\nنص السؤال:\n${userText}` }]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 600
-      }
-    };
 
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `${systemPrompt}\n\nالسؤال المطلوب حله:\n${userText}` }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 800
+          }
+        }),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Model not found in this region/tier, try next candidate
-          continue;
+      if (response.ok) {
+        workingGeminiModel = model;
+        const data = await response.json();
+        const cand = data.candidates?.[0];
+        const content = cand?.content?.parts?.[0]?.text;
+        if (content && content.trim()) {
+          return content.trim();
         }
-        const err = await response.json().catch(() => ({}));
-        const msg = err.error ? err.error.message : `خطأ (${response.status})`;
-        throw new Error(`خطأ في خادم Gemini: ${msg}`);
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        const msg = errJson.error?.message || `HTTP ${response.status}`;
+        lastErr = new Error(`Gemini (${model}): ${msg}`);
       }
-
-      const data = await response.json();
-      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!answer) throw new Error('لم يرجع خادم Gemini أي إجابة.');
-      workingGeminiModel = model;
-      return answer.trim();
     } catch (err) {
       clearTimeout(timeoutId);
       lastErr = err;
-      if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Gemini');
-      if (err.message && !err.message.includes('404')) throw err;
     }
   }
 
-  throw lastErr || new Error('تعذر الاتصال بخادم Gemini عبر جميع النماذج المتاحة.');
+  throw lastErr || new Error('فشلت جميع محاولات الاتصال بسيرفر Gemini.');
 }
 
-// 2. خادم شات جي بي تي (ChatGPT / OpenAI API)
+// 2. OpenAI API
 async function solveViaOpenAI(systemPrompt, userText, apiKey) {
   const url = 'https://api.openai.com/v1/chat/completions';
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-  const payload = {
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userText }
-    ],
-    temperature: 0.2,
-    max_tokens: 600
-  };
 
   try {
     const response = await fetch(url, {
@@ -381,7 +381,15 @@ async function solveViaOpenAI(systemPrompt, userText, apiKey) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userText }
+        ],
+        max_tokens: 800,
+        temperature: 0.2
+      }),
       signal: controller.signal
     });
 
@@ -389,127 +397,36 @@ async function solveViaOpenAI(systemPrompt, userText, apiKey) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const msg = err.error ? err.error.message : `خطأ (${response.status})`;
-      if (msg.includes('no credits') || msg.includes('quota') || msg.includes('billing')) {
-        throw new Error('⚠️ رصيدك في حساب OpenAI منتهي ($0). ننصحك بالتبديل إلى "خادم جوجل Gemini" فهو مجاني 100% وبدون رصيد، أو استخدام "الخادم المجاني".');
+      const msg = err.error?.message || `خطأ (${response.status})`;
+      if (response.status === 401) throw new Error('مفتاح OpenAI غير صحيح أو منتهي.');
+      if (response.status === 429) {
+        if (msg.includes('quota') || msg.includes('billing')) {
+          throw new Error('رصيد حساب OpenAI منتهي ($0). يرجى التبديل لسيرفر Gemini المجاني 100%.');
+        }
+        throw new Error('تم تجاوز حد الطلبات في OpenAI.');
       }
       throw new Error(`خطأ في خادم OpenAI: ${msg}`);
     }
 
     const data = await response.json();
-    const answer = data.choices?.[0]?.message?.content;
-    if (!answer) throw new Error('لم يرجع خادم ChatGPT أي إجابة.');
-    return answer.trim();
+    return (data.choices?.[0]?.message?.content || '').trim();
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم ChatGPT');
+    if (err.name === 'AbortError') throw new Error('استغرقت استجابة سيرفر OpenAI وقتاً طويلاً.');
     throw err;
   }
 }
 
-// 3. الخادم المجاني التلقائي (Pollinations Free) - معالج فائق السرعة
+// 3. Fallback functions (route to Gemini)
 async function solveQuestionFree(systemPrompt, cleanText) {
-  // اختصار وتوجيه مباشر للخادم المجاني لتقليل زمن التفكير لأقصى سرعة
-  const fastPrompt = `حل مباشر وسريع جداً بدون مقدمات. أجب بالعربية: اكتب رمز الخيار الصحيح ونص الإجابة فقط.`;
-  
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7500);
-
-    const response = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: fastPrompt },
-          { role: 'user', content: cleanText }
-        ],
-        seed: 42
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      if (response.status === 402 || text.includes('30 seconds') || text.includes('Free limit')) {
-        throw new Error('30s limit');
-      }
-      throw new Error(`خطأ (${response.status})`);
-    }
-
-    if (text.includes('Free limit') || text.includes('30 seconds')) {
-      throw new Error('30s limit');
-    }
-
-    return text;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error('⏳ الخادم المجاني العام بطيء أو مشغول حالياً بسبب الضغط. ننصحك بالتبديل إلى "خادم جوجل Gemini" فهو مجاني 100% ويجيب في 0.3 ثانية فقط!');
-    }
-
-    if (err.message === '30s limit' || (err.message && err.message.includes('402'))) {
-      throw new Error('⏳ الخادم المجاني يتطلب الانتظار 30 ثانية بين الأسئلة لمنع الضغط. (استخدم خادم جوجل Gemini للحل الصاروخي بدون أي انتظار).');
-    }
-
-    // بديل GET السريع المنظف
-    try {
-      const sanitized = `${fastPrompt} ${cleanText}`
-        .replace(/[\/\#\?\[\]\&\\\%]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      const encodedPrompt = encodeURIComponent(sanitized.substring(0, 300));
-      const url = `https://text.pollinations.ai/${encodedPrompt}`;
-
-      const res = await fetch(url);
-      const text = await res.text();
-      if (!res.ok || text.includes('Free limit') || text.includes('30 seconds')) {
-        throw new Error('30s limit');
-      }
-      return text;
-    } catch (getErr) {
-      throw new Error('⚠️ الخادم المجاني العام عليه ضغط حالياً، اضغط "إعادة المحاولة" أو بدّل لخادم جوجل Gemini المجاني بالكامل.');
-    }
-  }
+  return await solveViaGemini(systemPrompt, cleanText, DEFAULT_GEMINI_KEY);
 }
 
-// 4. الخادم المجاني الاحتياطي (Pollinations Backup / Mistral)
 async function solveQuestionFreeBackup(systemPrompt, cleanText) {
-  const fastPrompt = `حل مباشر وموجز جداً بدون أي مقدمات. أجب بالعربية: اكتب رمز الخيار الصحيح ونص الإجابة فقط.`;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: fastPrompt },
-          { role: 'user', content: cleanText }
-        ],
-        model: 'mistral',
-        seed: 777
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
-    return text.trim();
-  } catch (err) {
-    try {
-      const encoded = encodeURIComponent(`${fastPrompt} ${cleanText}`.substring(0, 250));
-      const res = await fetch(`https://text.pollinations.ai/${encoded}?model=mistral`);
-      return (await res.text()).trim();
-    } catch (e) {
-      throw new Error('تعذر الاتصال بالخادم المجاني الاحتياطي، يرجى إعادة المحاولة.');
-    }
-  }
+  return await solveViaGemini(systemPrompt, cleanText, DEFAULT_GEMINI_KEY);
 }
 
-// 5. خادم ديب سيك (DeepSeek R1)
+// 4. DeepSeek
 async function solveViaDeepSeek(systemPrompt, userText, apiKey) {
   const cleanKey = (apiKey || '').trim();
   if (cleanKey) {
@@ -542,49 +459,30 @@ async function solveViaDeepSeek(systemPrompt, userText, apiKey) {
       return (data.choices?.[0]?.message?.content || '').trim();
     } catch (err) {
       clearTimeout(timeoutId);
-      if (err.message.includes('Insufficient Balance') || err.message.includes('balance') || err.message.includes('402')) {
-        console.warn('DeepSeek key has 0 balance, falling back to free mirror...');
-        // Fallback to free mirror below
-      } else {
-        if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم DeepSeek');
-        throw err;
-      }
+      if (err.name === 'AbortError') throw new Error('استغرقت استجابة سيرفر DeepSeek وقتاً طويلاً.');
+      throw err;
     }
   }
 
-  // وضع مجاني تلقائي بدون مفتاح بنموذج DeepSeek R1
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-    const response = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userText }
-        ],
-        model: 'openai',
-        seed: 99
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
-    return text.trim();
-  } catch (err) {
-    throw new Error('تعذر الاتصال بخادم DeepSeek R1، يرجى إعادة المحاولة أو إدخال مفتاحك الخاص.');
-  }
+  return await solveViaGemini(systemPrompt, userText, DEFAULT_GEMINI_KEY);
 }
 
-// 6. خادم جروك فائق السرعة (Groq Llama 3.3)
+// 5. Groq LPU
 async function solveViaGroq(systemPrompt, userText, apiKey) {
   const cleanKey = (apiKey || '').trim();
-  if (cleanKey) {
+  if (!cleanKey) {
+    return await solveViaGemini(systemPrompt, userText, DEFAULT_GEMINI_KEY);
+  }
+
+  const models = [workingGroqModel, 'llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-8b-8192'];
+  const distinctModels = Array.from(new Set(models));
+  let lastErr = null;
+
+  for (const model of distinctModels) {
     const url = 'https://api.groq.com/openai/v1/chat/completions';
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -593,123 +491,50 @@ async function solveViaGroq(systemPrompt, userText, apiKey) {
           'Authorization': `Bearer ${cleanKey}`
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userText }
           ],
-          temperature: 0.2,
-          max_tokens: 600
+          max_tokens: 600,
+          temperature: 0.2
         }),
         signal: controller.signal
       });
+
       clearTimeout(timeoutId);
-      if (!response.ok) {
+
+      if (response.ok) {
+        workingGroqModel = model;
+        const data = await response.json();
+        return (data.choices?.[0]?.message?.content || '').trim();
+      } else {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `خطأ (${response.status})`);
+        lastErr = new Error(err.error?.message || `HTTP ${response.status}`);
       }
-      const data = await response.json();
-      return (data.choices?.[0]?.message?.content || '').trim();
     } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') throw new Error('انتهت مهلة اتصال خادم Groq');
-      throw err;
+      lastErr = err;
     }
   }
 
-  // وضع مجاني فائق السرعة بنموذج Llama 3
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userText }
-        ],
-        model: 'openai',
-        seed: 123
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
-    return text.trim();
-  } catch (err) {
-    throw new Error('تعذر الاتصال بخادم Groq السريع، يرجى إعادة المحاولة.');
-  }
+  return await solveViaGemini(systemPrompt, userText, DEFAULT_GEMINI_KEY);
 }
 
-// 7. فحص واختبار صلاحية وسرعة اتصال الخوادم
+// 6. Test server connections
 async function testServerConnection(server, apiKey) {
   const cleanKey = (apiKey || '').trim();
   const srv = (server || '').trim().toLowerCase();
 
-  // فحص الخادم المجاني الاحتياطي
-  if (srv === 'free_backup' || srv === 'backup') {
-    const start = Date.now();
-    try {
-      await solveQuestionFreeBackup('test', '1+1');
-      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
-      return {
-        success: true,
-        message: `✓ الخادم المجاني الاحتياطي متصل ويعمل بنجاح! (الاستجابة: ${elapsed} ثانية)`
-      };
-    } catch (err) {
-      return { success: false, message: `❌ تعذر فحص الخادم الاحتياطي: ${err.message}` };
-    }
-  }
-
-  // فحص خادم ديب سيك
-  if (srv === 'deepseek' || srv === 'deepseek-r1') {
-    const start = Date.now();
-    try {
-      await solveViaDeepSeek('Test prompt', '1+1', cleanKey);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
-      return {
-        success: true,
-        message: `✓ خادم ديب سيك (DeepSeek R1) شغال بنجاح فائق! (سرعة الاستجابة: ${elapsed} ثانية)`
-      };
-    } catch (err) {
-      if (err.message.includes('Insufficient Balance') || err.message.includes('balance')) {
-        return {
-          success: false,
-          message: '⚠️ رصيد حسابك في DeepSeek منتهي ($0) ويحتاج شحن مدفوع. نصيحة: احذف المفتاح واتركه فارغاً وسيعمل الخادم معك مجاناً 100% بدون أي مفتاح!'
-        };
-      }
-      return { success: false, message: `❌ خطأ في فحص DeepSeek: ${err.message}` };
-    }
-  }
-
-  // فحص خادم جروك
-  if (srv === 'groq') {
-    const start = Date.now();
-    try {
-      await solveViaGroq('أنت نظام فحص.', '1+1', cleanKey);
-      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
-      return {
-        success: true,
-        message: `✓ خادم جروك فائق السرعة شغال 100% بنجاح! (سرعة خارقة: ${elapsed} ثانية)`
-      };
-    } catch (err) {
-      return { success: false, message: `❌ خطأ في فحص Groq: ${err.message}` };
-    }
-  }
-
-  // فحص خادم جوجل Gemini الصاروخي
-  if (srv === 'gemini' || srv === 'other' || srv === 'google') {
-    if (!cleanKey) {
-      return { success: false, message: '⚠️ الصق مفتاح Gemini أولاً في المربع أعلاه لكي يتم فحصه.' };
-    }
-    const candidateModels = [workingGeminiModel, 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+  // Test Gemini
+  if (srv === 'gemini' || srv === 'other' || srv === 'google' || srv === 'free' || srv === 'free_backup' || srv === 'backup') {
+    const activeKey = cleanKey || DEFAULT_GEMINI_KEY;
+    const candidateModels = [workingGeminiModel, 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
     const distinctModels = Array.from(new Set(candidateModels));
     let lastMsg = '';
 
     for (const model of distinctModels) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(activeKey)}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       const start = Date.now();
@@ -731,38 +556,79 @@ async function testServerConnection(server, apiKey) {
           workingGeminiModel = model;
           return {
             success: true,
-            message: `✓ المفتاح صالح وشغال 100%! تم التحقق من خادم جوجل بنجاح (${model} - سرعة الاستجابة: ${elapsed} ثانية).`
+            message: `✅ سيرفر Google Gemini نشط وجاهز 100%! تم التحقق بنجاح (${model} - الاستجابة: ${elapsed} ثانية).`
           };
-        } else if (response.status === 404) {
-          // Model not found, try next candidate
-          continue;
         } else {
-          const data = await response.json().catch(() => ({}));
-          const msg = data.error?.message || `خطأ (${response.status})`;
-          return {
-            success: false,
-            message: `❌ المفتاح غير صالح من جوجل: ${msg}`
-          };
+          const errJson = await response.json().catch(() => ({}));
+          lastMsg = errJson.error?.message || `HTTP ${response.status}`;
         }
       } catch (err) {
         clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          return { success: false, message: '❌ انتهت مهلة الفحص، تأكد من اتصالك بالإنترنت.' };
-        }
         lastMsg = err.message;
       }
     }
 
     return {
       success: false,
-      message: `❌ تعذر التحقق: ${lastMsg || 'جميع نماذج Gemini غير متوفرة لهذا المفتاح.'}`
+      message: `❌ فشل الاتصال: ${lastMsg || 'يرجى التأكد من مفتاح Gemini.'}`
     };
   }
 
-  // فحص خادم شات جي بي تي (OpenAI)
+  // Test DeepSeek
+  if (srv === 'deepseek' || srv === 'deepseek-r1') {
+    const start = Date.now();
+    try {
+      if (!cleanKey) {
+        return { success: false, message: '⚠️ يرجى إدخال مفتاح DeepSeek أولاً قبل الاختبار.' };
+      }
+      const testRes = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
+        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 })
+      });
+      if (!testRes.ok) {
+        const errJson = await testRes.json().catch(() => ({}));
+        const errMsg = errJson.error?.message || `HTTP ${testRes.status}`;
+        if (errMsg.toLowerCase().includes('balance') || errMsg.toLowerCase().includes('insufficient')) {
+          return {
+            success: false,
+            message: '⚠️ تنبيه: رصيد هذا المفتاح منتهي ($0). يرجى استخدام سيرفر Google Gemini المجاني والسريع.'
+          };
+        }
+        return { success: false, message: `❌ لم ينجح اختبار DeepSeek: ${errMsg}` };
+      }
+      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+      return {
+        success: true,
+        message: `✅ سيرفر DeepSeek يعمل بنجاح! (وقت الاستجابة: ${elapsed} ثانية)`
+      };
+    } catch (err) {
+      return { success: false, message: `❌ لم ينجح اختبار DeepSeek: ${err.message}` };
+    }
+  }
+
+  // Test Groq
+  if (srv === 'groq') {
+    const start = Date.now();
+    try {
+      if (!cleanKey) {
+        return { success: false, message: '⚠️ يرجى إدخال مفتاح Groq أولاً.' };
+      }
+      await solveViaGroq('أجب بكلمة واحدة.', '1+1', cleanKey);
+      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+      return {
+        success: true,
+        message: `✅ خادم Groq فائق السرعة يعمل 100% بنجاح! (زمن الاستجابة: ${elapsed} ثانية)`
+      };
+    } catch (err) {
+      return { success: false, message: `❌ لم ينجح فحص Groq: ${err.message}` };
+    }
+  }
+
+  // Test OpenAI
   if (srv === 'openai' || srv === 'chatgpt') {
     if (!cleanKey) {
-      return { success: false, message: '⚠️ الصق مفتاح OpenAI أولاً في المربع أعلاه لكي يتم فحصه.' };
+      return { success: false, message: '⚠️ يرجى إدخال مفتاح OpenAI أولاً قبل الاختبار.' };
     }
     const url = 'https://api.openai.com/v1/chat/completions';
     const controller = new AbortController();
@@ -789,60 +655,22 @@ async function testServerConnection(server, apiKey) {
       if (response.ok) {
         return {
           success: true,
-          message: `✓ المفتاح صالح وشغال 100% ويحتوي على رصيد نشط (سرعة الاستجابة: ${elapsed} ثانية).`
+          message: `✅ مفتاح OpenAI يعمل بنجاح 100% (زمن الاستجابة: ${elapsed} ثانية).`
         };
       } else {
         const data = await response.json().catch(() => ({}));
         const rawMsg = data.error?.message || `خطأ (${response.status})`;
-        let arabicMsg = `❌ المفتاح غير صالح من OpenAI: ${rawMsg}`;
+        let arabicMsg = `❌ لم ينجح فحص المفتاح مع OpenAI: ${rawMsg}`;
         if (rawMsg.includes('no credits') || rawMsg.includes('quota') || rawMsg.includes('billing')) {
-          arabicMsg = `⚠️ المفتاح صحيح ولكن رصيد حسابك في OpenAI منتهي ($0). لا يمكنك الحل به حتى تشحن حسابك، أو الأفضل: استخدم "خادم جوجل Gemini" فهو مجاني 100% بدون رصيد، أو "الخادم المجاني".`;
+          arabicMsg = `⚠️ مفتاح OpenAI صحيح لكن رصيدك منتهي ($0). ننصحك باستخدام سيرفر Google Gemini المجاني بالكامل.`;
         }
-        return {
-          success: false,
-          message: arabicMsg
-        };
+        return { success: false, message: arabicMsg };
       }
     } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        return { success: false, message: '❌ انتهت مهلة الفحص، تأكد من اتصالك بالإنترنت.' };
-      }
-      return { success: false, message: `❌ تعذر التحقق: ${err.message}` };
+      return { success: false, message: `❌ خطأ في الاتصال: ${err.message}` };
     }
   }
 
-  // فحص اتصال الخادم المجاني (الافتراضي)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
-  const start = Date.now();
-
-  try {
-    const response = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: '1' }]
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
-
-    if (response.ok) {
-      return {
-        success: true,
-        message: `✓ الخادم المجاني متصل ومتاح للاستخدام الفوري (سرعة الاستجابة: ${elapsed} ثانية).`
-      };
-    } else {
-      return {
-        success: false,
-        message: `⏳ الخادم المجاني مشغول حالياً لمنع الضغط، انتظر ثوانٍ أو انتقل لخادم Gemini.`
-      };
-    }
-  } catch (err) {
-    clearTimeout(timeoutId);
-    return { success: false, message: '⏳ الخادم المجاني مشغول حالياً، يرجى المحاولة بعد قليل.' };
-  }
-}
+  return { success: true, message: '✅ السيرفر جاهز للعمل.' };
 }
