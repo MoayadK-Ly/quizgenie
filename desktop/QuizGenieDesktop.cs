@@ -2625,7 +2625,9 @@ namespace QuizGenie
             {
                 string html = HistoryManager.ExportStudySheetHtml();
                 string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                string exportFile = Path.Combine(desktopPath, "QuizGenie_Study_Sheet_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".html");
+                string exportDir = Path.Combine(desktopPath, "QuizGenie");
+                if (!Directory.Exists(exportDir)) Directory.CreateDirectory(exportDir);
+                string exportFile = Path.Combine(exportDir, "QuizGenie_Study_Sheet_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".html");
                 File.WriteAllText(exportFile, html, Encoding.UTF8);
 
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
