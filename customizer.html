@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizGenie - تخصيص المظهر والثيم وشكل الحواف</title>
+  <link rel="stylesheet" href="customizer.css">
+</head>
+<body>
+  <div class="customizer-app">
+    <!-- Top Header -->
+    <header class="customizer-header">
+      <div class="header-content">
+        <div class="header-brand">
+          <div class="logo-circle">
+            <span class="logo-emoji">🧞</span>
+          </div>
+          <div>
+            <h1 class="header-title">مركز تخصيص المظهر وتحديث الإضافة</h1>
+            <p class="header-subtitle">تحكم كامل بالثيم، شكل حواف الخيارات، الشريط العائم، وتحديثات الإضافة</p>
+          </div>
+        </div>
+        <div class="header-badge">
+          <span class="pulse-dot"></span>
+          <span>الإصدار 2.1.0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="customizer-main">
+      <div class="grid-container">
+
+        <!-- Column 1: Controls -->
+        <div class="controls-column">
+
+          <!-- Section 1: Border Shapes -->
+          <div class="card-section">
+            <div class="section-title-wrap">
+              <span class="section-icon">📐</span>
+              <div>
+                <h2 class="section-title">شكل حواف خيارات الأسئلة</h2>
+                <p class="section-desc">حدد مظهر انحناء الحواف المفضل لخيارات الإجابة داخل صفحة الاختبار</p>
+              </div>
+            </div>
+
+            <div class="shape-buttons-grid">
+              <button type="button" class="shape-btn" data-shape="sharp" id="btnShapeSharp">
+                <div class="shape-icon-box shape-icon-sharp"></div>
+                <div class="shape-info">
+                  <span class="shape-name">حواف حادة</span>
+                  <span class="shape-val">كلاسيكية 4px</span>
+                </div>
+                <span class="shape-check">✓</span>
+              </button>
+
+              <button type="button" class="shape-btn active" data-shape="smooth" id="btnShapeSmooth">
+                <div class="shape-icon-box shape-icon-smooth"></div>
+                <div class="shape-info">
+                  <span class="shape-name">حواف ناعمة</span>
+                  <span class="shape-val">حديثة 12px (المفضلة)</span>
+                </div>
+                <span class="shape-check">✓</span>
+              </button>
+
+              <button type="button" class="shape-btn" data-shape="capsule" id="btnShapeCapsule">
+                <div class="shape-icon-box shape-icon-capsule"></div>
+                <div class="shape-info">
+                  <span class="shape-name">حواف كبسولية</span>
+                  <span class="shape-val">دائرية بالكامل 26px</span>
+                </div>
+                <span class="shape-check">✓</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 2: Free Color Pickers -->
+          <div class="card-section">
+            <div class="section-title-wrap">
+              <span class="section-icon">🎨</span>
+              <div>
+                <h2 class="section-title">منتقي الألوان الحر للثيم</h2>
+                <p class="section-desc">اختر ألوانك المفضلة لواجهة الإضافة وأزرار الحل بحرية تامة</p>
+              </div>
+            </div>
+
+            <div class="pickers-grid">
+              <!-- Color 1: Primary / Accent -->
+              <div class="color-picker-item">
+                <label for="primaryColor">لون الأزرار والتحديد الرئيسي:</label>
+                <div class="picker-control">
+                  <input type="color" id="primaryColor" value="#0284c7">
+                  <span class="color-hex-badge" id="primaryColorHex">#0284c7</span>
+                </div>
+              </div>
+
+              <!-- Color 2: Background Accent -->
+              <div class="color-picker-item">
+                <label for="bgColor">لون الخلفية والبطاقات الداكنة:</label>
+                <div class="picker-control">
+                  <input type="color" id="bgColor" value="#0f172a">
+                  <span class="color-hex-badge" id="bgColorHex">#0f172a</span>
+                </div>
+              </div>
+
+              <!-- Color 3: Glow / Correct Answer -->
+              <div class="color-picker-item">
+                <label for="glowColor">لون توهج الإجابة الصحيحة:</label>
+                <div class="picker-control">
+                  <input type="color" id="glowColor" value="#10b981">
+                  <span class="color-hex-badge" id="glowColorHex">#10b981</span>
+                </div>
+              </div>
+
+              <!-- Color 4: Question Ring Color -->
+              <div class="color-picker-item">
+                <label for="ringColor">لون دائرة تمييز السؤال:</label>
+                <div class="picker-control">
+                  <input type="color" id="ringColor" value="#ef4444">
+                  <span class="color-hex-badge" id="ringColorHex">#ef4444</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="reset-wrap">
+              <button type="button" id="btnResetColors" class="btn-reset">
+                <span>🔄</span> استعادة الألوان الافتراضية الأصلية
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 3: Floating Mini Toolbar -->
+          <div class="card-section">
+            <div class="section-title-wrap">
+              <span class="section-icon">🕹️</span>
+              <div>
+                <h2 class="section-title">شريط التحكم العائم المصغر للاختبار</h2>
+                <p class="section-desc">شريط عائم وشفاف يظهر في زاوية الشاشة لحل الأسئلة بنقرة واحدة مباشرة من الصفحة</p>
+              </div>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">تفعيل الشريط المصغر العائم القابل للسحب</span>
+                <span class="toggle-subtitle">يمكنك سحبه وتثبيته في أي زاوية تفضلها بشاشتك</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="chkMiniToolbar" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Section 4: Updates & Maintenance -->
+          <div class="card-section">
+            <div class="section-title-wrap">
+              <span class="section-icon">⚡</span>
+              <div>
+                <h2 class="section-title">إدارة التحديثات وإعادة التحميل</h2>
+                <p class="section-desc">تحديث صامت ومريح بنقرة واحدة بدون فتح صفحات ويب مزعجة</p>
+              </div>
+            </div>
+
+            <div class="update-notice-banner">
+              <span class="banner-icon">✅</span>
+              <div>
+                <strong>تم حل مشكلة إعادة التحميل في كروم:</strong>
+                <p>الآن عند النقر على علامة التحديث الدائرية (🔄) في صفحة إضافات كروم، يتم تحديث الإضافة صامتاً وفورياً في 0.0 ثانية دون نقلك إلى أي موقع خارجي نهائياً.</p>
+              </div>
+            </div>
+
+            <div class="update-actions-grid">
+              <button type="button" id="btnSilentUpdateCheck" class="btn-action btn-action-update">
+                <span>🔄</span> فحص وتحديث الإضافة صامتاً الآن
+              </button>
+              <button type="button" id="btnManualPackageDownload" class="btn-action btn-action-manual">
+                <span>📦</span> تنزيل حزمة التحديث يدوياً (ZIP)
+              </button>
+            </div>
+            <div id="updateStatusText" class="update-status-text">الإضافة محدثة لأحدث إصدار v2.1.0</div>
+          </div>
+
+        </div>
+
+        <!-- Column 2: Live Preview -->
+        <div class="preview-column">
+          <div class="preview-sticky-card">
+            <div class="preview-header">
+              <span class="preview-tag">معاينة حية وتفاعلية فورية</span>
+              <span class="preview-live-dot"></span>
+            </div>
+
+            <div class="preview-box" id="previewContainer">
+              <!-- Question preview -->
+              <div class="preview-question" id="previewQuestion">
+                <span class="preview-q-tag">سؤال تجريبي قدرات:</span>
+                <div class="preview-q-text">لحاء : شجرة</div>
+              </div>
+
+              <!-- Options preview -->
+              <div class="preview-options-list" id="previewOptionsList">
+                <div class="preview-option-item" id="opt0">
+                  <span class="radio-mock"></span>
+                  <span class="opt-text">لياقة : عنق</span>
+                </div>
+                <div class="preview-option-item correct-mock" id="opt1">
+                  <span class="radio-mock correct-radio"></span>
+                  <span class="opt-text">جلد : ثعبان</span>
+                  <span class="correct-badge-mock">✓ الإجابة الصحيحة (يغطي)</span>
+                </div>
+                <div class="preview-option-item" id="opt2">
+                  <span class="radio-mock"></span>
+                  <span class="opt-text">غطاء : علبة</span>
+                </div>
+                <div class="preview-option-item" id="opt3">
+                  <span class="radio-mock"></span>
+                  <span class="opt-text">حجاب : وجه</span>
+                </div>
+              </div>
+
+              <!-- Floating Bar Mock Preview -->
+              <div class="preview-floating-bar-wrap">
+                <span class="preview-bar-label">معاينة الشريط العائم المصغر:</span>
+                <div class="mock-mini-bar" id="mockMiniBar">
+                  <span class="mock-drag-handle">⠿</span>
+                  <button type="button" class="mock-btn-concise">⚡ مباشر</button>
+                  <button type="button" class="mock-btn-detailed">📖 مفصل</button>
+                  <button type="button" class="mock-btn-snip">✂️ قص</button>
+                  <span class="mock-dot-hide">•</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="preview-actions">
+              <button type="button" id="btnSaveCustomization" class="btn-save-primary">
+                <span>💾</span> حفظ وتطبيق المظهر فوراً في جميع التبويبات
+              </button>
+              <div id="saveToast" class="save-toast">✨ تم حفظ الإعدادات وتطبيقها بنجاح!</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="customizer.js"></script>
+</body>
+</html>
