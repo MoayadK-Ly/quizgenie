@@ -13,6 +13,12 @@ let panelElement = null;
 let shadowRoot = null;
 let hostElement = null;
 let selectedTextCache = '';
+let currentQuestionCache = {
+  text: '',
+  concise: null,
+  detailed: null
+};
+let currentFontSize = 14;
 
 // التنسيقات المضمنة لضمان عمل الواجهة دائماً وبدقة داخل Shadow DOM
 const EMBEDDED_STYLES = `
@@ -355,6 +361,116 @@ const EMBEDDED_STYLES = `
   to { transform: rotate(360deg); }
 }
 
+.quizgenie-section-card {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border-right: 4px solid #38bdf8;
+  background: #1e293b;
+  font-size: 13.5px;
+  line-height: 1.55;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.quizgenie-card-header {
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.quizgenie-card-body {
+  white-space: pre-wrap;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.card-answer {
+  background: #064e3b !important;
+  border-right-color: #10b981 !important;
+  border: 1px solid #059669;
+}
+.card-answer .quizgenie-card-header {
+  color: #6ee7b7;
+  font-size: 15px;
+}
+.card-answer .quizgenie-card-body {
+  color: #a7f3d0;
+  font-weight: 600;
+}
+
+.card-concise {
+  background: #082f49 !important;
+  border-right-color: #38bdf8 !important;
+  border: 1px solid #0284c7;
+}
+.card-concise .quizgenie-card-header {
+  color: #7dd3fc;
+}
+
+.card-concept {
+  background: #0f172a !important;
+  border-right-color: #38bdf8 !important;
+  border: 1px solid #1e3a5f;
+}
+.card-concept .quizgenie-card-header {
+  color: #38bdf8;
+}
+
+.card-steps {
+  background: #1e293b !important;
+  border-right-color: #94a3b8 !important;
+  border: 1px solid #334155;
+}
+.card-steps .quizgenie-card-header {
+  color: #e2e8f0;
+}
+
+.card-elimination {
+  background: #451a03 !important;
+  border-right-color: #f59e0b !important;
+  border: 1px solid #b45309;
+}
+.card-elimination .quizgenie-card-header {
+  color: #fcd34d;
+}
+.card-elimination .quizgenie-card-body {
+  color: #fde68a;
+}
+
+.card-tip {
+  background: #2e1065 !important;
+  border-right-color: #a855f7 !important;
+  border: 1px solid #7e22ce;
+}
+.card-tip .quizgenie-card-header {
+  color: #d8b4fe;
+}
+.card-tip .quizgenie-card-body {
+  color: #f3e8ff;
+}
+
+.quizgenie-zoom-btn, .quizgenie-audio-btn {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+.quizgenie-zoom-btn:hover, .quizgenie-audio-btn:hover {
+  background: #334155;
+  color: #fff;
+  border-color: #38bdf8;
+}
+.quizgenie-audio-btn.active {
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-color: #f87171 !important;
+}
 @keyframes qgFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -684,7 +800,10 @@ function showResponsePanel(text, mode) {
         <span class="quizgenie-lang-tag">${getLangLabel(targetLanguage)}</span>
       </div>
       <div class="quizgenie-actions">
-        <button class="quizgenie-copy-btn" id="qg-copy">نسخ الإجابة</button>
+        <button class="quizgenie-zoom-btn" id="qg-zoom-out" title="تصغير الخط">A-</button>
+        <button class="quizgenie-zoom-btn" id="qg-zoom-in" title="تكبير الخط">A+</button>
+        <button class="quizgenie-audio-btn" id="qg-audio" title="استماع صوتي">🔊 استماع</button>
+        <button class="quizgenie-copy-btn" id="qg-copy">نسخ</button>
         <button class="quizgenie-close-btn" id="qg-close">&times;</button>
       </div>
     </div>
@@ -741,7 +860,68 @@ function showResponsePanel(text, mode) {
   }
 
   const copyBtn = panelElement.querySelector('#qg-copy');
+  const zoomInBtn = panelElement.querySelector('#qg-zoom-in');
+  const zoomOutBtn = panelElement.querySelector('#qg-zoom-out');
+  const audioBtn = panelElement.querySelector('#qg-audio');
   let currentResultText = '';
+
+  if (currentQuestionCache.text !== text) {
+    currentQuestionCache = {
+      text: text,
+      concise: null,
+      detailed: null
+    };
+  }
+
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', () => {
+      if (currentFontSize < 22) {
+        currentFontSize += 1.5;
+        const bodyEl = shadowRoot.getElementById('qg-body');
+        if (bodyEl) bodyEl.style.fontSize = `${currentFontSize}px`;
+      }
+    });
+  }
+
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', () => {
+      if (currentFontSize > 11) {
+        currentFontSize -= 1.5;
+        const bodyEl = shadowRoot.getElementById('qg-body');
+        if (bodyEl) bodyEl.style.fontSize = `${currentFontSize}px`;
+      }
+    });
+  }
+
+  if (audioBtn) {
+    audioBtn.addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) {
+        alert('ميزة القراءة الصوتية غير مدعومة في هذا المتصفح.');
+        return;
+      }
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        audioBtn.textContent = '🔊 استماع';
+        audioBtn.classList.remove('active');
+      } else {
+        if (!currentResultText) return;
+        const clean = currentResultText.replace(/[🎯⚡📘📐🔍💡✓❌*#]/g, '');
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.lang = (targetLanguage === 'en') ? 'en-US' : 'ar-SA';
+        utterance.onend = () => {
+          audioBtn.textContent = '🔊 استماع';
+          audioBtn.classList.remove('active');
+        };
+        utterance.onerror = () => {
+          audioBtn.textContent = '🔊 استماع';
+          audioBtn.classList.remove('active');
+        };
+        audioBtn.textContent = '⏹️ إيقاف';
+        audioBtn.classList.add('active');
+        window.speechSynthesis.speak(utterance);
+      }
+    });
+  }
 
   copyBtn.addEventListener('click', () => {
     if (currentResultText) {
@@ -758,6 +938,16 @@ function showResponsePanel(text, mode) {
   });
 
   function fetchAndDisplayAnswer(targetText, targetMode) {
+    const bodyEl = shadowRoot.getElementById('qg-body');
+    if (!bodyEl) return;
+    if (currentFontSize) bodyEl.style.fontSize = `${currentFontSize}px`;
+
+    // 0ms INSTANT DUAL-MODE CACHE
+    if (currentQuestionCache.text === targetText && currentQuestionCache[targetMode]) {
+      currentResultText = currentQuestionCache[targetMode];
+      renderAnswerContent(currentResultText, bodyEl);
+      return;
+    }
     const bodyEl = shadowRoot.getElementById('qg-body');
     if (!bodyEl) return;
 
@@ -809,6 +999,8 @@ function showResponsePanel(text, mode) {
 
       if (response && response.success) {
         currentResultText = response.data;
+        currentQuestionCache.text = targetText;
+        currentQuestionCache[targetMode] = response.data;
         renderAnswerContent(response.data, activeBody);
       } else {
         const errorMsg = (response && response.error) ? response.error : 'تعذر الحصول على إجابة.';
@@ -843,32 +1035,92 @@ function showResponsePanel(text, mode) {
 }
 
 function removePanel() {
+  if (window.speechSynthesis && window.speechSynthesis.speaking) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
   if (panelElement) {
     panelElement.remove();
     panelElement = null;
   }
 }
 
-// عرض الإجابة بتنسيق بارز وواضح للاختبارات
+// عرض الإجابة والتحليل الأكاديمي بتنسيق بطاقات ذكية مستقلة
 function renderAnswerContent(markdownText, container) {
   container.innerHTML = '';
   container.setAttribute('dir', 'auto');
 
-  const lines = markdownText.split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return;
+  if (!markdownText || !markdownText.trim()) return;
+  const rawText = markdownText.trim();
 
-  // الإجابة البارزة (السطر الأول)
-  const firstLine = lines[0];
-  const badge = document.createElement('div');
-  badge.className = 'quizgenie-answer-badge';
-  badge.textContent = firstLine;
-  container.appendChild(badge);
+  // تفكيك الأقسام الأكاديمية الذكية
+  const lines = rawText.split('\n');
+  const sections = [];
+  let currentSec = { header: '', lines: [] };
 
-  // بقية الأسطر للشرح والتحليل
-  if (lines.length > 1) {
-    const contentText = document.createElement('div');
-    contentText.className = 'quizgenie-content-text';
-    contentText.textContent = lines.slice(1).join('\n\n');
-    container.appendChild(contentText);
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+
+    if (t.startsWith('🎯') || t.startsWith('⚡') || t.startsWith('📘') || t.startsWith('📐') || t.startsWith('🔍') || t.startsWith('💡')) {
+      if (currentSec.header || currentSec.lines.length > 0) {
+        sections.push(currentSec);
+      }
+      currentSec = { header: t, lines: [] };
+    } else {
+      currentSec.lines.push(t);
+    }
+  }
+  if (currentSec.header || currentSec.lines.length > 0) {
+    sections.push(currentSec);
+  }
+
+  if (sections.length > 0 && sections[0].header) {
+    for (const sec of sections) {
+      const card = document.createElement('div');
+      card.className = 'quizgenie-section-card';
+
+      if (sec.header.startsWith('🎯')) {
+        card.classList.add('card-answer');
+      } else if (sec.header.startsWith('⚡')) {
+        card.classList.add('card-concise');
+      } else if (sec.header.startsWith('📘')) {
+        card.classList.add('card-concept');
+      } else if (sec.header.startsWith('📐')) {
+        card.classList.add('card-steps');
+      } else if (sec.header.startsWith('🔍')) {
+        card.classList.add('card-elimination');
+      } else if (sec.header.startsWith('💡')) {
+        card.classList.add('card-tip');
+      }
+
+      const h = document.createElement('div');
+      h.className = 'quizgenie-card-header';
+      h.textContent = sec.header;
+      card.appendChild(h);
+
+      if (sec.lines.length > 0) {
+        const b = document.createElement('div');
+        b.className = 'quizgenie-card-body';
+        b.textContent = sec.lines.join('\n');
+        card.appendChild(b);
+      }
+      container.appendChild(card);
+    }
+  } else {
+    // التنسيق الافتراضي في حال عدم وجود علامات الأقسام
+    const trimmedLines = lines.map(l => l.trim()).filter(Boolean);
+    if (!trimmedLines.length) return;
+
+    const badge = document.createElement('div');
+    badge.className = 'quizgenie-answer-badge';
+    badge.textContent = trimmedLines[0];
+    container.appendChild(badge);
+
+    if (trimmedLines.length > 1) {
+      const contentText = document.createElement('div');
+      contentText.className = 'quizgenie-content-text';
+      contentText.textContent = trimmedLines.slice(1).join('\n\n');
+      container.appendChild(contentText);
+    }
   }
 }
