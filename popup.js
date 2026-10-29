@@ -893,13 +893,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 12. إدارة نافذة وإشعارات التحديث للإصدار 2.0.0
+  // 12. إدارة نافذة وإشعارات التحديث وتخصيص المظهر
+  const customizerAnnouncementBanner = document.getElementById('customizerAnnouncementBanner');
+  const btnOpenCustomizer = document.getElementById('btnOpenCustomizer');
   const updateAnnouncementBanner = document.getElementById('updateAnnouncementBanner');
   const btnOpenUpdatePage = document.getElementById('btnOpenUpdatePage');
   const updateNoticeModal = document.getElementById('updateNoticeModal');
   const closeUpdateModalBtn = document.getElementById('closeUpdateModalBtn');
   const btnExploreFullUpdate = document.getElementById('btnExploreFullUpdate');
   const btnDismissUpdateModal = document.getElementById('btnDismissUpdateModal');
+
+  function openCustomizerPage() {
+    try {
+      chrome.tabs.create({ url: chrome.runtime.getURL('customizer.html') });
+    } catch (e) {
+      console.warn('Error opening customizer tab:', e);
+    }
+  }
+
+  if (btnOpenCustomizer) {
+    btnOpenCustomizer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCustomizerPage();
+    });
+  }
+
+  if (customizerAnnouncementBanner) {
+    customizerAnnouncementBanner.addEventListener('click', () => {
+      openCustomizerPage();
+    });
+  }
 
   function openChangelogPage() {
     try {
