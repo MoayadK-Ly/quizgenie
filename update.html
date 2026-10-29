@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎉 تم تحديث QuizGenie إلى الإصدار 2.0.0 - التحديث الأكاديمي الشامل</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      background: #0b0f19;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 860px;
+      width: 100%;
+    }
+
+    /* Hero Header */
+    .hero {
+      text-align: center;
+      padding: 30px 20px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(11, 15, 25, 0.8) 100%);
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
+      margin-bottom: 35px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 30px;
+      margin-bottom: 16px;
+    }
+
+    .hero-logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 4px 12px rgba(56, 189, 248, 0.5));
+      animation: floatLogo 3s ease-in-out infinite;
+    }
+
+    @keyframes floatLogo {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .hero-title {
+      font-size: 30px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+    }
+
+    /* Features Grid */
+    .section-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #38bdf8;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 18px;
+      margin-bottom: 35px;
+    }
+
+    .card {
+      background: #131b2e;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: #38bdf8;
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card-icon {
+      font-size: 24px;
+      width: 44px;
+      height: 44px;
+      background: #1e293b;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #334155;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #f8fafc;
+    }
+
+    .card-badge {
+      font-size: 10.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-right: auto;
+    }
+
+    .badge-green { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+    .badge-blue { background: #082f49; color: #7dd3fc; border: 1px solid #0284c7; }
+    .badge-purple { background: #3b0764; color: #d8b4fe; border: 1px solid #7e22ce; }
+    .badge-amber { background: #451a03; color: #fde68a; border: 1px solid #b45309; }
+
+    .card-body {
+      font-size: 13.5px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    /* Actions Footer */
+    .cta-box {
+      text-align: center;
+      padding: 24px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .cta-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+      transition: all 0.2s;
+    }
+
+    .cta-btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.6);
+    }
+
+    .footer-note {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 25px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Hero Section -->
+    <div class="hero">
+      <div class="hero-badge">🎉 تم اكتمال التحديث وتثبيته بنجاح</div>
+      <br>
+      <img src="icons/icon128.png" class="hero-logo" alt="QuizGenie">
+      <h1 class="hero-title">مرحباً بك في <span>QuizGenie v2.0.0</span></h1>
+      <p class="hero-desc">
+        التحديث الأكاديمي الشامل: تم فصل عقليات التفكير بالكامل، إضافة تصوير الشاشة وحل الأسئلة المحمية، القراءة الصوتية، وملخص المذاكرة الذكي!
+      </p>
+    </div>
+
+    <!-- Features Section -->
+    <div class="section-title">
+      <span>✨</span> أهم ميزات وخصائص الإصدار الجديد:
+    </div>
+
+    <div class="grid">
+      <!-- Feature 1 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">⚡</div>
+          <div>
+            <div class="card-title">فصل عقليات الذكاء الاصطناعي</div>
+          </div>
+          <span class="card-badge badge-blue">وضع حاسم / أكاديمي</span>
+        </div>
+        <div class="card-body">
+          <strong>1. الإجابة بدون فلسفة:</strong> عقلية استنتاجية سريعة حاسمة تستخرج رمز ونص الخيار الصحيح 100% في (0.1 ثانية) مع تأكيد في جملة واحدة من 8 كلمات دون أي مقدمات.<br>
+          <strong>2. الإجابة المفصلة:</strong> عقلية أستاذ وخبير أكاديمي تشرح القواعد العلمية، خطوات الحل، وتفنيد أسباب خطأ الخيارات الأخرى.
+        </div>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">📸</div>
+          <div>
+            <div class="card-title">تصوير الشاشة وحل الأسئلة المحمية</div>
+          </div>
+          <span class="card-badge badge-green">اختصار F2 الفوري</span>
+        </div>
+        <div class="card-body">
+          حل الأسئلة والرسومات والمعادلات في المنصات التي تمنع نسخ النص! اسحب بالماوس فوق أي سؤال على الشاشة ليقوم نموذج <strong>Gemini Vision 3.5</strong> بقراءته وحله فوراً.
+        </div>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">🔊</div>
+          <div>
+            <div class="card-title">القراءة الصوتية الذكية (Text-to-Speech)</div>
+          </div>
+          <span class="card-badge badge-purple">استماع فوري</span>
+        </div>
+        <div class="card-body">
+          أصبح بإمكانك الاستماع لشرح وحل السؤال صوتياً بنقرة واحدة على زر (🔊 استماع) داخل المتصفح أو تطبيق سطح المكتب للمراجعة السريعة أثناء المذاكرة.
+        </div>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">📜</div>
+          <div>
+            <div class="card-title">سجل الأسئلة وتصدير ملخص المذاكرة</div>
+          </div>
+          <span class="card-badge badge-green">Study Sheet</span>
+        </div>
+        <div class="card-body">
+          حفظ تلقائي لجميع الأسئلة التي قمت بحلها، مع إمكانية تصدير ملخص مراجعة شامل HTML فائق التنسيق وجاهز للطباعة على سطح المكتب للمراجعة قبل دخول الامتحان!
+        </div>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">🚀</div>
+          <div>
+            <div class="card-title">حل نهائي لمشكلة تحديد الاستخدام (Rate Limit)</div>
+          </div>
+          <span class="card-badge badge-amber">خوادم صاروخية</span>
+        </div>
+        <div class="card-body">
+          تم التخلص نهائياً من رسالة (Free limit reached: 30s)، والاعتماد على سيرفرات Gemini 3.5 فائقة السرعة مع نظام تبديل تلقائي بديل في حال انشغال أي نموذج.
+        </div>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">🔍</div>
+          <div>
+            <div class="card-title">كاش ذكي فوري وأزرار تكبير الخط</div>
+          </div>
+          <span class="card-badge badge-blue">استجابة 0 ثانية</span>
+        </div>
+        <div class="card-body">
+          التبديل بين وضع الحل المباشر والشرح المفصل في 0 ثانية بفضل الكاش الذكي، مع أزرار (A+ / A-) للتحكم بحجم الخط وتنسيق البطاقات الأكاديمية الملونة.
+        </div>
+      </div>
+    </div>
+
+    <!-- Call to action -->
+    <div class="cta-box">
+      <h3 style="color: #38bdf8; font-size: 18px;">جاهز لتجربة النسخة الجديدة الأقوى؟</h3>
+      <p style="color: #94a3b8; font-size: 14px;">حدد أي نص سؤال في صفحة الاختبار أو اضغط F2 للقص المباشر من الشاشة!</p>
+      <button class="cta-btn" onclick="window.close()">🚀 ابدأ استخدام QuizGenie الآن</button>
+    </div>
+
+    <div class="footer-note">
+      QuizGenie v2.0.0 • مساعدك الأكاديمي الذكي لحل الامتحانات والواجبات المدرسية والجامعية
+    </div>
+  </div>
+
+</body>
+</html>
