@@ -91,8 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentEnabled = true;
   let currentFabEnabled = true;
-  let currentServer = 'free';
-  let currentGeminiKey = '';
+  const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42TFl6UW1xLWtGNFg2R3gyTTY4WG1hQk5BWjVjRk5vSVJyNW9samZTQVRkb0E=');
+  let currentServer = 'gemini';
+  let currentGeminiKey = DEFAULT_GEMINI_KEY;
   let currentOpenaiKey = '';
   let currentDeepseekKey = '';
   let currentGroqKey = '';
@@ -265,8 +266,11 @@ document.addEventListener('DOMContentLoaded', () => {
   ], (data) => {
     currentEnabled = data.enabled !== false;
     currentFabEnabled = data.fabEnabled !== false;
-    currentServer = data.serverType || 'free';
-    currentGeminiKey = data.geminiKey || '';
+    currentServer = (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType;
+    currentGeminiKey = (data.geminiKey && data.geminiKey.trim()) ? data.geminiKey.trim() : DEFAULT_GEMINI_KEY;
+    if (data.serverType === 'free' || data.serverType === 'free_backup' || !data.geminiKey) {
+      chrome.storage.local.set({ serverType: currentServer, geminiKey: currentGeminiKey });
+    }
     currentOpenaiKey = data.openaiKey || '';
     currentDeepseekKey = data.deepseekKey || '';
     currentGroqKey = data.groqKey || '';
@@ -390,6 +394,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // حفظ مفتاح Gemini
+  if (geminiKeyInput) {
+    geminiKeyInput.addEventListener('input', () => {
+      const key = geminiKeyInput.value.trim();
+      currentGeminiKey = key;
+      chrome.storage.local.set({ geminiKey: key });
+      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { geminiKey: key } });
+    });
+  }
   if (saveGeminiKeyBtn) {
     saveGeminiKeyBtn.addEventListener('click', () => {
       const key = geminiKeyInput.value.trim();
@@ -401,6 +413,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         showKeySavedFeedback(saveGeminiKeyBtn);
       });
+    });
+  }
+
+  // حفظ مفتاح Groq
+  if (groqKeyInput) {
+    groqKeyInput.addEventListener('input', () => {
+      const key = groqKeyInput.value.trim();
+      currentGroqKey = key;
+      chrome.storage.local.set({ groqKey: key });
+      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { groqKey: key } });
     });
   }
 
