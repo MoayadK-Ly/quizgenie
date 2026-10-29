@@ -471,58 +471,22 @@
         </div>
       </div>
 
-      <!-- القائمة الجديدة: ماسح الامتحانات الشامل والتناظر اللفظي الذكي -->
-      <div class="accordion-item item-scanner" id="accItemExamScanner">
-        <div class="accordion-header" data-target="accItemExamScanner">
-          <div class="accordion-title-group">
-            <span class="accordion-icon" style="color: #38bdf8;">🔍</span>
-            <div class="accordion-text">
-              <span class="accordion-title">ماسح الامتحانات الشامل الذكي</span>
-              <span class="accordion-subtitle">حل الشاشة، التناظر اللفظي، والدوائر الحمراء</span>
+      <!-- خيار الحل المباشر الفوري -->
+      <div class="direct-solve-card" id="cardLiveDirectSolve" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)); border: 1.5px solid #0284c7; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.25);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">⚡</span>
+            <div>
+              <div style="font-size: 14px; font-weight: 800; color: #38bdf8;">الحل المباشر</div>
+              <div style="font-size: 11px; color: #94a3b8;">تحديد الشاشة كاملة أو منطقة الأسئلة للرصد والحل المستمر فوراً</div>
             </div>
           </div>
-          <div class="accordion-meta">
-            <span class="accordion-badge" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid #0284c7;">جديد ⚡</span>
-            <span class="accordion-chevron">▾</span>
-          </div>
+          <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid #10b981; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;">فوري 🎯</span>
         </div>
-        <div class="accordion-body">
-          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b; border-radius: 10px; padding: 10px; margin-bottom: 12px;">
-            <div style="font-size: 11.5px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">🎯 اختيار نمط الحل المسبق للماسح:</div>
-            <div style="display: flex; gap: 8px;">
-              <button type="button" id="scannerModeConciseBtn" style="flex: 1; padding: 7px; font-size: 11.5px; background: #0284c7; border: 1px solid #38bdf8; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 700;">⚡ مباشر بدون فلسفة</button>
-              <button type="button" id="scannerModeDetailedBtn" style="flex: 1; padding: 7px; font-size: 11.5px; background: #111827; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600;">📖 مفصل مع الشرح</button>
-            </div>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
-            <button type="button" id="btnTriggerLiveScan" style="background: linear-gradient(135deg, #0284c7, #4338ca); border: 1.5px solid #38bdf8; color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);">
-              <span>⚡</span>
-              <span>مسح وحل السؤال المعروض في الصفحة الآن</span>
-            </button>
-            <button type="button" id="btnTriggerAreaSnip" style="background: #111827; border: 1px solid #38bdf8; color: #38bdf8; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <span>📸</span>
-              <span>تحديد منطقة حرة في الشاشة (أداة القص)</span>
-            </button>
-            <button type="button" id="btnClearPageHighlights" style="background: #1e293b; border: 1px solid #475569; color: #94a3b8; padding: 6px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <span>✖</span>
-              <span>مسح التظليلات والدوائر من الصفحة</span>
-            </button>
-          </div>
-
-          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #fca5a5; line-height: 1.5; margin-bottom: 10px;">
-            🔴 <strong>نظام التمييز الصارم:</strong> السؤال المقروء يظهر حوله دائرة حمراء متوهجة، والخيار الصحيح يضيء بالأخضر المتوهج فوراً دون أي خلط.
-          </div>
-
-          <!-- خانة التناظر اللفظي السريع -->
-          <div style="border-top: 1px solid #1e293b; padding-top: 10px;">
-            <div style="font-size: 11.5px; font-weight: 700; color: #fbbf24; margin-bottom: 6px;">⚡ محلل التناظر اللفظي السريع (القدرات):</div>
-            <div style="display: flex; gap: 6px;">
-              <input type="text" id="quickAnalogyInput" placeholder="اكتب الكلمتين هنا (مثال: لحاء : شجرة)..." style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; padding: 6px 10px; font-size: 12px; direction: rtl;" />
-              <button type="button" id="btnSolveQuickAnalogy" style="background: #f59e0b; border: none; color: #000; font-weight: 700; font-size: 11.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;">حل التناظر 🎯</button>
-            </div>
-          </div>
-        </div>
+        <button type="button" id="btnStartLiveDirectSolver" style="width: 100%; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; color: #fff; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4); transition: transform 0.15s ease;">
+          <span style="font-size: 16px;">⚡</span>
+          <span>الحل المباشر</span>
+        </button>
       </div>
 
       <!-- القائمة 5: تجربة وحل فوري للسؤال من داخل الإضافة -->
