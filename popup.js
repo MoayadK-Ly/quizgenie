@@ -264,6 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'enabled', 'fabEnabled', 'serverType', 'geminiKey', 'openaiKey', 'deepseekKey', 'groqKey',
     'subject', 'defaultMode', 'targetLanguage'
   ], (data) => {
+    if (chrome.runtime.lastError || !data) data = {};
     currentEnabled = data.enabled !== false;
     currentFabEnabled = data.fabEnabled !== false;
     currentServer = (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType;
