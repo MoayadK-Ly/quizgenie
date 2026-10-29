@@ -490,8 +490,10 @@ namespace QuizGenie
         private Label lblAccSolverChevron;
         private Panel pnlAccSolverBody;
         private TextBox txtQuestion;
+        private Button btnLiveDirect;
         private Button btnPasteQuestion;
         private Button btnSnipScreen;
+        private LiveDirectHudForm activeLiveHud;
         private Button btnExportHistory;
         private Button btnSpeakDesktop;
         private System.Speech.Synthesis.SpeechSynthesizer desktopSynth;
@@ -1616,6 +1618,21 @@ namespace QuizGenie
             lblQ.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             pnlAccSolverBody.Controls.Add(lblQ);
 
+            btnLiveDirect = new Button();
+            btnLiveDirect.Text = "⚡ الحل المباشر (تحديد الشاشة أو منطقة الأسئلة)";
+            btnLiveDirect.Location = new Point(14, y - 2);
+            btnLiveDirect.Size = new Size(itemW - 28, 36);
+            btnLiveDirect.FlatStyle = FlatStyle.Flat;
+            btnLiveDirect.FlatAppearance.BorderSize = 0;
+            btnLiveDirect.ForeColor = Color.White;
+            btnLiveDirect.BackColor = Color.FromArgb(2, 132, 199);
+            btnLiveDirect.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            btnLiveDirect.Cursor = Cursors.Hand;
+            UITheme.ApplyRoundedCard(btnLiveDirect, 12, Color.FromArgb(56, 189, 248), 1.2f);
+            btnLiveDirect.Click += (s, e) => StartLiveDirectModeDesktop();
+            pnlAccSolverBody.Controls.Add(btnLiveDirect);
+            y += 42;
+
             btnPasteQuestion = new Button();
             btnPasteQuestion.Text = "📋 لصق من الحافظة";
             btnPasteQuestion.Location = new Point(14, y - 2);
@@ -2584,6 +2601,41 @@ namespace QuizGenie
             menuForm.Location = new Point(x, y);
             if (!menuForm.Visible) menuForm.Show();
             menuForm.BringToFront();
+        }
+
+        public void StartLiveDirectModeDesktop()
+        {
+            try
+            {
+                if (activeLiveHud != null && !activeLiveHud.IsDisposed)
+                {
+                    activeLiveHud.StopLiveDirect();
+                    activeLiveHud = null;
+                }
+                LiveDirectDesktopSelectorForm selector = new LiveDirectDesktopSelectorForm(this);
+                selector.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("تعذر تشغيل محدد الحل المباشر: " + ex.Message, "QuizGenie", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        public void LaunchLiveDirectHud(Rectangle rect)
+        {
+            try
+            {
+                if (activeLiveHud != null && !activeLiveHud.IsDisposed)
+                {
+                    activeLiveHud.StopLiveDirect();
+                }
+                activeLiveHud = new LiveDirectHudForm(this, rect);
+                activeLiveHud.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("تعذر تشغيل شريط الحل المباشر: " + ex.Message, "QuizGenie", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         public void StartScreenSnip()
