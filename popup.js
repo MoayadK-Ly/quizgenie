@@ -949,4 +949,39 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (err) {
     console.warn('Update modal check error:', err);
   }
+
+  // 13. أزرار ماسح الاختبارات الذكي والتلوين الثلاثي
+  const btnTriggerExamScan = document.getElementById('btnTriggerExamScan');
+  const btnClearExamHighlights = document.getElementById('btnClearExamHighlights');
+
+  if (btnTriggerExamScan) {
+    btnTriggerExamScan.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'TRIGGER_EXAM_SCAN',
+            mode: currentDefaultMode || 'concise'
+          }, (resp) => {
+            if (chrome.runtime.lastError) {
+              alert('يرجى التأكد من فتح صفحة الاختبار وتحديثها (F5) لتفعيل الماسح.');
+            } else {
+              window.close();
+            }
+          });
+        }
+      });
+    });
+  }
+
+  if (btnClearExamHighlights) {
+    btnClearExamHighlights.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'CLEAR_EXAM_HIGHLIGHTS'
+          });
+        }
+      });
+    });
+  }
 });
