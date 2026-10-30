@@ -198,7 +198,9 @@ if (chrome.contextMenus && chrome.contextMenus.onClicked) {
       subject: subject,
       targetLanguage: targetLanguage,
       serverType: serverType
-    }).catch(() => {});
+    }, () => {
+      if (chrome.runtime.lastError) { /* safe */ }
+    });
   });
 });
 }
@@ -262,7 +264,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               chrome.tabs.sendMessage(tab.id, {
                 action: 'STATE_UPDATED',
                 ...updated
-              }).catch(() => {});
+              }, () => {
+                if (chrome.runtime.lastError) { /* safe */ }
+              });
             }
           });
         });
@@ -373,7 +377,9 @@ if (chrome.commands && chrome.commands.onCommand) {
     if (command === 'start_live_direct_solver') {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs && tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'START_LIVE_DIRECT_SOLVER' });
+          chrome.tabs.sendMessage(tabs[0].id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
+            if (chrome.runtime.lastError) {}
+          });
         }
       });
     }
