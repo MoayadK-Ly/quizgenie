@@ -756,8 +756,8 @@ function handleSelectionEvent(e) {
 
 // زر Escape للإغلاق
 document.addEventListener('keydown', (e) => {
-  // Alt+Q: طھط´ط؛ظٹظ„ ظ…ط§ط³ط­ ط§ظ„ط§ظ…طھط­ط§ظ† ظˆطھظ„ظˆظٹظ† ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ط£طµظپط± ظˆط§ظ„ط¥ط¬ط§ط¨ط© ط¨ط§ظ„ط£ط®ط¶ط± ظˆط§ظ„ط®ط·ط£ ط¨ط§ظ„ط£ط­ظ…ط±
-  if (e.altKey && (e.key === 'q' || e.key === 'Q' || e.key === 'ط¶')) {
+  // Alt+Q: تشغيل ماسح الامتحان وتلوين السؤال بالأصفر والإجابة بالأخضر والخطأ بالأحمر
+  if (e.altKey && (e.key === 'q' || e.key === 'Q' || e.key === 'ض')) {
     e.preventDefault();
     scanAndSolveCurrentExam(currentMode || 'concise');
   }
@@ -994,7 +994,9 @@ function showResponsePanel(text, mode) {
   if (audioBtn) {
     audioBtn.addEventListener('click', () => {
       if (!('speechSynthesis' in window)) {
-        alert('ميزة القراءة الصوتية غير مدعومة في هذا المتصفح.');
+        if (typeof showScanFeedbackBanner === 'function') {
+          showScanFeedbackBanner('⚠️ ميزة القراءة الصوتية غير مدعومة في هذا المتصفح.', '#ef4444');
+        }
         return;
       }
       if (window.speechSynthesis.speaking) {
@@ -1223,9 +1225,9 @@ function renderAnswerContent(markdownText, container) {
 
 // =========================================================================
 // QuizGenie - Smart Exam Scanner & Live Tri-Color Visual Feedback System
-// ًںں، Question = Yellow Glow
-// ًں”´ Wrong Options = Red Tint + âœ–
-// ًںں¢ Correct Option = Emerald Green Pulse + âœ”
+// 🟡 Question = Yellow Glow
+// 🔴 Wrong Options = Red Tint + ✖
+// 🟢 Correct Option = Emerald Green Pulse + ✔
 // =========================================================================
 
 let prefetchDebounce = null;
@@ -1589,7 +1591,7 @@ function processSnipSelectionRect(rect, preferredMode) {
     questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
   }
 
-  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ طھط­ظ„ظٹظ„ ط§ظ„ظ…ظ†ط·ظ‚ط© ط§ظ„ظ…ط­ط¯ط¯ط© ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ...', '#0284c7');
+  showScanFeedbackBanner('⏳ جارٍ تحليل المنطقة المحددة بالذكاء الاصطناعي...', '#0284c7');
 
   chrome.runtime.sendMessage({
     action: 'SOLVE_EXAM_SCAN',
@@ -1602,7 +1604,7 @@ function processSnipSelectionRect(rect, preferredMode) {
     targetLanguage: targetLanguage
   }, (response) => {
     if (chrome.runtime.lastError || !response || !response.success) {
-      showScanFeedbackBanner('â‌Œ طھط¹ط°ط± ط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ط­ط¯ط¯.', '#ef4444');
+      showScanFeedbackBanner('❌ تعذر حل السؤال المحدد.', '#ef4444');
       return;
     }
     const data = response.data || response.result || {};
@@ -1676,24 +1678,24 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode, relatio
   card.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #1e293b; padding-bottom:8px;">
       <div style="display:flex; align-items:center; gap:6px;">
-        <span style="font-size:18px;">ًںژ¯</span>
-        <strong style="font-size:13px; color:#38bdf8;">طھظ… ظپط­طµ ط§ظ„ط³ط¤ط§ظ„ ظˆطھط­ط¯ظٹط¯ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­</strong>
+        <span style="font-size:18px;">🎯</span>
+        <strong style="font-size:13px; color:#38bdf8;">تم فحص السؤال وتحديد الخيار الصحيح</strong>
       </div>
       <button id="qg-close-scan-card" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
     </div>
     <div style="margin-bottom:8px;">
-      <span style="font-size:11px; color:#ef4444; font-weight:700;">ًں”´ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظ‚ط±ظˆط،:</span>
+      <span style="font-size:11px; color:#ef4444; font-weight:700;">🔴 السؤال المقروء:</span>
       <div style="font-size:12.5px; color:#e2e8f0; margin-top:2px; font-weight:600;">${questionText || ''}</div>
     </div>
-    ${relation ? `<div style="font-size:11px; color:#38bdf8; margin-bottom:6px; background:rgba(56,189,248,0.1); padding:4px 8px; border-radius:6px;">ًں’، ط§ظ„ط¹ظ„ط§ظ‚ط©: ${relation}</div>` : ''}
+    ${relation ? `<div style="font-size:11px; color:#38bdf8; margin-bottom:6px; background:rgba(56,189,248,0.1); padding:4px 8px; border-radius:6px;">💡 العلاقة: ${relation}</div>` : ''}
     <div style="background:rgba(16,185,129,0.15); border:1.5px solid #10b981; border-radius:10px; padding:10px; margin-bottom:10px;">
-      <span style="font-size:11px; color:#34d399; font-weight:700;">ًںں¢ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط§ظ„ظ…ط¹طھظ…ط¯:</span>
+      <span style="font-size:11px; color:#34d399; font-weight:700;">🟢 الخيار الصحيح المعتمد:</span>
       <div style="font-size:14px; font-weight:800; color:#ffffff; margin-top:3px;">${correctText || ''}</div>
     </div>
     <div style="max-height:130px; overflow-y:auto; font-size:11.5px; color:#cbd5e1; line-height:1.5; margin-bottom:12px; white-space:pre-wrap;">${rawAnswer || ''}</div>
     <div style="display:flex; gap:8px;">
-      <button id="qg-voice-tts-btn" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">ًں”ٹ ط§ط³طھظ…ط§ط¹</button>
-      <button id="qg-clear-highlights-btn" style="flex:1; background:#0284c7; border:none; color:#fff; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">âœ– ظ…ط³ط­ ط§ظ„طھظ„ظˆظٹظ†</button>
+      <button id="qg-voice-tts-btn" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">🔊 استماع</button>
+      <button id="qg-clear-highlights-btn" style="flex:1; background:#0284c7; border:none; color:#fff; padding:6px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">✖ مسح التلوين</button>
     </div>
   `;
 
@@ -1707,28 +1709,28 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode, relatio
     if (window.speechSynthesis) {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
-        ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹';
+        ttsBtn.textContent = '🔊 استماع';
         return;
       }
-      const utter = new SpeechSynthesisUtterance((correctText ? 'ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ظ‡ظˆ ' + correctText + '. ' : '') + rawAnswer);
+      const utter = new SpeechSynthesisUtterance((correctText ? 'الخيار الصحيح هو ' + correctText + '. ' : '') + rawAnswer);
       utter.lang = 'ar-SA';
       utter.rate = 1.0;
-      utter.onend = () => { ttsBtn.textContent = 'ًں”ٹ ط§ط³طھظ…ط§ط¹'; };
-      ttsBtn.textContent = 'âڈ¹ ط¥ظٹظ‚ط§ظپ ط§ظ„طµظˆطھ';
+      utter.onend = () => { ttsBtn.textContent = '🔊 استماع'; };
+      ttsBtn.textContent = '⏹ إيقاف الصوت';
       window.speechSynthesis.speak(utter);
     }
   });
 }
 
-// ط²ط± ط§ظ„ظ…ط§ط³ط­ ط§ظ„ط¹ط§ط¦ظ… ط¹ظ„ظ‰ طµظپط­ط§طھ ط§ظ„ط§ط®طھط¨ط§ط±ط§طھ
+// زر الماسح العائم على صفحات الاختبارات
 function initExamScannerFab() {
   if (document.getElementById('quizgenie-exam-scanner-pill')) return;
   const pill = document.createElement('button');
   pill.id = 'quizgenie-exam-scanner-pill';
   pill.className = 'quizgenie-scanner-fab';
   pill.innerHTML = `
-    <span style="font-size:15px;">ًں”چ</span>
-    <span>ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط§ظ…طھط­ط§ظ†</span>
+    <span style="font-size:15px;">🔍</span>
+    <span>مسح وحل الامتحان</span>
   `;
   pill.addEventListener('click', () => {
     scanAndSolveCurrentExam(currentMode);
@@ -1736,7 +1738,7 @@ function initExamScannerFab() {
   document.body.appendChild(pill);
 }
 
-// طھظپط¹ظٹظ„ ط§ظ„ط²ط± ط§ظ„ط¹ط§ط¦ظ… ظ„ظ„ط§ظ…طھط­ط§ظ†ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ ظˆط¬ظˆط¯ ظ…ط¤ط´ط±ط§طھ ط§ظ„ط§ط®طھط¨ط§ط±
+// تفعيل الزر العائم للامتحانات تلقائياً عند وجود مؤشرات الاختبار
 setTimeout(() => {
   const isExamPage = document.querySelector('input[type="radio"], [role="radio"], [class*="exam"], [class*="quiz"], [class*="question"]');
   if (isExamPage && extensionEnabled && fabEnabled) {
