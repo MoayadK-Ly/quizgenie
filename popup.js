@@ -1,4 +1,4 @@
-// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v2.4.6)
+// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v2.4.8)
 
 // Bulletproof Universal Chrome API and Exception Shield to eliminate popup.html:0 errors
 function checkLastError() {
@@ -9,6 +9,131 @@ function checkLastError() {
     }
   } catch (e) {}
   return null;
+}
+
+function showPopupBanner(message, type = 'warning') {
+  try {
+    let banner = document.getElementById('qgPopupNoticeBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'qgPopupNoticeBanner';
+      banner.style.position = 'fixed';
+      banner.style.bottom = '10px';
+      banner.style.left = '10px';
+      banner.style.right = '10px';
+      banner.style.zIndex = '999999';
+      banner.style.padding = '10px 14px';
+      banner.style.borderRadius = '10px';
+      banner.style.fontSize = '12px';
+      banner.style.fontWeight = 'bold';
+      banner.style.lineHeight = '1.5';
+      banner.style.textAlign = 'right';
+      banner.style.direction = 'rtl';
+      banner.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+      banner.style.transition = 'all 0.3s ease';
+      banner.style.display = 'flex';
+      banner.style.alignItems = 'center';
+      banner.style.justifyContent = 'space-between';
+      banner.style.gap = '8px';
+      document.body.appendChild(banner);
+    }
+
+    if (type === 'error' || type === 'warning') {
+      banner.style.background = 'linear-gradient(135deg, #7f1d1d, #991b1b)';
+      banner.style.border = '1.5px solid #ef4444';
+      banner.style.color = '#fee2e2';
+    } else {
+      banner.style.background = 'linear-gradient(135deg, #064e3b, #047857)';
+      banner.style.border = '1.5px solid #10b981';
+      banner.style.color = '#d1fae5';
+    }
+
+    banner.innerHTML = `
+      <div style="flex: 1; word-break: break-word;">${message}</div>
+      <button type="button" style="background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">إغلاق</button>
+    `;
+
+    const closeBtn = banner.querySelector('button');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        banner.style.display = 'none';
+      };
+    }
+
+    banner.style.display = 'flex';
+    if (banner._hideTimer) clearTimeout(banner._hideTimer);
+    banner._hideTimer = setTimeout(() => {
+      if (banner) banner.style.display = 'none';
+    }, 6000);
+  } catch (bannerErr) {
+    console.warn('showPopupBanner error:', bannerErr);
+  }
+}
+
+function safeSendTabMessage(tabId, payload, callback) {
+  if (!tabId) {
+    if (callback) callback(false, null);
+    return;
+  }
+  try {
+    chrome.tabs.sendMessage(tabId, payload, (resp) => {
+      if (!checkLastError()) {
+        if (callback) callback(true, resp);
+        return;
+      }
+
+      // First attempt failed, attempt injection of content.js and content.css
+      if (typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
+        try {
+          const sPromise = chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          }, () => {
+            checkLastError();
+          });
+          if (sPromise && typeof sPromise.catch === 'function') {
+            sPromise.catch(() => {});
+          }
+
+          if (chrome.scripting.insertCSS) {
+            const cPromise = chrome.scripting.insertCSS({
+              target: { tabId: tabId },
+              files: ['content.css']
+            }, () => {
+              checkLastError();
+            });
+            if (cPromise && typeof cPromise.catch === 'function') {
+              cPromise.catch(() => {});
+            }
+          }
+
+          // Retry sending message after script injection
+          setTimeout(() => {
+            try {
+              chrome.tabs.sendMessage(tabId, payload, (retryResp) => {
+                if (!checkLastError()) {
+                  if (callback) callback(true, retryResp);
+                } else {
+                  if (callback) callback(false, null);
+                }
+              });
+            } catch (retryErr) {
+              checkLastError();
+              if (callback) callback(false, null);
+            }
+          }, 150);
+        } catch (injErr) {
+          checkLastError();
+          if (callback) callback(false, null);
+        }
+      } else {
+        if (callback) callback(false, null);
+      }
+    });
+  } catch (err) {
+    checkLastError();
+    if (callback) callback(false, null);
+  }
 }
 
 (function installUniversalChromeShield() {
@@ -1205,20 +1330,40 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTriggerExamScan.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         checkLastError();
-        if (tabs && tabs[0] && tabs[0].id) {
-          const u = (tabs[0].url || tabs[0].pendingUrl || '').toLowerCase();
-          if (!u || u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:') || u.startsWith('chrome-extension://')) return;
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: 'TRIGGER_EXAM_SCAN',
-            mode: currentDefaultMode || 'concise'
-          }, (resp) => {
-            if (checkLastError()) {
-              alert('يرجى التأكد من فتح صفحة الاختبار وتحديثها (F5) لتفعيل الماسح.');
-            } else {
-              window.close();
-            }
-          });
+        if (!tabs || !tabs[0] || !tabs[0].id) {
+          showPopupBanner('⚠️ يرجى فتح صفحة اختبار وتحديثها لتفعيل الماسح.');
+          return;
         }
+        const tab = tabs[0];
+        const u = (tab.url || tab.pendingUrl || '').toLowerCase();
+        const isRestricted = !u ||
+                             u.startsWith('chrome://') || 
+                             u.startsWith('chrome-extension://') || 
+                             u.startsWith('edge://') || 
+                             u.startsWith('about:') || 
+                             u.startsWith('devtools://') || 
+                             u.startsWith('view-source:') || 
+                             u.startsWith('chrome-search://') || 
+                             u.includes('chrome.google.com/webstore') || 
+                             u.includes('chromewebstore.google.com');
+
+        if (isRestricted) {
+          showPopupBanner('⚠️ تنبيه: لا يمكن تشغيل ماسح الاختبارات على صفحات المتصفح الداخلية أو سوق كروم.');
+          return;
+        }
+
+        const payload = {
+          action: 'TRIGGER_EXAM_SCAN',
+          mode: currentDefaultMode || 'concise'
+        };
+
+        safeSendTabMessage(tab.id, payload, (success) => {
+          if (success) {
+            window.close();
+          } else {
+            showPopupBanner('يرجى التأكد من تحديث صفحة الاختبار (F5) لتفعيل الماسح.');
+          }
+        });
       });
     });
   }
@@ -1227,15 +1372,22 @@ document.addEventListener('DOMContentLoaded', () => {
     btnClearExamHighlights.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         checkLastError();
-        if (tabs && tabs[0] && tabs[0].id) {
-          const u = (tabs[0].url || tabs[0].pendingUrl || '').toLowerCase();
-          if (!u || u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:') || u.startsWith('chrome-extension://')) return;
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: 'CLEAR_EXAM_HIGHLIGHTS'
-          }, () => {
-            checkLastError();
-          });
-        }
+        if (!tabs || !tabs[0] || !tabs[0].id) return;
+        const tab = tabs[0];
+        const u = (tab.url || tab.pendingUrl || '').toLowerCase();
+        const isRestricted = !u ||
+                             u.startsWith('chrome://') || 
+                             u.startsWith('chrome-extension://') || 
+                             u.startsWith('edge://') || 
+                             u.startsWith('about:') || 
+                             u.startsWith('devtools://') || 
+                             u.startsWith('view-source:') || 
+                             u.startsWith('chrome-search://') || 
+                             u.includes('chrome.google.com/webstore') || 
+                             u.includes('chromewebstore.google.com');
+        if (isRestricted) return;
+
+        safeSendTabMessage(tab.id, { action: 'CLEAR_EXAM_HIGHLIGHTS' });
       });
     });
   }
@@ -1296,7 +1448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       checkLastError();
       if (!tabs || !tabs[0] || !tabs[0].id) {
-        window.close();
+        showPopupBanner('⚠️ تعذر العثور على التبويب النشط.');
         return;
       }
       const tab = tabs[0];
@@ -1317,7 +1469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                            url.includes('chromewebstore.google.com');
 
       if (isRestricted) {
-        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://) أو سوق كروم.\nيرجى فتح صفحة اختبار أو موقع دراسي عادي (مثل موقع اختبار الأداة) لتجربة الحل المباشر.');
+        showPopupBanner('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://) أو سوق كروم. يرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الحل المباشر.');
         return;
       }
 
@@ -1327,12 +1479,12 @@ document.addEventListener('DOMContentLoaded', () => {
         mode: selectedLiveMode || currentDefaultMode || 'concise'
       };
 
-      chrome.tabs.sendMessage(tabId, payload, (response) => {
-        if (checkLastError()) {
-          alert('يرجى تحديث صفحة الاختبار (F5) لتفعيل الماسح.');
-          return;
+      safeSendTabMessage(tabId, payload, (success) => {
+        if (success) {
+          window.close();
+        } else {
+          showPopupBanner('يرجى تحديث صفحة الاختبار (F5) لتفعيل الماسح.');
         }
-        window.close();
       });
     });
   }
