@@ -2223,6 +2223,40 @@ function startLiveDirectMode(region, mode) {
     showLiveSelectorOverlay(activeLiveMode);
   });
 
+  // تفعيل سحب شريط الريكورد بحرية في الشاشة حتى لا يحجب أي جزء من السؤال
+  let isHudDragging = false, hudStartX = 0, hudStartY = 0, hudInitLeft = 0, hudInitTop = 0;
+  hud.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button')) return;
+    isHudDragging = true;
+    hudStartX = e.clientX;
+    hudStartY = e.clientY;
+    const rect = hud.getBoundingClientRect();
+    hudInitLeft = rect.left;
+    hudInitTop = rect.top;
+    hud.style.right = 'auto';
+    hud.style.left = hudInitLeft + 'px';
+    hud.style.top = hudInitTop + 'px';
+    hud.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isHudDragging) return;
+    const dx = e.clientX - hudStartX;
+    const dy = e.clientY - hudStartY;
+    const maxLeft = window.innerWidth - hud.offsetWidth - 10;
+    const maxTop = window.innerHeight - hud.offsetHeight - 10;
+    const nLeft = Math.max(10, Math.min(maxLeft, hudInitLeft + dx));
+    const nTop = Math.max(10, Math.min(maxTop, hudInitTop + dy));
+    hud.style.left = nLeft + 'px';
+    hud.style.top = nTop + 'px';
+  });
+  window.addEventListener('mouseup', () => {
+    if (isHudDragging) {
+      isHudDragging = false;
+      hud.style.cursor = 'grab';
+    }
+  });
+
   // تشغيل عداد الثواني الحي للريكورد
   liveDirectTimerInterval = setInterval(() => {
     liveDirectElapsedSeconds++;
