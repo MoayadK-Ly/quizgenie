@@ -1814,6 +1814,12 @@ function updatePageThemeVariables() {
 
 function ensureMiniExamToolbar() {
   if (document.getElementById('quizgenie-mini-exam-bar')) return;
+  if (!document.body) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureMiniExamToolbar(), { once: true });
+    }
+    return;
+  }
   const bar = document.createElement('div');
   bar.id = 'quizgenie-mini-exam-bar';
   bar.innerHTML = `
@@ -2076,7 +2082,7 @@ function showLiveSelectorOverlay() {
   };
   document.addEventListener('keydown', onKey);
 
-  document.body.appendChild(overlay);
+  (document.body || document.documentElement).appendChild(overlay);
 }
 
 function startLiveDirectMode(region) {
@@ -2087,6 +2093,8 @@ function startLiveDirectMode(region) {
   liveDirectRegion = region;
   liveDirectLastQuestion = '';
 
+  const host = document.body || document.documentElement;
+
   // 1. إذا كانت منطقة محددة بأبعاد، إظهار إطار المنطقة المراقبة المتوهج
   if (!region.isFullScreen) {
     const frame = document.createElement('div');
@@ -2095,7 +2103,7 @@ function startLiveDirectMode(region) {
     frame.style.top = region.top + 'px';
     frame.style.width = region.width + 'px';
     frame.style.height = region.height + 'px';
-    document.body.appendChild(frame);
+    host.appendChild(frame);
   }
 
   // 2. إظهار شريط التحكم أعلى اليمين (زر الإيقاف + العلامة الدائرية الحمراء المؤشرة + زر سكرين شوت جديد)
@@ -2115,7 +2123,7 @@ function startLiveDirectMode(region) {
       <span>قص سؤال جديد</span>
     </button>
   `;
-  document.body.appendChild(hud);
+  host.appendChild(hud);
 
   hud.querySelector('#qgLiveStopBtn').addEventListener('click', () => {
     stopLiveDirectMode();
@@ -2384,7 +2392,7 @@ function executeLiveDirectSolveStep() {
       ${relation ? `<div style="font-size: 11.5px; color: #fbbf24; margin-bottom: 4px;">🔗 <strong>العلاقة:</strong> ${relation}</div>` : ''}
       ${explanation ? `<div class="qg-direct-solution-body">${explanation}</div>` : ''}
     `;
-    document.body.appendChild(card);
+    (document.body || document.documentElement).appendChild(card);
   });
 }
 
