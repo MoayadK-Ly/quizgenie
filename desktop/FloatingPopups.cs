@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -1418,7 +1418,10 @@ namespace QuizGenie
         private Rectangle monitoredRect;
         private System.Windows.Forms.Timer scanTimer;
         private System.Windows.Forms.Timer pulseTimer;
+        private System.Windows.Forms.Timer recTimer;
         private Label lblCircle;
+        private Label lblRecTimer;
+        private int elapsedSeconds = 0;
         private bool isPulseRed = false;
         private long lastBitmapHash = 0;
         private bool isProcessingStep = false;
@@ -1443,9 +1446,9 @@ namespace QuizGenie
             // زر الإيقاف فوق يمين
             Button btnStop = new Button
             {
-                Text = "⏹️ إيقاف الحل المباشر",
+                Text = "⏹️ إيقاف الريكورد",
                 Location = new Point(10, 8),
-                Size = new Size(190, 34),
+                Size = new Size(190, 32),
                 BackColor = Color.FromArgb(220, 38, 38),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -1457,11 +1460,11 @@ namespace QuizGenie
             btnStop.Click += (s, e) => StopLiveDirect();
             this.Controls.Add(btnStop);
 
-            // شريط المؤشر تحته (علامة دائرية حمراء تؤشر وتعني أن الميزة مفعلة)
+            // شريط المؤشر تحته (علامة REC الحمراء + عداد الثواني الحي)
             Panel pnlIndicator = new Panel
             {
-                Location = new Point(10, 48),
-                Size = new Size(190, 24),
+                Location = new Point(10, 44),
+                Size = new Size(190, 26),
                 BackColor = Color.FromArgb(24, 32, 47)
             };
             UITheme.ApplyRoundedCard(pnlIndicator, 12, Color.FromArgb(71, 85, 105), 1f);
@@ -1471,30 +1474,41 @@ namespace QuizGenie
                 Text = "●",
                 Font = new Font("Segoe UI", 12f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(239, 68, 68),
-                Location = new Point(164, 1),
+                Location = new Point(164, 2),
                 Size = new Size(22, 22),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             pnlIndicator.Controls.Add(lblCircle);
 
-            Label lblStatus = new Label
+            lblRecTimer = new Label
             {
-                Text = "الحل المباشر مفعّل (نشط)",
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Text = "REC 00:00",
+                Font = new Font("Consolas", 9f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(254, 205, 211),
-                Location = new Point(8, 3),
-                Size = new Size(155, 18),
-                TextAlign = ContentAlignment.MiddleRight
+                Location = new Point(65, 4),
+                Size = new Size(95, 18),
+                TextAlign = ContentAlignment.MiddleCenter
             };
-            pnlIndicator.Controls.Add(lblStatus);
+            pnlIndicator.Controls.Add(lblRecTimer);
+
+            Label lblModeTag = new Label
+            {
+                Text = "⚡ مباشر",
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(56, 189, 248),
+                Location = new Point(4, 4),
+                Size = new Size(60, 18),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlIndicator.Controls.Add(lblModeTag);
             this.Controls.Add(pnlIndicator);
 
             // زر قص سؤال جديد مباشرة من الشريط
             Button btnReSnip = new Button
             {
                 Text = "📸 قص سؤال جديد (Ctrl+Shift+S)",
-                Location = new Point(10, 78),
-                Size = new Size(190, 30),
+                Location = new Point(10, 75),
+                Size = new Size(190, 28),
                 BackColor = Color.FromArgb(2, 132, 199),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -1507,7 +1521,7 @@ namespace QuizGenie
                 mainForm.StartLiveDirectModeDesktop();
             };
             this.Controls.Add(btnReSnip);
-            this.Size = new Size(210, 118);
+            this.Size = new Size(210, 114);
 
             // مؤقت وميض الدائرة الحمراء
             pulseTimer = new System.Windows.Forms.Timer();
@@ -1517,6 +1531,17 @@ namespace QuizGenie
                 lblCircle.ForeColor = isPulseRed ? Color.FromArgb(239, 68, 68) : Color.FromArgb(127, 29, 29);
             };
             pulseTimer.Start();
+
+            // مؤقت عداد ثواني الريكورد الحي
+            recTimer = new System.Windows.Forms.Timer();
+            recTimer.Interval = 1000;
+            recTimer.Tick += (s, e) => {
+                elapsedSeconds++;
+                int mins = elapsedSeconds / 60;
+                int secs = elapsedSeconds % 60;
+                lblRecTimer.Text = string.Format("REC {0:D2}:{1:D2}", mins, secs);
+            };
+            recTimer.Start();
 
             // مؤقت الرصد والفحص المستمر كل 1.5 ثانية
             scanTimer = new System.Windows.Forms.Timer();
@@ -1533,6 +1558,7 @@ namespace QuizGenie
 
         public void StopLiveDirect()
         {
+            if (recTimer != null) { recTimer.Stop(); recTimer.Dispose(); }
             if (scanTimer != null) { scanTimer.Stop(); scanTimer.Dispose(); }
             if (pulseTimer != null) { pulseTimer.Stop(); pulseTimer.Dispose(); }
             this.Close();
