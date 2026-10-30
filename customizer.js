@@ -167,7 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
               chrome.tabs.sendMessage(t.id, {
                 action: 'SYNC_THEME_CUSTOMIZATION',
                 settings: payload
-              }).catch(() => {});
+              }, () => {
+                if (chrome.runtime.lastError) {}
+              });
             }
           });
         });
@@ -200,7 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
       updateStatusText.style.color = '#34d399';
 
       if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage({ action: 'SILENT_UPDATE_RELOAD' }).catch(() => {});
+        chrome.runtime.sendMessage({ action: 'SILENT_UPDATE_RELOAD' }, () => {
+          if (chrome.runtime.lastError) {}
+        });
       }
     }, 1200);
   });
