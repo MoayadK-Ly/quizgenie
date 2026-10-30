@@ -1160,11 +1160,12 @@
   }
 }
 
-/* شارة الرصد الزاوية الثابتة (أعلى اليمين / اليسار) */
+/* شارة الرصد الزاوية الثابتة مع الدائرة الحمراء النابضة (أعلى اليسار لمنع التداخل مع شريط الـ HUD بأعلى اليمين) */
 #quizgenie-corner-rec-badge {
   position: fixed !important;
-  top: 14px !important;
-  right: 16px !important;
+  top: 16px !important;
+  left: 18px !important;
+  right: auto !important;
   z-index: 2147483647 !important;
   display: flex !important;
   align-items: center !important;
