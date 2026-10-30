@@ -349,7 +349,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(err => sendResponse({ success: false, message: err.message || 'فشل فحص الاتصال بالسيرفر.' }));
     return true;
   }
+
+  // التقاط صورة التبويب الحي لدعم الأسئلة المصورة والمحمية
+  if (request.action === 'CAPTURE_TAB_SNIP') {
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError || !dataUrl) {
+        sendResponse({ success: false, error: chrome.runtime.lastError ? chrome.runtime.lastError.message : 'فشل التقاط صورة الشاشة.' });
+      } else {
+        sendResponse({ success: true, dataUrl: dataUrl });
+      }
+    });
+    return true;
+  }
 });
+
+// الاستماع لاختصارات لوحة المفاتيح العالمية في كروم (مثل Ctrl+Shift+S)
+if (chrome.commands && chrome.commands.onCommand) {
+  chrome.commands.onCommand.addListener((command) => {
+    if (command === 'start_live_direct_solver') {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, { action: 'START_LIVE_DIRECT_SOLVER' });
+        }
+      });
+    }
+  });
+}
 
 // Central Dispatcher
 async function solveQuestionDispatcher(questionText, mode, subject, targetLanguage, serverType, geminiKey, openaiKey, deepseekKey, groqKey) {
