@@ -1175,7 +1175,7 @@ namespace QuizGenie
     }
 
     // =========================================================================
-    // 6. محدد الشاشة للحل المباشر المستمر (Live Direct Screen Selector)
+    // 6. محدد الشاشة للحل المباشر المستمر بنمط سكرين شوت ويندوز (Win+Shift+S)
     // =========================================================================
     public class LiveDirectDesktopSelectorForm : Form
     {
@@ -1183,6 +1183,7 @@ namespace QuizGenie
         private Point startPoint;
         private Point currentPoint;
         private bool isSelecting = false;
+        private Bitmap screenSnapshot;
 
         public LiveDirectDesktopSelectorForm(MainForm parent)
         {
@@ -1195,25 +1196,35 @@ namespace QuizGenie
             this.ShowInTaskbar = false;
             this.Cursor = Cursors.Cross;
             this.DoubleBuffered = true;
-            this.BackColor = Color.Black;
-            this.Opacity = 0.55;
 
+            // التقاط لقطة فورية كاملة للشاشة قبل التعتيم لجعل منطقة التحديد واضحة 100% مثل سكرين شوت ويندوز
+            try
+            {
+                screenSnapshot = new Bitmap(Width, Height);
+                using (Graphics g = Graphics.FromImage(screenSnapshot))
+                {
+                    g.CopyFromScreen(Location, Point.Empty, Size);
+                }
+            }
+            catch { }
+
+            // شريط ويندوز 11 العائم بالأعلى (Snipping Pill)
             Panel pnlBar = new Panel
             {
-                Size = new Size(540, 48),
-                Location = new Point((Width - 540) / 2, 20),
-                BackColor = Color.FromArgb(15, 23, 42),
+                Size = new Size(520, 48),
+                Location = new Point((Width - 520) / 2, 20),
+                BackColor = Color.FromArgb(24, 24, 27),
                 Cursor = Cursors.Default
             };
-            UITheme.ApplyRoundedCard(pnlBar, 24, Color.FromArgb(2, 132, 199), 1.5f);
+            UITheme.ApplyRoundedCard(pnlBar, 24, Color.FromArgb(56, 189, 248), 1.2f);
 
             Label lblTitle = new Label
             {
-                Text = "⚡ الحل المباشر: اسحب بالماوس لتحديد منطقة الأسئلة، أو:",
+                Text = "📸 حدد السؤال مثل سكرين شوت ويندوز (Win+Shift+S):",
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(56, 189, 248),
-                Location = new Point(200, 14),
-                Size = new Size(325, 22),
+                ForeColor = Color.FromArgb(226, 232, 240),
+                Location = new Point(190, 13),
+                Size = new Size(315, 22),
                 RightToLeft = RightToLeft.Yes
             };
             pnlBar.Controls.Add(lblTitle);
@@ -1221,12 +1232,12 @@ namespace QuizGenie
             Button btnFull = new Button
             {
                 Text = "🖥️ كامل الشاشة",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(2, 132, 199),
                 FlatStyle = FlatStyle.Flat,
-                Location = new Point(85, 9),
-                Size = new Size(110, 30),
+                Location = new Point(80, 9),
+                Size = new Size(100, 30),
                 Cursor = Cursors.Hand
             };
             btnFull.FlatAppearance.BorderSize = 0;
@@ -1234,19 +1245,23 @@ namespace QuizGenie
             btnFull.Click += (s, e) => {
                 this.Close();
                 this.Dispose();
+                if (screenSnapshot != null)
+                {
+                    mainForm.OpenFloatingAnswerWithImage(new Point(Screen.PrimaryScreen.WorkingArea.Right - 380, 40), (Bitmap)screenSnapshot.Clone(), "concise");
+                }
                 mainForm.LaunchLiveDirectHud(SystemInformation.VirtualScreen);
             };
             pnlBar.Controls.Add(btnFull);
 
             Button btnCancel = new Button
             {
-                Text = "إلغاء (Esc)",
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+                Text = "✕",
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(203, 213, 225),
                 BackColor = Color.FromArgb(51, 65, 85),
                 FlatStyle = FlatStyle.Flat,
-                Location = new Point(10, 9),
-                Size = new Size(70, 30),
+                Location = new Point(15, 9),
+                Size = new Size(55, 30),
                 Cursor = Cursors.Hand
             };
             btnCancel.FlatAppearance.BorderSize = 0;
@@ -1293,19 +1308,27 @@ namespace QuizGenie
                     Rectangle rect = GetSelectionRectangle();
                     this.Visible = false;
                     Application.DoEvents();
-                    System.Threading.Thread.Sleep(50);
+
+                    if (rect.Width > 20 && rect.Height > 20 && screenSnapshot != null)
+                    {
+                        try
+                        {
+                            Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
+                            Bitmap cropped = new Bitmap(localRect.Width, localRect.Height);
+                            using (Graphics cg = Graphics.FromImage(cropped))
+                            {
+                                cg.DrawImage(screenSnapshot, new Rectangle(0, 0, cropped.Width, cropped.Height), localRect, GraphicsUnit.Pixel);
+                            }
+
+                            Point spawnPt = new Point(Math.Min(rect.Right + 12, Screen.PrimaryScreen.WorkingArea.Right - 360), Math.Max(rect.Top, Screen.PrimaryScreen.WorkingArea.Top + 20));
+                            mainForm.OpenFloatingAnswerWithImage(spawnPt, cropped, "concise");
+                            mainForm.LaunchLiveDirectHud(rect);
+                        }
+                        catch { }
+                    }
 
                     this.Close();
                     this.Dispose();
-
-                    if (rect.Width > 35 && rect.Height > 35)
-                    {
-                        mainForm.LaunchLiveDirectHud(rect);
-                    }
-                    else
-                    {
-                        mainForm.LaunchLiveDirectHud(SystemInformation.VirtualScreen);
-                    }
                 }
             };
         }
@@ -1323,21 +1346,31 @@ namespace QuizGenie
         {
             base.OnPaint(e);
             Graphics g = e.Graphics;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
+            // 1. رسم الشاشة الأصلية مع طبقة التعتيم المظلمة 50%
+            if (screenSnapshot != null)
+            {
+                g.DrawImage(screenSnapshot, 0, 0, Width, Height);
+            }
+            using (Brush dimBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+            {
+                g.FillRectangle(dimBrush, ClientRectangle);
+            }
+
+            // 2. كشف منطقة التحديد لتصبح واضحة ومضيئة تماماً 100% مثل سكرين شوت ويندوز
             if (isSelecting)
             {
                 Rectangle rect = GetSelectionRectangle();
                 Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
 
+                if (screenSnapshot != null && localRect.Width > 0 && localRect.Height > 0)
+                {
+                    g.DrawImage(screenSnapshot, localRect, localRect, GraphicsUnit.Pixel);
+                }
+
                 using (Pen pen = new Pen(Color.FromArgb(56, 189, 248), 2f))
                 {
-                    pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
                     g.DrawRectangle(pen, localRect);
-                }
-                using (Brush b = new SolidBrush(Color.FromArgb(35, 56, 189, 248)))
-                {
-                    g.FillRectangle(b, localRect);
                 }
 
                 using (Font df = new Font("Segoe UI", 9f, FontStyle.Bold))
@@ -1349,6 +1382,16 @@ namespace QuizGenie
                     g.FillRectangle(dbg, localRect.Right - (int)dsize.Width - 8, localRect.Bottom + 4, dsize.Width + 6, dsize.Height + 2);
                     g.DrawString(dim, df, dtext, localRect.Right - (int)dsize.Width - 5, localRect.Bottom + 5);
                 }
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            if (screenSnapshot != null)
+            {
+                screenSnapshot.Dispose();
+                screenSnapshot = null;
             }
         }
     }
@@ -1432,6 +1475,26 @@ namespace QuizGenie
             };
             pnlIndicator.Controls.Add(lblStatus);
             this.Controls.Add(pnlIndicator);
+
+            // زر قص سؤال جديد مباشرة من الشريط
+            Button btnReSnip = new Button
+            {
+                Text = "📸 قص سؤال جديد (Ctrl+Shift+S)",
+                Location = new Point(10, 78),
+                Size = new Size(190, 30),
+                BackColor = Color.FromArgb(2, 132, 199),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnReSnip.FlatAppearance.BorderSize = 0;
+            UITheme.ApplyRoundedCard(btnReSnip, 12, Color.FromArgb(56, 189, 248), 1f);
+            btnReSnip.Click += (s, e) => {
+                mainForm.StartLiveDirectModeDesktop();
+            };
+            this.Controls.Add(btnReSnip);
+            this.Size = new Size(210, 118);
 
             // مؤقت وميض الدائرة الحمراء
             pulseTimer = new System.Windows.Forms.Timer();
