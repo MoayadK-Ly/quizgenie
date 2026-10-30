@@ -497,9 +497,20 @@ async function solveExamScanDispatcher(questionText, options, mode, subject, tar
   const cleanQ = (questionText || '').trim();
   const cleanOpts = (options || []).map((o, i) => `[الخيار ${i}]: ${o.trim()}`).join('\n');
   const isAnalogy = /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(cleanQ);
+  const isConcise = (mode === 'concise');
 
-  const scanPrompt = `أنت المحلل الأكاديمي الذكي المتقدم في QuizGenie المتخصص في تحليل وحل امتحانات الشاشة واختبارات القدرات.
-تم مسح السؤال التالي من الشاشة:
+  const scanCacheKey = `scan:${mode || 'concise'}:${cleanQ}:${(options || []).join('|')}`;
+  if (answerCache.has(scanCacheKey)) {
+    return answerCache.get(scanCacheKey);
+  }
+
+  const scanPrompt = `أنت المحلل الأكاديمي الذكي المتقدم في QuizGenie المتخصص في تحليل وحل امتحانات الشاشة واختبارات القدرات بدقة متناهية وسرعة فائقة.
+
+🚨 تنبيه صارم وقاطع لمنع أي خلط:
+1. "رأس السؤال الرئيسي" المعروض أدناه هو السؤال المطلوب حله فقط.
+2. "خيارات الإجابة المعروضة" هي البدائل المتاحة للاختيار من بينها. إياك قطعياً أن تخلط بين السؤال والخيارات، أو تحل أحد الخيارات وتحسبه هو السؤال!
+3. مهمتك هي قراءة رأس السؤال وفهمه، ثم مطابقة خيارات الإجابة واختيار الخيار الوحيد المطابق والصحيح أكاديمياً.
+
 رأس السؤال الرئيسي:
 "${cleanQ}"
 
@@ -508,14 +519,16 @@ ${cleanOpts}
 
 ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (علاقة بين كلمتين)، استخرج الجملة الرابطة وحدد اتجاه العلاقة بدقة تامة.' : ''}
 
+نمط الإجابة المطلوب: ${isConcise ? 'بدون فلسفة (مباشر وسريع جداً: حدد الخيار الصحيح بأقل كلمات لتوفير وقت الاختبار)' : 'مفصل مع الشرح الأكاديمي الكامل والتحليل'}
+
 المطلوب بدقة:
-حدد رقم فهرس الخيار الصحيح (من 0 إلى ${(options && options.length) ? options.length - 1 : 3})، نص الخيار، والشرح.
+حدد رقم فهرس الخيار الصحيح (من 0 إلى ${(options && options.length) ? options.length - 1 : 3})، نص الخيار، والشرح ${isConcise ? 'المختصر جداً' : 'المفصل'}.
 أخرج النتيجة حصراً بصيغة JSON نظيفة بدون أي علامات markdown:
 {
   "correctIndex": 1,
   "correctText": "نص الخيار الصحيح",
   "relation": "نوع العلاقة أو الفكرة المركزية",
-  "explanation": "شرح توضيحي مركز لسبب صحة هذا الخيار واستبعاد البقية"
+  "explanation": "${isConcise ? 'الخيار الصحيح مباشرة' : 'شرح توضيحي مركز لسبب صحة هذا الخيار واستبعاد البقية'}"
 }`;
 
   let rawResponse = '';
@@ -544,13 +557,14 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
   }
 
   // Parse JSON from output
+  let finalResult = null;
   try {
     const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : 0;
       if (cIdx < 0 || cIdx >= options.length) cIdx = 0;
-      return {
+      finalResult = {
         correctIndex: cIdx,
         correctText: parsed.correctText || options[cIdx] || '',
         relation: parsed.relation || '',
@@ -563,14 +577,19 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
     console.warn('Scan JSON parse fallback:', e);
   }
 
-  return {
-    correctIndex: 0,
-    correctText: options[0] || '',
-    relation: '',
-    explanation: rawResponse,
-    isAnalogy: isAnalogy,
-    rawAnswer: rawResponse
-  };
+  if (!finalResult) {
+    finalResult = {
+      correctIndex: 0,
+      correctText: options[0] || '',
+      relation: '',
+      explanation: rawResponse,
+      isAnalogy: isAnalogy,
+      rawAnswer: rawResponse
+    };
+  }
+
+  answerCache.set(scanCacheKey, finalResult);
+  return finalResult;
 }
 
 let workingGeminiModel = 'gemini-3-flash-preview';
