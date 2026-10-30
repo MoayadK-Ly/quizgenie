@@ -54,6 +54,7 @@
         "content.css",
         "icons/*",
         "update.html",
+        "update.js",
         "customizer.html",
         "customizer.css",
         "customizer.js"
