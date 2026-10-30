@@ -453,25 +453,26 @@
   border-color: #f87171 !important;
 }
 
-/* Smart Exam Scanner - Red Question Ring & Green Answer Glow */
-.quizgenie-question-ring-red {
-  outline: 3px solid #ef4444 !important;
+/* Smart Exam Scanner - Yellow Question Glow, Green Correct Glow, & Red Wrong Outline */
+.quizgenie-question-yellow-glow, .quizgenie-question-ring-red, .quizgenie-highlight-question {
+  outline: 3.5px solid #eab308 !important;
   outline-offset: 4px !important;
   border-radius: 8px !important;
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.35) !important;
-  animation: qgPulseRedRing 1.8s infinite ease-in-out !important;
+  background: rgba(234, 179, 8, 0.12) !important;
+  box-shadow: 0 0 22px rgba(234, 179, 8, 0.85), inset 0 0 10px rgba(234, 179, 8, 0.25) !important;
+  animation: qgPulseYellowQuestion 1.8s infinite ease-in-out !important;
   position: relative !important;
   transition: all 0.3s ease !important;
 }
 
-.quizgenie-question-badge-tag {
+.quizgenie-question-badge-tag, .quizgenie-question-badge-tag-yellow {
   position: absolute !important;
   top: -24px !important;
   right: 0 !important;
-  background: #ef4444 !important;
-  color: #ffffff !important;
+  background: #eab308 !important;
+  color: #0f172a !important;
   font-size: 11px !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   padding: 2px 8px !important;
   border-radius: 6px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
@@ -481,12 +482,12 @@
   font-family: system-ui, -apple-system, sans-serif !important;
 }
 
-.quizgenie-correct-answer-glow {
-  outline: 3px solid #10b981 !important;
+.quizgenie-correct-answer-glow, .quizgenie-highlight-correct {
+  outline: 3.5px solid #10b981 !important;
   outline-offset: 4px !important;
   border-radius: 8px !important;
-  background: rgba(16, 185, 129, 0.18) !important;
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.9), inset 0 0 12px rgba(16, 185, 129, 0.45) !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 0 26px rgba(16, 185, 129, 0.95), inset 0 0 12px rgba(16, 185, 129, 0.45) !important;
   animation: qgGlowGreenAnswer 2s infinite ease-in-out !important;
   position: relative !important;
   transition: all 0.3s ease !important;
@@ -499,7 +500,7 @@
   background: #10b981 !important;
   color: #ffffff !important;
   font-size: 11px !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   padding: 2px 8px !important;
   border-radius: 6px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
@@ -509,18 +510,45 @@
   font-family: system-ui, -apple-system, sans-serif !important;
 }
 
-@keyframes qgPulseRedRing {
+.quizgenie-wrong-answer-outline, .quizgenie-highlight-wrong {
+  outline: 3px solid #ef4444 !important;
+  outline-offset: 3px !important;
+  border-radius: 8px !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.75), inset 0 0 8px rgba(239, 68, 68, 0.2) !important;
+  position: relative !important;
+  transition: all 0.3s ease !important;
+}
+
+.quizgenie-wrong-badge-tag {
+  position: absolute !important;
+  top: -22px !important;
+  left: 0 !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  padding: 1px 7px !important;
+  border-radius: 5px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  z-index: 2147483640 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+@keyframes qgPulseYellowQuestion {
   0% {
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 5px rgba(239, 68, 68, 0.2);
-    outline-color: #ef4444;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.5), inset 0 0 5px rgba(234, 179, 8, 0.2);
+    outline-color: #eab308;
   }
   50% {
-    box-shadow: 0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 12px rgba(239, 68, 68, 0.5);
-    outline-color: #f87171;
+    box-shadow: 0 0 26px rgba(234, 179, 8, 0.95), inset 0 0 14px rgba(234, 179, 8, 0.45);
+    outline-color: #fde047;
   }
   100% {
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 5px rgba(239, 68, 68, 0.2);
-    outline-color: #ef4444;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.5), inset 0 0 5px rgba(234, 179, 8, 0.2);
+    outline-color: #eab308;
   }
 }
 
