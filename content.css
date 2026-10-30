@@ -824,7 +824,7 @@
   transition: all 0.2s ease !important;
 }
 
-/* 3. شريط التحكم أعلى اليمين (زر الإيقاف + العلامة الحمراء المؤشرة) */
+/* 3. شريط التحكم أعلى اليمين (وضع الريكورد المباشر REC 🔴) */
 #quizgenie-live-direct-hud {
   position: fixed !important;
   top: 18px !important;
@@ -833,7 +833,7 @@
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-end !important;
-  gap: 7px !important;
+  gap: 8px !important;
   direction: rtl !important;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
   pointer-events: auto !important;
@@ -851,44 +851,95 @@
   }
 }
 
+.qg-live-hud-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  padding: 6px 12px !important;
+  border-radius: 25px !important;
+  border: 1.5px solid rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(239, 68, 68, 0.25) !important;
+}
+
+.qg-live-rec-badge {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid #ef4444 !important;
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+}
+
+.qg-rec-label {
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  color: #ef4444 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.qg-rec-timer {
+  font-family: Consolas, monospace !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #fca5a5 !important;
+}
+
+.qg-live-mode-badge {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  background: rgba(2, 132, 199, 0.2) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+}
+
 .qg-live-stop-btn {
   background: linear-gradient(135deg, #ef4444, #dc2626) !important;
-  border: 1.5px solid #fca5a5 !important;
+  border: 1px solid #fca5a5 !important;
   color: #ffffff !important;
-  padding: 8px 16px !important;
-  border-radius: 25px !important;
-  font-size: 13px !important;
+  padding: 4px 12px !important;
+  border-radius: 16px !important;
+  font-size: 11.5px !important;
   font-weight: 800 !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.55), 0 0 12px rgba(239, 68, 68, 0.35) !important;
+  gap: 5px !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.45) !important;
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;
   white-space: nowrap !important;
 }
 
 .qg-live-stop-btn:hover {
   transform: scale(1.05) !important;
-  box-shadow: 0 6px 25px rgba(239, 68, 68, 0.75) !important;
-  filter: brightness(1.1) !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.7) !important;
 }
 
-.qg-live-indicator-pill {
-  background: rgba(15, 23, 42, 0.94) !important;
-  border: 1.2px solid rgba(239, 68, 68, 0.6) !important;
-  border-radius: 20px !important;
-  padding: 5px 12px !important;
+.qg-live-hud-bottom {
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
-  white-space: nowrap !important;
+  gap: 6px !important;
+}
+
+.qg-live-counter-pill {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 14px !important;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
 }
 
 .qg-pulsing-red-circle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 9px !important;
+  height: 9px !important;
   background-color: #ef4444 !important;
   border-radius: 50% !important;
   display: inline-block !important;
@@ -903,7 +954,7 @@
   }
   70% {
     transform: scale(1.15);
-    box-shadow: 0 0 0 9px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
   }
   100% {
     transform: scale(0.9);
@@ -913,25 +964,24 @@
 
 .qg-live-resnip-btn {
   background: linear-gradient(135deg, #0284c7, #2563eb) !important;
-  border: 1.2px solid #38bdf8 !important;
+  border: 1px solid #38bdf8 !important;
   color: #ffffff !important;
-  padding: 6px 14px !important;
-  border-radius: 20px !important;
-  font-size: 12px !important;
+  padding: 4px 12px !important;
+  border-radius: 16px !important;
+  font-size: 11.5px !important;
   font-weight: 800 !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
-  gap: 7px !important;
-  box-shadow: 0 3px 12px rgba(2, 132, 199, 0.45) !important;
+  gap: 5px !important;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
   transition: all 0.15s ease !important;
   white-space: nowrap !important;
 }
 
 .qg-live-resnip-btn:hover {
   transform: scale(1.04) !important;
-  box-shadow: 0 5px 18px rgba(2, 132, 199, 0.65) !important;
-  filter: brightness(1.1) !important;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.6) !important;
 }
 
 .qg-direct-solution-card {
