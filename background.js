@@ -151,11 +151,15 @@ if (chrome.runtime && chrome.runtime.onInstalled) {
             chrome.scripting.executeScript({
               target: { tabId: tab.id },
               files: ['content.js']
-            }).catch(() => {});
+            }, () => {
+              if (chrome.runtime.lastError) {}
+            });
             chrome.scripting.insertCSS({
               target: { tabId: tab.id },
               files: ['content.css']
-            }).catch(() => {});
+            }, () => {
+              if (chrome.runtime.lastError) {}
+            });
           }
         }
       });
