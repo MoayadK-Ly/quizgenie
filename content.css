@@ -690,44 +690,113 @@
    Live Direct Solver (الحل المباشر المستمر)
    ========================================================================= */
 
-/* 1. مساحة ومحدد الاختيار للشاشة */
+/* 1. مساحة ومحدد الاختيار للشاشة (مطابق تماماً لسكرين شوت ويندوز Win+Shift+S) */
 #quizgenie-live-selector-overlay {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(15, 23, 42, 0.62) !important;
-  backdrop-filter: blur(2px) !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: none !important;
   z-index: 2147483640 !important;
   cursor: crosshair !important;
   user-select: none !important;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  transition: background 0.1s ease !important;
 }
 
-.qg-live-selector-toolbar {
+#quizgenie-live-selector-overlay.qg-is-dragging {
+  background: transparent !important;
+}
+
+.qg-snipping-toolbar {
   position: fixed !important;
-  top: 24px !important;
+  top: 20px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  background: rgba(15, 23, 42, 0.95) !important;
-  border: 1.5px solid #0284c7 !important;
-  border-radius: 35px !important;
-  padding: 8px 18px !important;
+  background: rgba(24, 24, 27, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 40px !important;
+  padding: 6px 12px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65) !important;
+  gap: 8px !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.3) !important;
   direction: rtl !important;
-  z-index: 2147483645 !important;
+  z-index: 2147483646 !important;
+  backdrop-filter: blur(14px) !important;
 }
 
-.qg-live-selector-box {
-  position: absolute !important;
-  border: 2px dashed #38bdf8 !important;
-  background: rgba(56, 189, 248, 0.15) !important;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.45) !important;
+.qg-snipping-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #e4e4e7 !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.qg-snipping-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.qg-snipping-btn.active {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.5) !important;
+}
+
+.qg-snipping-divider {
+  width: 1px !important;
+  height: 20px !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  margin: 0 2px !important;
+}
+
+.qg-snipping-close {
+  color: #a1a1aa !important;
+  padding: 6px 10px !important;
+}
+
+.qg-snipping-close:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #f87171 !important;
+}
+
+.qg-snipping-hint {
+  position: fixed !important;
+  top: 72px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(0, 0, 0, 0.78) !important;
+  color: #e2e8f0 !important;
+  padding: 4px 14px !important;
+  border-radius: 14px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
   pointer-events: none !important;
-  z-index: 2147483642 !important;
+  z-index: 2147483646 !important;
+  white-space: nowrap !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* صندوق التحديد المطابق لسكرين شوت ويندوز (داخل الصندوق واضح 100% وخارجه مظلم) */
+.qg-live-selector-box {
+  position: fixed !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.48), 0 0 15px rgba(56, 189, 248, 0.4) !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  z-index: 2147483645 !important;
+  border-radius: 3px !important;
 }
 
 .qg-live-selector-dimensions {
@@ -736,11 +805,12 @@
   right: 0 !important;
   background: #0284c7 !important;
   color: #ffffff !important;
-  padding: 2px 8px !important;
+  padding: 3px 8px !important;
   border-radius: 6px !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
 
 /* 2. إطار المنطقة المحددة أثناء الحل */
@@ -839,4 +909,63 @@
     transform: scale(0.9);
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
   }
+}
+
+.qg-live-resnip-btn {
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  border: 1.2px solid #38bdf8 !important;
+  color: #ffffff !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  box-shadow: 0 3px 12px rgba(2, 132, 199, 0.45) !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+.qg-live-resnip-btn:hover {
+  transform: scale(1.04) !important;
+  box-shadow: 0 5px 18px rgba(2, 132, 199, 0.65) !important;
+  filter: brightness(1.1) !important;
+}
+
+.qg-direct-solution-card {
+  position: absolute !important;
+  background: #0f172a !important;
+  border: 1.8px solid #10b981 !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  color: #f8fafc !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(16, 185, 129, 0.3) !important;
+  direction: rtl !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  z-index: 2147483640 !important;
+  max-width: 380px !important;
+  animation: qgCardPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+@keyframes qgCardPop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.qg-direct-solution-header {
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  color: #34d399 !important;
+  margin-bottom: 5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.qg-direct-solution-body {
+  font-size: 12px !important;
+  color: #cbd5e1 !important;
+  line-height: 1.5 !important;
 }
