@@ -1052,33 +1052,100 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 14. زر الحل المباشر الموحد (تحديد الشاشة أو المنطقة مثل سكرين شوت ويندوز Win+Shift+S للحل المستمر)
+  // 14. أزرار الحل المباشر ووضع الريكورد (تحديد منطقة الاختبار أو كامل الشاشة)
+  let selectedLiveMode = 'concise';
+  chrome.storage.local.get(['liveSolveMode', 'mode'], (res) => {
+    if (res && res.liveSolveMode) {
+      selectedLiveMode = res.liveSolveMode;
+    } else if (res && res.mode) {
+      selectedLiveMode = res.mode;
+    }
+    updateLiveModeButtonsUI(selectedLiveMode);
+  });
+
+  const btnLiveModeConcise = document.getElementById('btnLiveModeConcise');
+  const btnLiveModeDetailed = document.getElementById('btnLiveModeDetailed');
+  const lblLiveModeSelected = document.getElementById('lblLiveModeSelected');
+
+  function updateLiveModeButtonsUI(mode) {
+    selectedLiveMode = mode;
+    if (btnLiveModeConcise && btnLiveModeDetailed) {
+      if (mode === 'detailed') {
+        btnLiveModeDetailed.style.border = '1.5px solid #0284c7';
+        btnLiveModeDetailed.style.background = 'rgba(2, 132, 199, 0.3)';
+        btnLiveModeDetailed.style.color = '#38bdf8';
+        btnLiveModeConcise.style.border = '1.5px solid #475569';
+        btnLiveModeConcise.style.background = '#1e293b';
+        btnLiveModeConcise.style.color = '#94a3b8';
+        if (lblLiveModeSelected) lblLiveModeSelected.textContent = '📖 مفصل مع الشرح';
+      } else {
+        btnLiveModeConcise.style.border = '1.5px solid #0284c7';
+        btnLiveModeConcise.style.background = 'rgba(2, 132, 199, 0.3)';
+        btnLiveModeConcise.style.color = '#38bdf8';
+        btnLiveModeDetailed.style.border = '1.5px solid #475569';
+        btnLiveModeDetailed.style.background = '#1e293b';
+        btnLiveModeDetailed.style.color = '#94a3b8';
+        if (lblLiveModeSelected) lblLiveModeSelected.textContent = '⚡ بدون فلسفة';
+      }
+    }
+  }
+
+  if (btnLiveModeConcise) {
+    btnLiveModeConcise.addEventListener('click', () => {
+      updateLiveModeButtonsUI('concise');
+      chrome.storage.local.set({ liveSolveMode: 'concise' });
+    });
+  }
+
+  if (btnLiveModeDetailed) {
+    btnLiveModeDetailed.addEventListener('click', () => {
+      updateLiveModeButtonsUI('detailed');
+      chrome.storage.local.set({ liveSolveMode: 'detailed' });
+    });
+  }
+
+  function launchLiveDirectSolver(isFullScreen) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
+      const tabId = tabs[0].id;
+      chrome.tabs.sendMessage(tabId, {
+        action: 'START_LIVE_DIRECT_SOLVER',
+        isFullScreen: isFullScreen,
+        mode: selectedLiveMode
+      }, () => {
+        if (chrome.runtime.lastError) {
+          if (chrome.scripting && chrome.scripting.executeScript) {
+            chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
+              chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
+                setTimeout(() => {
+                  chrome.tabs.sendMessage(tabId, {
+                    action: 'START_LIVE_DIRECT_SOLVER',
+                    isFullScreen: isFullScreen,
+                    mode: selectedLiveMode
+                  });
+                }, 60);
+                window.close();
+              });
+            });
+            return;
+          }
+        }
+        window.close();
+      });
+    });
+  }
+
   const btnStartLiveDirectSolver = document.getElementById('btnStartLiveDirectSolver');
   if (btnStartLiveDirectSolver) {
     btnStartLiveDirectSolver.addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs || !tabs[0] || !tabs[0].id) return;
-        const tabId = tabs[0].id;
-        chrome.tabs.sendMessage(tabId, {
-          action: 'START_LIVE_DIRECT_SOLVER'
-        }, () => {
-          if (chrome.runtime.lastError) {
-            // إعادة حقن السكربت والستايل في حال كان التبويب مفتوحاً مسبقاً
-            if (chrome.scripting && chrome.scripting.executeScript) {
-              chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
-                chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
-                  setTimeout(() => {
-                    chrome.tabs.sendMessage(tabId, { action: 'START_LIVE_DIRECT_SOLVER' });
-                  }, 60);
-                  window.close();
-                });
-              });
-              return;
-            }
-          }
-          window.close();
-        });
-      });
+      launchLiveDirectSolver(false);
+    });
+  }
+
+  const btnStartLiveFullScreen = document.getElementById('btnStartLiveFullScreen');
+  if (btnStartLiveFullScreen) {
+    btnStartLiveFullScreen.addEventListener('click', () => {
+      launchLiveDirectSolver(true);
     });
   }
 });
