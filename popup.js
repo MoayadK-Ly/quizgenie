@@ -301,6 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.runtime.sendMessage({
         action: 'SET_STATE',
         data: { enabled: currentEnabled }
+      }, () => {
+        if (chrome.runtime.lastError) {}
       });
       renderPowerButton(currentEnabled);
     });
@@ -332,6 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { fabEnabled: currentFabEnabled }
+        }, () => {
+          if (chrome.runtime.lastError) {}
         });
       });
     });
@@ -389,6 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { serverType: server }
+        }, () => {
+          if (chrome.runtime.lastError) {}
         });
       });
     }
@@ -400,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const key = geminiKeyInput.value.trim();
       currentGeminiKey = key;
       chrome.storage.local.set({ geminiKey: key });
-      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { geminiKey: key } });
+      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { geminiKey: key } }, () => { if (chrome.runtime.lastError) {} });
     });
   }
   if (saveGeminiKeyBtn) {
@@ -411,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { geminiKey: key }
-        });
+        }, () => { if (chrome.runtime.lastError) {} });
         showKeySavedFeedback(saveGeminiKeyBtn);
       });
     });
@@ -423,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const key = groqKeyInput.value.trim();
       currentGroqKey = key;
       chrome.storage.local.set({ groqKey: key });
-      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { groqKey: key } });
+      chrome.runtime.sendMessage({ action: 'SET_STATE', data: { groqKey: key } }, () => { if (chrome.runtime.lastError) {} });
     });
   }
 
@@ -436,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { openaiKey: key }
-        });
+        }, () => { if (chrome.runtime.lastError) {} });
         showKeySavedFeedback(saveOpenaiKeyBtn);
       });
     });
@@ -451,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { deepseekKey: key }
-        });
+        }, () => { if (chrome.runtime.lastError) {} });
         showKeySavedFeedback(saveDeepseekKeyBtn);
       });
     });
@@ -466,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { groqKey: key }
-        });
+        }, () => { if (chrome.runtime.lastError) {} });
         showKeySavedFeedback(saveGroqKeyBtn);
       });
     });
@@ -677,6 +683,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { subject: subj }
+        }, () => {
+          if (chrome.runtime.lastError) {}
         });
       });
     }
@@ -724,6 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({
           action: 'SET_STATE',
           data: { targetLanguage: lang }
+        }, () => {
+          if (chrome.runtime.lastError) {}
         });
       });
     }
@@ -744,6 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.runtime.sendMessage({
         action: 'SET_STATE',
         data: { defaultMode: mode }
+      }, () => {
+        if (chrome.runtime.lastError) {}
       });
       renderModeSelection(mode);
     });
@@ -1046,6 +1058,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabs && tabs[0] && tabs[0].id) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'CLEAR_EXAM_HIGHLIGHTS'
+          }, () => {
+            if (chrome.runtime.lastError) {}
           });
         }
       });
@@ -1122,6 +1136,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     action: 'START_LIVE_DIRECT_SOLVER',
                     isFullScreen: isFullScreen,
                     mode: selectedLiveMode
+                  }, () => {
+                    if (chrome.runtime.lastError) {}
                   });
                 }, 60);
                 window.close();
@@ -1132,6 +1148,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.close();
       });
+    });
+  }
+
+  const btnMainLiveDirectSolve = document.getElementById('btnMainLiveDirectSolve');
+  if (btnMainLiveDirectSolve) {
+    btnMainLiveDirectSolve.addEventListener('click', () => {
+      launchLiveDirectSolver(false);
     });
   }
 
@@ -1146,6 +1169,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnStartLiveFullScreen) {
     btnStartLiveFullScreen.addEventListener('click', () => {
       launchLiveDirectSolver(true);
+    });
+  }
+
+  // 15. زر فتح موقع ومنصة الاختبار التجريبي
+  const btnOpenTestExamPage = document.getElementById('btnOpenTestExamPage');
+  if (btnOpenTestExamPage) {
+    btnOpenTestExamPage.addEventListener('click', () => {
+      const testExamUrl = 'https://moayadk-ly.github.io/quizgenie/test-exam.html';
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url: testExamUrl });
+      } else {
+        window.open(testExamUrl, '_blank');
+      }
     });
   }
 });
