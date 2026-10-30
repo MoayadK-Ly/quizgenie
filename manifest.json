@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuizGenie - مساعد حل الأسئلة الذكي",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "مساعد ذكي لتحليل النصوص وحل الأسئلة بالذكاء الاصطناعي مجاناً بالكامل.",
   "permissions": [
     "storage",
@@ -24,6 +24,15 @@
   },
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "start_live_direct_solver": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "تشغيل سكرين شوت الحل المباشر للاختبار"
+    }
   },
   "content_scripts": [
     {
