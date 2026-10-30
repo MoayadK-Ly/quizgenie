@@ -2426,8 +2426,8 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
 
   // تنظيف الرموز والدوائر والنقاط والبادئات واللواحق (◯ ○ ● 🔘 ⭕ ⚪ ⚫ ⚬ ⦿ ◦ •)
   text = text
-    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][\.\-\:\x29\/]\s*|[\x28\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\x29\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58🔘⭕]\s*)+/u, '')
-    .replace(/\s*[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58🔘⭕\.\-\:\x28\x29\[\]]+$/u, '')
+    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][.\-:\)\/]\s*|[\(\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb]\s*)+/g, '')
+    .replace(/[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb.\-:\(\)\[\]\s]+$/g, '')
     .trim();
 
   if (text.length > 0 && text.length < 160 && !IGNORED_TEXT.test(text)) {
@@ -2655,7 +2655,7 @@ function normalizeExamText(str) {
     .replace(/[أإآ]/g, 'ا')
     .replace(/[ىي]/g, 'ي')
     .replace(/ة/g, 'ه')
-    .replace(/^[\(\[\{]?[a-dأ-د1-4\u25cb\u25cf\u25ef\u2b58\u25ce\u25c9\u2299\u229a\u25d0-\u25d3🔘⭕]?[\)\]\}]?[\.\-\:\s]\s*/u, '')
+    .replace(/^[({\[]?[a-d\u0623-\u062f1-4\u25cb\u25cf\u25ef\u2b58\u25ce\u25c9\u2299\u229a\u25d0-\u25d3]?[)}\]]?[.\-:\s]\s*/g, '')
     .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
