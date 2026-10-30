@@ -1309,22 +1309,35 @@ namespace QuizGenie
                     this.Visible = false;
                     Application.DoEvents();
 
-                    if (rect.Width > 20 && rect.Height > 20 && screenSnapshot != null)
+                    if (rect.Width > 20 && rect.Height > 20)
                     {
                         try
                         {
-                            Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
-                            Bitmap cropped = new Bitmap(localRect.Width, localRect.Height);
-                            using (Graphics cg = Graphics.FromImage(cropped))
+                            Bitmap cropped = null;
+                            if (screenSnapshot != null)
                             {
-                                cg.DrawImage(screenSnapshot, new Rectangle(0, 0, cropped.Width, cropped.Height), localRect, GraphicsUnit.Pixel);
+                                Rectangle localRect = new Rectangle(rect.X - this.Left, rect.Y - this.Top, rect.Width, rect.Height);
+                                cropped = new Bitmap(localRect.Width, localRect.Height);
+                                using (Graphics cg = Graphics.FromImage(cropped))
+                                {
+                                    cg.DrawImage(screenSnapshot, new Rectangle(0, 0, cropped.Width, cropped.Height), localRect, GraphicsUnit.Pixel);
+                                }
+                            }
+                            else
+                            {
+                                cropped = new Bitmap(rect.Width, rect.Height);
+                                using (Graphics cg = Graphics.FromImage(cropped))
+                                {
+                                    cg.CopyFromScreen(rect.Location, Point.Empty, rect.Size);
+                                }
                             }
 
                             Point spawnPt = new Point(Math.Min(rect.Right + 12, Screen.PrimaryScreen.WorkingArea.Right - 360), Math.Max(rect.Top, Screen.PrimaryScreen.WorkingArea.Top + 20));
                             mainForm.OpenFloatingAnswerWithImage(spawnPt, cropped, "concise");
-                            mainForm.LaunchLiveDirectHud(rect);
                         }
                         catch { }
+
+                        mainForm.LaunchLiveDirectHud(rect);
                     }
 
                     this.Close();
@@ -1419,7 +1432,7 @@ namespace QuizGenie
             this.StartPosition = FormStartPosition.Manual;
             var screen = Screen.PrimaryScreen.WorkingArea;
             this.Location = new Point(screen.Right - 225, screen.Top + 18);
-            this.Size = new Size(210, 80);
+            this.Size = new Size(210, 118);
             this.TopMost = true;
             this.ShowInTaskbar = false;
             this.BackColor = Color.FromArgb(15, 23, 42);
@@ -1508,13 +1521,13 @@ namespace QuizGenie
             // مؤقت الرصد والفحص المستمر كل 1.5 ثانية
             scanTimer = new System.Windows.Forms.Timer();
             scanTimer.Interval = 1500;
-            scanTimer.Tick += async (s, e) => await CheckAndSolveFrameAsync();
+            scanTimer.Tick += (s, e) => CheckAndSolveFrame();
             scanTimer.Start();
 
             // فحص أولي فوري
             Task.Run(async () => {
                 await Task.Delay(400);
-                if (this.IsHandleCreated) this.BeginInvoke(new Action(async () => await CheckAndSolveFrameAsync()));
+                if (this.IsHandleCreated) this.BeginInvoke(new Action(() => CheckAndSolveFrame()));
             });
         }
 
@@ -1526,39 +1539,46 @@ namespace QuizGenie
             this.Dispose();
         }
 
-        private async Task CheckAndSolveFrameAsync()
+        private void CheckAndSolveFrame()
         {
             if (isProcessingStep || this.IsDisposed) return;
             isProcessingStep = true;
 
-            try
-            {
-                int w = Math.Max(monitoredRect.Width, 50);
-                int h = Math.Max(monitoredRect.Height, 50);
+            Task.Run(() => {
+                try
+                {
+                    int w = Math.Max(monitoredRect.Width, 50);
+                    int h = Math.Max(monitoredRect.Height, 50);
 
-                Bitmap bmp = new Bitmap(w, h);
-                using (Graphics g = Graphics.FromImage(bmp))
-                {
-                    g.CopyFromScreen(monitoredRect.Location, Point.Empty, monitoredRect.Size);
-                }
+                    Bitmap bmp = new Bitmap(w, h);
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        g.CopyFromScreen(monitoredRect.Location, Point.Empty, monitoredRect.Size);
+                    }
 
-                long currentHash = ComputeSimpleHash(bmp);
-                if (currentHash != lastBitmapHash)
-                {
-                    lastBitmapHash = currentHash;
-                    Point spawnPt = new Point(Math.Min(monitoredRect.Right + 10, Screen.PrimaryScreen.WorkingArea.Right - 360), Math.Max(monitoredRect.Top, Screen.PrimaryScreen.WorkingArea.Top + 20));
-                    mainForm.OpenFloatingAnswerWithImage(spawnPt, bmp, "concise");
+                    long currentHash = ComputeSimpleHash(bmp);
+                    if (currentHash != lastBitmapHash)
+                    {
+                        lastBitmapHash = currentHash;
+                        Point spawnPt = new Point(Math.Min(monitoredRect.Right + 10, Screen.PrimaryScreen.WorkingArea.Right - 360), Math.Max(monitoredRect.Top, Screen.PrimaryScreen.WorkingArea.Top + 20));
+                        if (this.IsHandleCreated && !this.IsDisposed)
+                        {
+                            this.BeginInvoke(new Action(() => {
+                                mainForm.OpenFloatingAnswerWithImage(spawnPt, bmp, "concise");
+                            }));
+                        }
+                    }
+                    else
+                    {
+                        bmp.Dispose();
+                    }
                 }
-                else
+                catch { }
+                finally
                 {
-                    bmp.Dispose();
+                    isProcessingStep = false;
                 }
-            }
-            catch { }
-            finally
-            {
-                isProcessingStep = false;
-            }
+            });
         }
 
         private long ComputeSimpleHash(Bitmap bmp)
