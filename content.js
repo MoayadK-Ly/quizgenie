@@ -1331,6 +1331,61 @@ function ensureHighlightStylesInPage() {
       font-family: system-ui, -apple-system, sans-serif !important;
       white-space: nowrap !important;
     }
+    .quizgenie-circle-correct,
+    input[type="radio"].quizgenie-circle-correct {
+      border-color: #10b981 !important;
+      background-color: #10b981 !important;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.95), 0 0 4px #10b981 !important;
+      accent-color: #10b981 !important;
+      transform: scale(1.15) !important;
+      transition: all 0.2s ease !important;
+    }
+    div.quizgenie-circle-correct,
+    span.quizgenie-circle-correct,
+    [role="radio"].quizgenie-circle-correct {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.95), inset 0 0 6px rgba(16, 185, 129, 0.6) !important;
+      background-color: rgba(16, 185, 129, 0.25) !important;
+      color: #10b981 !important;
+    }
+    .quizgenie-circle-wrong,
+    input[type="radio"].quizgenie-circle-wrong {
+      border-color: #ef4444 !important;
+      background-color: rgba(239, 68, 68, 0.25) !important;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.75) !important;
+      accent-color: #ef4444 !important;
+      transition: all 0.2s ease !important;
+    }
+    div.quizgenie-circle-wrong,
+    span.quizgenie-circle-wrong,
+    [role="radio"].quizgenie-circle-wrong {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.75) !important;
+      background-color: rgba(239, 68, 68, 0.15) !important;
+      color: #ef4444 !important;
+    }
+    svg circle.quizgenie-circle-correct,
+    svg.quizgenie-circle-correct circle {
+      fill: #10b981 !important;
+      stroke: #34d399 !important;
+      filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)) !important;
+    }
+    svg circle.quizgenie-circle-wrong,
+    svg.quizgenie-circle-wrong circle {
+      fill: rgba(239, 68, 68, 0.25) !important;
+      stroke: #ef4444 !important;
+      filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.7)) !important;
+    }
+    #quizgenie-mini-exam-bar,
+    .quizgenie-scanner-fab,
+    #quizgenie-exam-scanner-pill,
+    .qg-inpage-exam-toolbar,
+    #qg-inpage-exam-toolbar,
+    [class*="inpage-exam-toolbar"] {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
     @keyframes qgPulseYellowQuestion {
       0% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.5), inset 0 0 5px rgba(234, 179, 8, 0.2); outline-color: #eab308; }
       50% { box-shadow: 0 0 24px rgba(234, 179, 8, 0.95), inset 0 0 12px rgba(234, 179, 8, 0.5); outline-color: #facc15; }
@@ -1354,6 +1409,9 @@ function clearAllExamHighlights() {
   });
   document.querySelectorAll('.quizgenie-wrong-answer-outline, .quizgenie-highlight-wrong').forEach(el => {
     el.classList.remove('quizgenie-wrong-answer-outline', 'quizgenie-highlight-wrong');
+  });
+  document.querySelectorAll('.quizgenie-circle-correct, .quizgenie-circle-wrong').forEach(el => {
+    el.classList.remove('quizgenie-circle-correct', 'quizgenie-circle-wrong');
   });
   document.querySelectorAll('.quizgenie-question-badge-tag-yellow, .quizgenie-question-badge-tag, .quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(el => el.remove());
   document.querySelectorAll('[data-qg-solved]').forEach(el => {
@@ -1782,6 +1840,7 @@ function removeMiniExamToolbar() {
   if (bar) bar.remove();
   const pill = document.getElementById('quizgenie-exam-scanner-pill');
   if (pill) pill.remove();
+  document.querySelectorAll('.qg-inpage-exam-toolbar, #qg-inpage-exam-toolbar, [class*="inpage-exam-toolbar"]').forEach(el => el.remove());
 }
 
 // الاستماع لرسائل مزامنة الثيم الحية
@@ -2339,8 +2398,16 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
   if (r.width === 0 || r.height === 0) return null;
 
   // الحاوية الخارجية للخيار (تغطي الراديو الدائري والنص والأيقونات)
-  const containerEl = el.closest('label, li, tr, [class*="option" i], [class*="choice" i], [class*="radio" i], [class*="answer" i], .form-check, [role="radio"]') || el.parentElement || el;
+  let containerEl = el.closest('label, li, tr, [class*="option" i], [class*="choice" i], [class*="radio" i], [class*="answer" i], .form-check, [role="radio"]') || el.parentElement || el;
   if (!containerEl || containerEl.closest(IGNORED_SELECTORS)) return null;
+
+  // إذا كانت الحاوية بدون نص كافٍ وكانت مجرد غلاف للزر الدائري، نتوسع للحاوية الأب المشتركة
+  const directText = (containerEl.innerText || '').trim();
+  if (!directText && containerEl.parentElement && containerEl.parentElement !== document.body && !containerEl.parentElement.closest(IGNORED_SELECTORS)) {
+    if ((containerEl.parentElement.innerText || '').trim().length > 0) {
+      containerEl = containerEl.parentElement;
+    }
+  }
 
   // استخراج النص من الحاوية أو التسمية المرتبطة (label for) أو السمات (aria-label, value)
   let text = '';
@@ -2357,12 +2424,14 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
     text = el.getAttribute('aria-label') || el.value || el.getAttribute('title') || (el.nextElementSibling ? el.nextElementSibling.innerText : '') || '';
   }
 
-  // تنظيف الرموز والدوائر والنقاط والبادئات (مثل أ، ب، ج، د أو 1، 2، 3 أو دوائر اليونيكود ◯ ○ ● 🔘 ⭕)
+  // تنظيف الرموز والدوائر والنقاط والبادئات واللواحق (◯ ○ ● 🔘 ⭕ ⚪ ⚫ ⚬ ⦿ ◦ •)
   text = text
-    .replace(/^[A-Da-dأ-د1-4\u25cb\u25cf\u25ef\u2b58\u25ce\u25c9\u2299\u229a\u25d0-\u25d3🔘⭕\(\)\[\]\.\-\s:]+\s*/u, '')
+    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][\.\-\:\x29\/]\s*|[\x28\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\x29\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58🔘⭕]\s*)+/u, '')
+    .replace(/\s*[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58🔘⭕\.\-\:\x28\x29\[\]]+$/u, '')
     .trim();
 
   if (text.length > 0 && text.length < 160 && !IGNORED_TEXT.test(text)) {
+    try { containerEl._qgRadioEl = el; } catch (e) {}
     return { text, containerEl };
   }
   return null;
@@ -2415,7 +2484,7 @@ function extractQuestionAndOptionsFromRegion(region) {
       const questionText = questionElement ? questionElement.innerText.trim() : '';
 
       // استخراج خيارات هذه الحاوية حصراً (بما فيها الراديو الدائري، خيارات صح وخطأ، بطاقات الخيارات)
-      const choiceSelector = 'input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"], .option-item, .option, .choice, label, li, [class*="radio" i], [class*="circle" i], [class*="form-check" i], svg circle, svg[class*="radio" i], svg[class*="circle" i]';
+      const choiceSelector = 'input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"], .option-item, .option, .choice, label, li, [class*="radio" i], [class*="circle" i], [class*="form-check" i], [class*="true-false" i], [class*="tf-option" i], [class*="custom-control" i], svg circle, svg[class*="radio" i], svg[class*="circle" i]';
       const choiceCandidates = Array.from(targetContainer.querySelectorAll(choiceSelector)).filter(el => {
         if (el.closest(IGNORED_SELECTORS)) return false;
         if (questionElement && (el === questionElement || questionElement.contains(el))) return false;
@@ -2472,7 +2541,7 @@ function extractQuestionAndOptionsFromRegion(region) {
   for (const el of candidateElements) {
     const cls = typeof el.className === 'string' ? el.className.toLowerCase() : '';
     const isRadio = (el.tagName === 'INPUT' && (el.type === 'radio' || el.type === 'checkbox')) || el.getAttribute('role') === 'radio' || el.tagName === 'circle' || (el.tagName === 'svg' && el.querySelector('circle'));
-    const isChoiceCls = /choice|option|radio|answer|select|check|form-check|circle/i.test(cls) || el.tagName === 'LI' || el.tagName === 'LABEL';
+    const isChoiceCls = /choice|option|radio|answer|select|check|form-check|circle|true-false|tf-option/i.test(cls) || el.tagName === 'LI' || el.tagName === 'LABEL';
     if (isRadio || isChoiceCls) {
       const res = extractOptionFromCandidate(el, null, IGNORED_SELECTORS, IGNORED_TEXT);
       if (res && !optionsList.includes(res.text) && !optionElements.includes(res.containerEl)) {
@@ -2619,8 +2688,22 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
   // 1. مطابقة نص الخيار أولاً بدقة متناهية عبر التطبيع العربي الشامل ودعم خيارات صح وخطأ (True/False)
   const cleanTarget = normalizeExamText(correctChoiceText);
-  const isTrueVariant = (t) => /^(صح|صواب|صحيح|صحيحة|true|t)$/i.test((t || '').trim());
-  const isFalseVariant = (t) => /^(خطأ|خطا|خاطئ|خاطئة|false|f)$/i.test((t || '').trim());
+  const isTrueVariant = (t) => {
+    const raw = (t || '').trim().toLowerCase();
+    const clean = normalizeExamText(raw);
+    return /^(صح|صواب|صحيح|صحيحة|صحيحه|نعم|true|t|yes|y)$/i.test(raw) ||
+           /^(صح|صواب|صحيح|صحيحه|نعم|true|t|yes|y)$/i.test(clean) ||
+           clean === 'صح' || clean === 'صواب' || clean === 'صحيح' || clean === 'صحيحه' || clean === 'true' ||
+           raw.includes('صح') || raw.includes('صواب') || raw.includes('صحيح') || raw.includes('true');
+  };
+  const isFalseVariant = (t) => {
+    const raw = (t || '').trim().toLowerCase();
+    const clean = normalizeExamText(raw);
+    return /^(خطأ|خطا|خاطئ|خاطئة|خاطئه|لا|false|f|no|n)$/i.test(raw) ||
+           /^(خطأ|خطا|خاطئ|خاطئه|لا|false|f|no|n)$/i.test(clean) ||
+           clean === 'خطا' || clean === 'خاطئ' || clean === 'خاطئه' || clean === 'false' ||
+           raw.includes('خطأ') || raw.includes('خطا') || raw.includes('خاطئ') || raw.includes('false');
+  };
 
   if (cleanTarget.length > 0) {
     for (let i = 0; i < optionsList.length; i++) {
@@ -2628,6 +2711,8 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
       if (cleanOpt === cleanTarget || 
           (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
           (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
+          (isTrueVariant(correctChoiceText) && isTrueVariant(optionsList[i])) ||
+          (isFalseVariant(correctChoiceText) && isFalseVariant(optionsList[i])) ||
           (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
           (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
         matchedIdx = i;
@@ -2648,6 +2733,26 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   // 3. إذا لم يطابق الرمز، استخدم رقم الفهرس القادم من الخادم إذا كان صحيحاً وفي النطاق
   if (matchedIdx === -1 && typeof data.correctIndex === 'number' && data.correctIndex >= 0 && data.correctIndex < optionElements.length) {
     matchedIdx = data.correctIndex;
+  }
+
+  // دالة مساعدة للعثور على زر الراديو أو الدائرة القابلة للنقر المرتبطة بالخيار
+  function findRadioOrCircle(container, optElement) {
+    let el = container.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]') ||
+             (container.tagName === 'INPUT' && (container.type === 'radio' || container.type === 'checkbox') ? container : null);
+    if (!el && container.htmlFor) el = document.getElementById(container.htmlFor);
+    if (!el && container.getAttribute('for')) el = document.getElementById(container.getAttribute('for'));
+    if (!el && container._qgRadioEl) el = container._qgRadioEl;
+    if (!el && optElement && optElement._qgRadioEl) el = optElement._qgRadioEl;
+    if (!el && container.parentElement) {
+      el = container.parentElement.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]');
+    }
+    if (!el && container.previousElementSibling && container.previousElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
+      el = container.previousElementSibling;
+    }
+    if (!el && container.nextElementSibling && container.nextElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
+      el = container.nextElementSibling;
+    }
+    return el;
   }
 
   // 4. وضع التوهج الأخضر وشارة "🟢 الخيار الصحيح" على الإجابة الصحيحة وخط أحمر وشارة "🔴 خيار خاطئ" على البقية
@@ -2677,20 +2782,30 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
         // تفعيل وتمييز زر الراديو الدائري وعناصر الدوائر
         try {
-          const radioInside = targetContainer.querySelector('input[type="radio"]') || (targetContainer.tagName === 'INPUT' && targetContainer.type === 'radio' ? targetContainer : null);
+          const radioInside = findRadioOrCircle(targetContainer, optEl);
           if (radioInside) {
-            radioInside.checked = true;
-            radioInside.style.accentColor = '#10b981';
+            if (radioInside.tagName === 'INPUT') {
+              radioInside.checked = true;
+              radioInside.style.accentColor = '#10b981';
+            }
+            if (radioInside.getAttribute('role') === 'radio') {
+              radioInside.setAttribute('aria-checked', 'true');
+            }
             radioInside.classList.remove('quizgenie-circle-wrong');
             radioInside.classList.add('quizgenie-circle-correct');
             radioInside.dispatchEvent(new Event('input', { bubbles: true }));
             radioInside.dispatchEvent(new Event('change', { bubbles: true }));
             try { radioInside.click(); } catch (e) {}
           }
-          const circularElements = targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]');
+          const circularElements = Array.from(targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]'));
+          if (radioInside && !circularElements.includes(radioInside)) circularElements.push(radioInside);
           circularElements.forEach(cEl => {
             cEl.classList.remove('quizgenie-circle-wrong');
             cEl.classList.add('quizgenie-circle-correct');
+            if (cEl.tagName === 'circle') {
+              cEl.setAttribute('fill', '#10b981');
+              cEl.setAttribute('stroke', '#34d399');
+            }
           });
         } catch (e) {}
       } else {
@@ -2709,16 +2824,25 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
         // تمييز زر الراديو الدائري الخاطئ
         try {
-          const radioInside = targetContainer.querySelector('input[type="radio"]') || (targetContainer.tagName === 'INPUT' && targetContainer.type === 'radio' ? targetContainer : null);
+          const radioInside = findRadioOrCircle(targetContainer, optEl);
           if (radioInside) {
-            radioInside.style.accentColor = '#ef4444';
+            if (radioInside.tagName === 'INPUT') {
+              radioInside.style.accentColor = '#ef4444';
+            }
+            if (radioInside.getAttribute('role') === 'radio' && radioInside.getAttribute('aria-checked') === 'true') {
+              radioInside.setAttribute('aria-checked', 'false');
+            }
             radioInside.classList.remove('quizgenie-circle-correct');
             radioInside.classList.add('quizgenie-circle-wrong');
           }
-          const circularElements = targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]');
+          const circularElements = Array.from(targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]'));
+          if (radioInside && !circularElements.includes(radioInside)) circularElements.push(radioInside);
           circularElements.forEach(cEl => {
             cEl.classList.remove('quizgenie-circle-correct');
             cEl.classList.add('quizgenie-circle-wrong');
+            if (cEl.tagName === 'circle') {
+              cEl.setAttribute('stroke', '#ef4444');
+            }
           });
         } catch (e) {}
       }
