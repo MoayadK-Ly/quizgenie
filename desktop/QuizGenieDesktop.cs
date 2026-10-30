@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Drawing;
@@ -1619,7 +1619,7 @@ namespace QuizGenie
             pnlAccSolverBody.Controls.Add(lblQ);
 
             btnLiveDirect = new Button();
-            btnLiveDirect.Text = "⚡ الحل المباشر (تحديد الشاشة أو منطقة الأسئلة)";
+            btnLiveDirect.Text = "⚡ الحل المباشر (وضع الريكورد 🔴)";
             btnLiveDirect.Location = new Point(14, y - 2);
             btnLiveDirect.Size = new Size(itemW - 28, 36);
             btnLiveDirect.FlatStyle = FlatStyle.Flat;
