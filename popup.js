@@ -1052,18 +1052,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 14. زر الحل المباشر الموحد (تحديد الشاشة أو المنطقة للحل المستمر)
+  // 14. زر الحل المباشر الموحد (تحديد الشاشة أو المنطقة مثل سكرين شوت ويندوز Win+Shift+S للحل المستمر)
   const btnStartLiveDirectSolver = document.getElementById('btnStartLiveDirectSolver');
   if (btnStartLiveDirectSolver) {
     btnStartLiveDirectSolver.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs && tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: 'START_LIVE_DIRECT_SOLVER'
-          }, () => {
-            window.close();
-          });
-        }
+        if (!tabs || !tabs[0] || !tabs[0].id) return;
+        const tabId = tabs[0].id;
+        chrome.tabs.sendMessage(tabId, {
+          action: 'START_LIVE_DIRECT_SOLVER'
+        }, () => {
+          if (chrome.runtime.lastError) {
+            // إعادة حقن السكربت والستايل في حال كان التبويب مفتوحاً مسبقاً
+            if (chrome.scripting && chrome.scripting.executeScript) {
+              chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
+                chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(tabId, { action: 'START_LIVE_DIRECT_SOLVER' });
+                  }, 60);
+                  window.close();
+                });
+              });
+              return;
+            }
+          }
+          window.close();
+        });
       });
     });
   }
