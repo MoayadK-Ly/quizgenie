@@ -639,19 +639,15 @@ chrome.runtime.onMessage.addListener((request) => {
   // عند طلب الحل المباشر ووضع الريكورد
   if (request.action === 'START_LIVE_DIRECT_SOLVER') {
     const liveMode = request.mode || currentMode || 'concise';
-    if (request.isFullScreen) {
-      startLiveDirectMode({
-        left: 0,
-        top: 0,
-        right: window.innerWidth,
-        bottom: window.innerHeight,
-        width: window.innerWidth,
-        height: window.innerHeight,
-        isFullScreen: true
-      }, liveMode);
-    } else {
-      showLiveSelectorOverlay(liveMode);
-    }
+    startLiveDirectMode({
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      isFullScreen: true
+    }, liveMode);
   }
 
   // عند طلب إيقاف الحل المباشر
@@ -1977,6 +1973,149 @@ let liveDirectSolvedCount = 0;
 let activeLiveMode = 'concise';
 let isSolvingLiveStep = false;
 const speculativeResultCache = new Map();
+let liveDirectCountdownTimer = null;
+let liveCountdownOverlay = null;
+
+// دالة إظهار مؤقت العد التنازلي البصري المباشر 3 ثوانٍ (3... 2... 1... 🚀)
+function playCountdownBeep(freq, duration) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq || 600, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (duration || 0.08));
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (duration || 0.08));
+  } catch (e) {}
+}
+
+// دالة إظهار مؤقت العد التنازلي البصري المباشر 3 ثوانٍ (3... 2... 1... 🚀)
+function showLiveCountdownOverlay(onFinish) {
+  if (liveCountdownOverlay) {
+    try { liveCountdownOverlay.remove(); } catch (e) {}
+    liveCountdownOverlay = null;
+  }
+  if (liveDirectCountdownTimer) {
+    clearInterval(liveDirectCountdownTimer);
+    liveDirectCountdownTimer = null;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'quizgenie-countdown-overlay';
+  overlay.innerHTML = `
+    <div class="qg-countdown-card">
+      <div style="position: absolute; top: 12px; left: 14px;">
+        <button type="button" id="qgCancelCountdownBtn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1; border-radius: 6px; font-size: 11px; padding: 3px 8px; cursor: pointer;">✕ إلغاء</button>
+      </div>
+      <div class="qg-countdown-header">
+        <span style="font-size: 22px;">⚡</span>
+        <span>مساعد QuizGenie للحل المباشر</span>
+      </div>
+      <div class="qg-countdown-number" id="qgCountdownVal">3</div>
+      <div class="qg-countdown-sub" id="qgCountdownSub">استعد! جاري الاتصال بالخادم وتهيئة الرصد الذكي...</div>
+      <div class="qg-countdown-progress-bar">
+        <div class="qg-countdown-progress-fill" id="qgCountdownProgress" style="width: 33%;"></div>
+      </div>
+    </div>
+  `;
+  (document.body || document.documentElement).appendChild(overlay);
+  liveCountdownOverlay = overlay;
+
+  playCountdownBeep(520, 0.1);
+
+  const cancelCountdown = () => {
+    if (liveDirectCountdownTimer) {
+      clearInterval(liveDirectCountdownTimer);
+      liveDirectCountdownTimer = null;
+    }
+    if (overlay && overlay.parentElement) overlay.remove();
+    if (liveCountdownOverlay === overlay) liveCountdownOverlay = null;
+    stopLiveDirectMode();
+  };
+
+  const cancelBtn = overlay.querySelector('#qgCancelCountdownBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelCountdown);
+
+  const onKeyEsc = (e) => {
+    if (e.key === 'Escape') {
+      cancelCountdown();
+      document.removeEventListener('keydown', onKeyEsc);
+    }
+  };
+  document.addEventListener('keydown', onKeyEsc);
+
+  let count = 3;
+  const numEl = overlay.querySelector('#qgCountdownVal');
+  const subEl = overlay.querySelector('#qgCountdownSub');
+  const progEl = overlay.querySelector('#qgCountdownProgress');
+
+  liveDirectCountdownTimer = setInterval(() => {
+    count--;
+    if (count === 2) {
+      playCountdownBeep(660, 0.1);
+      if (numEl) numEl.textContent = '2';
+      if (subEl) subEl.textContent = 'جاري مطابقة الخيارات وتحديد منطقة الاختبار...';
+      if (progEl) progEl.style.width = '66%';
+    } else if (count === 1) {
+      playCountdownBeep(880, 0.1);
+      if (numEl) numEl.textContent = '1';
+      if (subEl) subEl.textContent = 'ثوانٍ معدودة وسيبدأ التلوين البصري الذكي!';
+      if (progEl) progEl.style.width = '100%';
+    } else if (count <= 0) {
+      clearInterval(liveDirectCountdownTimer);
+      liveDirectCountdownTimer = null;
+      document.removeEventListener('keydown', onKeyEsc);
+      playCountdownBeep(1100, 0.22);
+      if (numEl) {
+        numEl.textContent = '🚀';
+        numEl.style.fontSize = '65px';
+      }
+      if (subEl) subEl.textContent = 'بدأ الكشف التلقائي وحل الاختبار مباشرة!';
+      setTimeout(() => {
+        if (overlay && overlay.parentElement) {
+          overlay.style.transition = 'opacity 0.25s ease-out';
+          overlay.style.opacity = '0';
+          setTimeout(() => {
+            if (overlay && overlay.parentElement) overlay.remove();
+            if (liveCountdownOverlay === overlay) liveCountdownOverlay = null;
+          }, 250);
+        }
+        if (typeof onFinish === 'function') onFinish();
+      }, 350);
+    }
+  }, 1000);
+}
+
+// دالة شارة الرصد الزاوية الثابتة مع الدائرة الحمراء النابضة فوق يمين الشاشة
+function updateCornerRecBadge(isActive, statusText) {
+  let badge = document.getElementById('quizgenie-corner-rec-badge');
+  if (!isActive) {
+    if (badge) badge.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'quizgenie-corner-rec-badge';
+    badge.title = 'ميزة الحل المباشر والريكورد نشطة الآن وترصد الأسئلة تلقائياً. اضغط لإيقاف الريكورد.';
+    badge.innerHTML = `
+      <span class="qg-pulsing-red-circle-prominent"></span>
+      <span id="qgCornerBadgeText" style="font-weight: 800; color: #fecdd3;">REC 🔴 مباشر نشط</span>
+      <span id="qgCornerTimer" style="font-family: Consolas, monospace; font-size: 11px; background: rgba(0,0,0,0.35); padding: 1px 7px; border-radius: 12px; color: #38bdf8;">00:00</span>
+    `;
+    badge.addEventListener('click', () => {
+      stopLiveDirectMode();
+    });
+    (document.body || document.documentElement).appendChild(badge);
+  }
+  const textEl = badge.querySelector('#qgCornerBadgeText');
+  if (textEl && statusText) textEl.textContent = statusText;
+}
 
 function showLiveSelectorOverlay(preferredMode) {
   stopLiveDirectMode();
@@ -2192,8 +2331,8 @@ function startLiveDirectMode(region, mode) {
   hud.innerHTML = `
     <div class="qg-live-hud-top">
       <div class="qg-live-rec-badge" title="وضع الريكورد المباشر نشط ويرصد الأسئلة لحظياً">
-        <span class="qg-pulsing-red-circle"></span>
-        <span class="qg-rec-label">REC</span>
+        <span class="qg-pulsing-red-circle-prominent"></span>
+        <span class="qg-rec-label" style="font-weight: 800; color: #f87171;">REC 🔴</span>
         <span class="qg-rec-timer" id="qgRecTimer">00:00</span>
       </div>
       <span class="qg-live-mode-badge" id="qgLiveModeBadge">${modeLabel}</span>
@@ -2257,38 +2396,60 @@ function startLiveDirectMode(region, mode) {
     }
   });
 
-  // تشغيل عداد الثواني الحي للريكورد
-  liveDirectTimerInterval = setInterval(() => {
-    liveDirectElapsedSeconds++;
-    const m = String(Math.floor(liveDirectElapsedSeconds / 60)).padStart(2, '0');
-    const s = String(liveDirectElapsedSeconds % 60).padStart(2, '0');
-    const timerEl = document.getElementById('qgRecTimer');
-    if (timerEl) timerEl.textContent = `${m}:${s}`;
-  }, 1000);
+  // تفعيل شارة التسجيل الزاوية الحمراء النابضة (أعلى اليمين)
+  updateCornerRecBadge(true, '⏳ يستعد (3 ثوانٍ)...');
 
-  showScanFeedbackBanner('🔴 تم بدء ريكورد الحل المباشر! الخادم يقرأ معك ويحل فوراً...', '#ef4444');
+  // إطلاق مؤقت العد التنازلي البصري المباشر 3 ثوانٍ (3... 2... 1... 🚀)
+  showLiveCountdownOverlay(() => {
+    if (!liveDirectActive) return;
 
-  // 3. تنفيذ الفحص والحل الأولي الفوري
-  executeLiveDirectSolveStep();
+    updateCornerRecBadge(true, 'REC 🔴 مباشر نشط');
 
-  // 4. مراقبة التغيرات في الصفحة للمتابعة التلقائية مع تقدم الطالب
-  liveDirectObserver = new MutationObserver(() => {
-    if (!liveDirectActive || isSolvingLiveStep) return;
+    // تشغيل عداد الثواني الحي للريكورد
+    liveDirectTimerInterval = setInterval(() => {
+      liveDirectElapsedSeconds++;
+      const m = String(Math.floor(liveDirectElapsedSeconds / 60)).padStart(2, '0');
+      const s = String(liveDirectElapsedSeconds % 60).padStart(2, '0');
+      const timerEl = document.getElementById('qgRecTimer');
+      if (timerEl) timerEl.textContent = `${m}:${s}`;
+      const cornerTimer = document.getElementById('qgCornerTimer');
+      if (cornerTimer) cornerTimer.textContent = `${m}:${s}`;
+    }, 1000);
+
+    showScanFeedbackBanner('🔴 بدأ رصد وحل أسئلة الاختبار مباشرة!', '#ef4444');
+
+    // 3. تنفيذ الفحص والحل الأولي الفوري بعد انتهاء الثواني الـ 3
     executeLiveDirectSolveStep();
+
+    // 4. مراقبة التغيرات في الصفحة للمتابعة التلقائية مع تقدم الطالب
+    liveDirectObserver = new MutationObserver(() => {
+      if (!liveDirectActive || isSolvingLiveStep) return;
+      executeLiveDirectSolveStep();
+    });
+    liveDirectObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    // فحص دوري كل 1.5 ثانية للرصد الحي المستمر
+    liveDirectCheckTimer = setInterval(() => {
+      if (!liveDirectActive || isSolvingLiveStep) return;
+      executeLiveDirectSolveStep();
+    }, 1500);
   });
-  liveDirectObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-
-  // فحص دوري كل 1.5 ثانية للرصد الحي المستمر
-  liveDirectCheckTimer = setInterval(() => {
-    if (!liveDirectActive || isSolvingLiveStep) return;
-    executeLiveDirectSolveStep();
-  }, 1500);
 }
 
 function stopLiveDirectMode() {
   liveDirectActive = false;
   liveDirectRegion = null;
   liveDirectLastQuestion = '';
+
+  if (liveDirectCountdownTimer) {
+    clearInterval(liveDirectCountdownTimer);
+    liveDirectCountdownTimer = null;
+  }
+  if (liveCountdownOverlay) {
+    try { liveCountdownOverlay.remove(); } catch (e) {}
+    liveCountdownOverlay = null;
+  }
+  updateCornerRecBadge(false);
 
   if (liveDirectTimerInterval) {
     clearInterval(liveDirectTimerInterval);
@@ -2319,21 +2480,23 @@ function stopLiveDirectMode() {
   showScanFeedbackBanner('⏹️ تم إيقاف وضع الريكورد والحل المباشر.', '#64748b');
 }
 
-// محرك استخراج السؤال والخيارات بذكاء من داخل إحداثيات السكرين شوت
+// محرك استخراج السؤال والخيارات بذكاء فائق ودقة 100% من داخل إحداثيات السكرين شوت
 function extractQuestionAndOptionsFromRegion(region) {
   let candidateElements = [];
   const all = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, button, input'));
-  
+  const IGNORED_SELECTORS = '#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card, #quizgenie-countdown-overlay, #quizgenie-corner-rec-badge, .answer-verifier, .question-meta, .btn-reveal-solution, .correct-answer-hint, .exam-footer-toolbar, .instructions-card, .exam-header';
+  const IGNORED_TEXT = /^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|كشف|عرض الإجابة|تحقق|تأكيد|مساعدة|مراجعة|إلغاء|حذف|مسح|Of|Show|Check|Verify|Hint|Skip|Solution)/i;
+
   if (region.isFullScreen) {
     candidateElements = all.filter(el => {
       const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && !el.closest('#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container');
+      return r.width > 0 && r.height > 0 && !el.closest(IGNORED_SELECTORS);
     });
   } else {
     candidateElements = all.filter(el => {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) return false;
-      if (el.closest('#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card')) return false;
+      if (el.closest(IGNORED_SELECTORS)) return false;
       return (r.left >= region.left - 25 && r.right <= region.right + 25 &&
               r.top >= region.top - 25 && r.bottom <= region.bottom + 25);
     });
@@ -2344,14 +2507,15 @@ function extractQuestionAndOptionsFromRegion(region) {
   let questionElement = null;
   let questionText = '';
 
-  // 1. فحص عناصر الراديو أو كلاسات الخيارات
+  // 1. فحص عناصر الراديو أو كلاسات الخيارات الصريحة
   for (const el of candidateElements) {
     const isRadio = (el.tagName === 'INPUT' && (el.type === 'radio' || el.type === 'checkbox')) || el.getAttribute('role') === 'radio';
-    const isChoiceCls = el.classList.contains('choice') || el.classList.contains('option') || el.tagName === 'LI' || el.tagName === 'LABEL';
+    const isChoiceCls = el.classList.contains('choice') || el.classList.contains('option') || el.classList.contains('option-item') || el.tagName === 'LI' || el.tagName === 'LABEL';
     if (isRadio || isChoiceCls) {
       const container = el.closest('label, li, tr, [class*="option"], [class*="choice"], [class*="radio"]') || el.parentElement || el;
-      const text = (container ? container.innerText : el.innerText || '').replace(/^[A-Da-dأ-د1-4][\.\-\)]\s*/, '').trim();
-      if (text && text.length > 0 && text.length < 150 && !optionsList.includes(text)) {
+      if (container && container.closest(IGNORED_SELECTORS)) continue;
+      const text = (container ? container.innerText : el.innerText || '').replace(/^[A-Da-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
+      if (text && text.length > 0 && text.length < 150 && !optionsList.includes(text) && !IGNORED_TEXT.test(text)) {
         optionsList.push(text);
         optionElements.push(container);
       }
@@ -2362,14 +2526,14 @@ function extractQuestionAndOptionsFromRegion(region) {
   if (optionsList.length < 2) {
     for (const el of candidateElements) {
       if (el.children.length > 2) continue;
+      if (el.closest(IGNORED_SELECTORS)) continue;
       const txt = (el.innerText || '').trim();
-      if (!txt || txt.length > 120 || txt.length < 1) continue;
-      if (/^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت)/i.test(txt)) continue;
+      if (!txt || txt.length > 120 || txt.length < 1 || IGNORED_TEXT.test(txt)) continue;
 
-      const hasPrefix = /^([A-Da-dأ-د1-4][\.\-\)]|[○●•])\s*(.+)/.test(txt);
+      const hasPrefix = /^([A-Da-dأ-د1-4][\.\-\)\s:]+|[○●•])\s*(.+)/.test(txt);
       if (hasPrefix) {
-        const clean = txt.replace(/^([A-Da-dأ-د1-4][\.\-\)]|[○●•])\s*/, '').trim();
-        if (clean && !optionsList.includes(clean)) {
+        const clean = txt.replace(/^([A-Da-dأ-د1-4][\.\-\)\s:]+|[○●•])\s*/, '').trim();
+        if (clean && !optionsList.includes(clean) && !IGNORED_TEXT.test(clean)) {
           optionsList.push(clean);
           optionElements.push(el);
         }
@@ -2377,50 +2541,69 @@ function extractQuestionAndOptionsFromRegion(region) {
     }
   }
 
-  // 3. دعم المنصات الحديثة (مثل منصات القدرات ونون حيث الخيارات كتل نصية مستقلة)
+  // 3. دعم المنصات التي تعرض الخيارات كعقد نصية داخل منطقة الاختبار
   if (optionsList.length < 2) {
     const leafCandidates = candidateElements.filter(el => {
+      if (el.closest(IGNORED_SELECTORS)) return false;
       const txt = (el.innerText || '').trim();
-      return el.children.length === 0 && txt.length > 1 && txt.length < 90 &&
-             !/^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|Of)/i.test(txt);
+      return el.children.length === 0 && txt.length > 1 && txt.length < 90 && !IGNORED_TEXT.test(txt);
     });
 
     for (const el of leafCandidates) {
       const txt = el.innerText.trim();
-      if (!optionsList.includes(txt)) {
+      if (!optionsList.includes(txt) && !IGNORED_TEXT.test(txt)) {
         optionsList.push(txt);
         optionElements.push(el);
       }
     }
   }
 
-  // 4. استخراج رأس السؤال (فحص التناظر اللفظي أولاً ثم علامات الاستفهام ثم أول كتلة)
+  // 4. استخراج رأس السؤال: التحقق من كلاسات السؤال الصريحة أولاً
   for (const el of candidateElements) {
-    const txt = (el.innerText || '').trim();
-    if (txt && /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(txt)) {
-      const isChoice = optionElements.includes(el) || optionElements.some(o => o.contains(el));
-      if (!isChoice || txt.length < 60) {
-        questionText = txt;
+    if (el.closest(IGNORED_SELECTORS)) continue;
+    const isQCls = el.classList.contains('question-text') || el.classList.contains('q-text') || el.id.includes('question-text') || el.classList.contains('question-title');
+    if (isQCls) {
+      const txt = (el.innerText || '').trim();
+      if (txt && !IGNORED_TEXT.test(txt) && !optionsList.includes(txt)) {
         questionElement = el;
-        const idx = optionsList.indexOf(txt);
-        if (idx !== -1) {
-          optionsList.splice(idx, 1);
-          optionElements.splice(idx, 1);
-        }
+        questionText = txt;
         break;
       }
     }
   }
 
+  // 5. فحص التناظر اللفظي
   if (!questionText) {
     for (const el of candidateElements) {
+      if (el.closest(IGNORED_SELECTORS)) continue;
+      const txt = (el.innerText || '').trim();
+      if (txt && /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(txt)) {
+        const isChoice = optionElements.includes(el) || optionElements.some(o => o.contains(el));
+        if (!isChoice || txt.length < 60) {
+          questionText = txt;
+          questionElement = el;
+          const idx = optionsList.indexOf(txt);
+          if (idx !== -1) {
+            optionsList.splice(idx, 1);
+            optionElements.splice(idx, 1);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // 6. فحص الجمل المنتهية بعلامة استفهام أو أول كتلة نصية صالحة
+  if (!questionText) {
+    for (const el of candidateElements) {
+      if (el.closest(IGNORED_SELECTORS)) continue;
       const txt = (el.innerText || '').trim();
       const isOpt = optionElements.some(opt => opt.contains(el) || el.contains(opt));
-      if (!isOpt && txt && txt.length > 2 && txt.length < 350) {
-        if (/^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|Of)/i.test(txt)) continue;
+      if (!isOpt && txt && txt.length > 4 && txt.length < 350) {
+        if (IGNORED_TEXT.test(txt)) continue;
         questionElement = el;
         questionText = txt;
-        break;
+        if (txt.includes('؟') || txt.includes('?')) break;
       }
     }
   }
@@ -2508,30 +2691,36 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   const countEl = document.getElementById('qgLiveSolvedCount');
   if (countEl) countEl.textContent = String(liveDirectSolvedCount);
 
-  const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
+  let matchedIdx = -1;
 
-  // تحديد عنصر الإجابة الصحيحة
-  let matchedOptionElement = null;
-  if (correctIndex >= 0 && correctIndex < optionElements.length) {
-    matchedOptionElement = optionElements[correctIndex];
-  } else if (correctChoiceText) {
-    const cleanTarget = correctChoiceText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)]\s*/, '').trim();
+  // 1. مطابقة نص الخيار أولاً بدقة متناهية لمنع الوقوع في خطأ الفهرس 0
+  const cleanTarget = (correctChoiceText || '').toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').replace(/[\s\.\,\:\!\?\(\)]+/g, ' ').trim();
+
+  if (cleanTarget.length > 0) {
     for (let i = 0; i < optionsList.length; i++) {
-      const cleanOpt = optionsList[i].toLowerCase().trim();
-      if (cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) {
-        matchedOptionElement = optionElements[i];
+      const cleanOpt = (optionsList[i] || '').toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').replace(/[\s\.\,\:\!\?\(\)]+/g, ' ').trim();
+      if (cleanOpt === cleanTarget || cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) {
+        matchedIdx = i;
         break;
       }
     }
   }
 
-  // 3. وضع خط وتوهج أخضر بارز على الإجابة الصحيحة وخط أحمر بارز حول كل إجابة خاطئة
+  // 2. إذا لم يطابق النص، استخدم رقم الفهرس القادم من الخادم
+  if (matchedIdx === -1 && typeof data.correctIndex === 'number' && data.correctIndex >= 0 && data.correctIndex < optionElements.length) {
+    matchedIdx = data.correctIndex;
+  }
+
+  // 3. الاحتياط الأخير فقط في حال تعذر المطابقة
+  if (matchedIdx === -1) matchedIdx = 0;
+
+  // 4. وضع التوهج الأخضر وشارة "🟢 الخيار الصحيح" على الإجابة الصحيحة وخط أحمر وشارة "🔴 خيار خاطئ" على البقية
   if (optionElements && optionElements.length > 0) {
     for (let i = 0; i < optionElements.length; i++) {
       const optEl = optionElements[i];
-      if (optEl === matchedOptionElement || (!matchedOptionElement && i === correctIndex)) {
-        // الإجابة الصحيحة: خط وتوهج أخضر
+      if (i === matchedIdx) {
+        // الإجابة الصحيحة: خط وتوهج أخضر نيون
         optEl.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         optEl.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         let ansTag = optEl.querySelector('.quizgenie-correct-badge-tag');
@@ -2549,7 +2738,7 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
           if (radioInside) radioInside.checked = true;
         } catch (e) {}
       } else {
-        // الإجابة الخاطئة: خط بارز أحمر
+        // الإجابة الخاطئة: خط بارز أحمر متوهج
         optEl.classList.remove('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         optEl.classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         let wrongTag = optEl.querySelector('.quizgenie-wrong-badge-tag');
@@ -2565,7 +2754,7 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
     }
   }
 
-  // إزالة أي بطاقة حل سابقة منعاً لتغطية الشاشة والاعتماد التام على التلوين المباشر
+  // إزالة أي بطاقة حل سابقة منعاً لتغطية الشاشة
   const card = document.getElementById('quizgenie-direct-solution-card');
   if (card) card.remove();
 
