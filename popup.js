@@ -1037,6 +1037,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTriggerExamScan.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs && tabs[0] && tabs[0].id) {
+          const u = tabs[0].url || '';
+          if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'TRIGGER_EXAM_SCAN',
             mode: currentDefaultMode || 'concise'
@@ -1056,6 +1058,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnClearExamHighlights.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs && tabs[0] && tabs[0].id) {
+          const u = tabs[0].url || '';
+          if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'CLEAR_EXAM_HIGHLIGHTS'
           }, () => {
@@ -1121,7 +1125,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function launchLiveDirectSolver(isFullScreen) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || !tabs[0] || !tabs[0].id) return;
-      const tabId = tabs[0].id;
+      const tab = tabs[0];
+      const tabId = tab.id;
+      const url = tab.url || '';
+
+      // فحص ما إذا كانت الصفحة المفتوحة صفحة نظام محمية لكروم
+      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:')) {
+        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://).\nيرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الأداة.');
+        return;
+      }
+
       chrome.tabs.sendMessage(tabId, {
         action: 'START_LIVE_DIRECT_SOLVER',
         isFullScreen: isFullScreen,
@@ -1130,7 +1143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chrome.runtime.lastError) {
           if (chrome.scripting && chrome.scripting.executeScript) {
             chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
+              if (chrome.runtime.lastError) return;
               chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
+                if (chrome.runtime.lastError) return;
                 setTimeout(() => {
                   chrome.tabs.sendMessage(tabId, {
                     action: 'START_LIVE_DIRECT_SOLVER',
