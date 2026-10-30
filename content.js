@@ -1,4 +1,4 @@
-﻿// QuizGenie - Content Script (Dual Mode AI Solver v1.2.0)
+// QuizGenie - Content Script (Dual Mode AI Solver v1.2.0)
 
 let extensionEnabled = true;
 let fabEnabled = true;
@@ -1016,8 +1016,6 @@ function showResponsePanel(text, mode) {
       renderAnswerContent(currentResultText, bodyEl);
       return;
     }
-    const bodyEl = shadowRoot.getElementById('qg-body');
-    if (!bodyEl) return;
 
     const serverNamesMap = {
       'free': 'الخادم المجاني',
