@@ -469,7 +469,7 @@
     <!-- Question 5: True / False Science -->
     <div class="question-card" id="q5">
       <div class="question-meta">
-        <span class="q-number-pill">السؤال 5 من 6</span>
+        <span class="q-number-pill">السؤال 5 من 7</span>
         <span class="q-category-tag">🌍 العلوم العامة (صح أو خطأ)</span>
       </div>
       <div class="question-text">
@@ -494,7 +494,7 @@
     <!-- Question 6: True / False with Circular Radio Buttons -->
     <div class="question-card" id="q6">
       <div class="question-meta">
-        <span class="q-number-pill">السؤال 6 من 6</span>
+        <span class="q-number-pill">السؤال 6 من 7</span>
         <span class="q-category-tag">🔘 أزرار الراديو الدائرية (صح أو خطأ)</span>
       </div>
       <div class="question-text">
@@ -513,6 +513,35 @@
       <div class="answer-verifier">
         <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint6')">🔍 عرض الإجابة النموذجية للتحقق</button>
         <span class="correct-answer-hint" id="hint6">✅ الإجابة الصحيحة: صح - النباتات تنتج غاز الأكسجين عبر التمثيل الضوئي.</span>
+      </div>
+    </div>
+
+    <!-- Question 7: True / False with Circular SVG Icons on the Left (Matching Image 1) -->
+    <div class="question-card" id="q7">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 7 من 7</span>
+        <span class="q-category-tag">🔘 أيقونات الراديو الدائرية على اليسار (صح أو خطأ)</span>
+      </div>
+      <div class="question-text">
+        تعتبر وحدة المعالجة المركزية (CPU) هي العقل المدبر للحاسوب، حيث تقوم بمعالجة البيانات وتنفيذ التعليمات الحسابية والمنطقية.
+      </div>
+      <div class="options-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
+        <div class="option-item circular-radio-item" role="radio" aria-checked="false" data-correct="true" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 16px;">
+          <span class="option-title" style="font-size: 15px; font-weight: 700;">صح (صواب)</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" class="radio-circle-icon" style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="9" stroke="#475569" stroke-width="2.5" fill="none"></circle>
+          </svg>
+        </div>
+        <div class="option-item circular-radio-item" role="radio" aria-checked="false" data-correct="false" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 16px;">
+          <span class="option-title" style="font-size: 15px; font-weight: 700;">خطأ (خاطئة)</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" class="radio-circle-icon" style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="9" stroke="#475569" stroke-width="2.5" fill="none"></circle>
+          </svg>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint7')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint7">✅ الإجابة الصحيحة: صح - وحدة المعالجة المركزية هي العقل المدبر للحاسوب.</span>
       </div>
     </div>
 
@@ -549,7 +578,7 @@
     }
 
     function revealAllSolutions() {
-      for (let i = 1; i <= 6; i++) {
+      for (let i = 1; i <= 7; i++) {
         const hint = document.getElementById('hint' + i);
         if (hint) hint.style.display = 'block';
       }
@@ -558,7 +587,7 @@
 
     function resetExam() {
       document.querySelectorAll('.option-item').forEach(o => o.classList.remove('selected'));
-      for (let i = 1; i <= 6; i++) {
+      for (let i = 1; i <= 7; i++) {
         const hint = document.getElementById('hint' + i);
         if (hint) hint.style.display = 'none';
       }
