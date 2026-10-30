@@ -572,11 +572,27 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
     const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : 0;
+      let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : -1;
+      let cText = parsed.correctText || '';
+
+      // Match cText against options if cIdx is invalid or out of bounds
+      if (cIdx < 0 || cIdx >= options.length) {
+        if (cText) {
+          const normT = cText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
+          for (let i = 0; i < options.length; i++) {
+            const normO = (options[i] || '').toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
+            if (normO === normT || normO.includes(normT) || normT.includes(normO)) {
+              cIdx = i;
+              break;
+            }
+          }
+        }
+      }
       if (cIdx < 0 || cIdx >= options.length) cIdx = 0;
+
       finalResult = {
         correctIndex: cIdx,
-        correctText: parsed.correctText || options[cIdx] || '',
+        correctText: cText || options[cIdx] || '',
         relation: parsed.relation || '',
         explanation: parsed.explanation || rawResponse,
         isAnalogy: isAnalogy,
@@ -588,9 +604,28 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
   }
 
   if (!finalResult) {
+    // Advanced heuristic detection from rawResponse
+    let foundIdx = 0;
+    const letterMatch = rawResponse.match(/(?:الخيار|الإجابة|الحل|الاختيار|الرمز)\s*(?:الصحيح|هو|هي)?\s*[:\-\)]?\s*[\(]?([أ-دA-Da-d1-4])[\)]?/);
+    if (letterMatch) {
+      const char = letterMatch[1].toUpperCase();
+      const map = { 'أ': 0, 'A': 0, '1': 0, 'ب': 1, 'B': 1, '2': 1, 'ج': 2, 'C': 2, '3': 2, 'د': 3, 'D': 3, '4': 3 };
+      if (map[char] !== undefined && map[char] < options.length) {
+        foundIdx = map[char];
+      }
+    } else {
+      for (let i = 0; i < options.length; i++) {
+        const optClean = (options[i] || '').replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
+        if (optClean.length > 2 && rawResponse.includes(optClean)) {
+          foundIdx = i;
+          break;
+        }
+      }
+    }
+
     finalResult = {
-      correctIndex: 0,
-      correctText: options[0] || '',
+      correctIndex: foundIdx,
+      correctText: options[foundIdx] || '',
       relation: '',
       explanation: rawResponse,
       isAnalogy: isAnalogy,
