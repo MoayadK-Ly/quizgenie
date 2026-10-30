@@ -380,9 +380,55 @@ if (chrome.commands && chrome.commands.onCommand) {
   chrome.commands.onCommand.addListener((command) => {
     if (command === 'start_live_direct_solver') {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (chrome.runtime.lastError) return;
         if (tabs && tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
-            if (chrome.runtime.lastError) {}
+          const tab = tabs[0];
+          const rawUrl = tab.url || tab.pendingUrl || '';
+          const url = rawUrl.toLowerCase().trim();
+          const isRestricted = !url ||
+                               url.startsWith('chrome://') || 
+                               url.startsWith('chrome-extension://') || 
+                               url.startsWith('edge://') || 
+                               url.startsWith('about:') || 
+                               url.startsWith('devtools://') || 
+                               url.startsWith('view-source:') || 
+                               url.startsWith('chrome-search://') || 
+                               url.includes('chrome.google.com/webstore') || 
+                               url.includes('chromewebstore.google.com');
+          if (isRestricted) return;
+
+          chrome.tabs.sendMessage(tab.id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
+            if (chrome.runtime.lastError) {
+              if (chrome.scripting && chrome.scripting.executeScript) {
+                try {
+                  const sP = chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                  }, () => {
+                    if (chrome.runtime.lastError) {}
+                  });
+                  if (sP && typeof sP.catch === 'function') sP.catch(() => {});
+
+                  if (chrome.scripting.insertCSS) {
+                    const cP = chrome.scripting.insertCSS({
+                      target: { tabId: tab.id },
+                      files: ['content.css']
+                    }, () => {
+                      if (chrome.runtime.lastError) {}
+                    });
+                    if (cP && typeof cP.catch === 'function') cP.catch(() => {});
+                  }
+
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(tab.id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
+                      if (chrome.runtime.lastError) {}
+                    });
+                  }, 150);
+                } catch (e) {
+                  if (chrome.runtime.lastError) {}
+                }
+              }
+            }
           });
         }
       });
