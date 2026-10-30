@@ -95,7 +95,8 @@ const SUBJECT_PROMPT_MAP = {
 };
 
 // Extension installation / update lifecycle
-chrome.runtime.onInstalled.addListener((details) => {
+if (chrome.runtime && chrome.runtime.onInstalled) {
+  chrome.runtime.onInstalled.addListener((details) => {
   const reason = details ? details.reason : 'unknown';
 
   chrome.storage.local.get([
@@ -163,6 +164,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     console.warn('Script injection error:', injErr);
   }
 });
+}
 
 // Update notification click handler
 if (chrome.notifications && chrome.notifications.onClicked) {
@@ -178,7 +180,8 @@ if (chrome.notifications && chrome.notifications.onClicked) {
 }
 
 // Context menu click
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+if (chrome.contextMenus && chrome.contextMenus.onClicked) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab || !tab.id || !info.selectionText) return;
 
   const mode = (info.menuItemId === 'qg_detailed_solve') ? 'detailed' : 'concise';
@@ -198,6 +201,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }).catch(() => {});
   });
 });
+}
 
 // Message listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
