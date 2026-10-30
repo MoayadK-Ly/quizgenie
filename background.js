@@ -575,13 +575,23 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
       let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : -1;
       let cText = parsed.correctText || '';
 
+      // Helper for Arabic normalization
+      function normStr(s) {
+        return (s || '').toString().toLowerCase()
+          .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+          .replace(/[أإآ]/g, 'ا').replace(/[ىي]/g, 'ي').replace(/ة/g, 'ه')
+          .replace(/^[\(\[\{]?[a-dأ-د1-4][\)\]\}]?[\.\-\:\s]\s*/, '')
+          .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
+          .replace(/\s+/g, ' ').trim();
+      }
+
       // Match cText against options if cIdx is invalid or out of bounds
       if (cIdx < 0 || cIdx >= options.length) {
         if (cText) {
-          const normT = cText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
+          const normT = normStr(cText);
           for (let i = 0; i < options.length; i++) {
-            const normO = (options[i] || '').toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
-            if (normO === normT || normO.includes(normT) || normT.includes(normO)) {
+            const normO = normStr(options[i] || '');
+            if (normO === normT || (normT.length > 3 && normO.includes(normT)) || (normO.length > 3 && normT.includes(normO))) {
               cIdx = i;
               break;
             }
@@ -605,23 +615,33 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
 
   if (!finalResult) {
     // Advanced heuristic detection from rawResponse
-    let foundIdx = 0;
-    const letterMatch = rawResponse.match(/(?:الخيار|الإجابة|الحل|الاختيار|الرمز)\s*(?:الصحيح|هو|هي)?\s*[:\-\)]?\s*[\(]?([أ-دA-Da-d1-4])[\)]?/);
+    let foundIdx = -1;
+    const letterMatch = rawResponse.match(/(?:الخيار|الإجابة|الجواب|الحل|الاختيار|الرمز)\s*(?:الصحيح|الصحيحة|هو|هي)?\s*[:\-\)]?\s*[\(\[\*]*([أ-دA-Da-d1-4])[\)\]\*]*/i);
     if (letterMatch) {
       const char = letterMatch[1].toUpperCase();
       const map = { 'أ': 0, 'A': 0, '1': 0, 'ب': 1, 'B': 1, '2': 1, 'ج': 2, 'C': 2, '3': 2, 'د': 3, 'D': 3, '4': 3 };
       if (map[char] !== undefined && map[char] < options.length) {
         foundIdx = map[char];
       }
-    } else {
+    }
+    if (foundIdx === -1) {
+      function normStr(s) {
+        return (s || '').toString().toLowerCase()
+          .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+          .replace(/[أإآ]/g, 'ا').replace(/[ىي]/g, 'ي').replace(/ة/g, 'ه')
+          .replace(/^[\(\[\{]?[a-dأ-د1-4][\)\]\}]?[\.\-\:\s]\s*/, '')
+          .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
+          .replace(/\s+/g, ' ').trim();
+      }
       for (let i = 0; i < options.length; i++) {
-        const optClean = (options[i] || '').replace(/^[a-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
-        if (optClean.length > 2 && rawResponse.includes(optClean)) {
+        const optNorm = normStr(options[i] || '');
+        if (optNorm.length >= 3 && rawResponse.includes(optNorm)) {
           foundIdx = i;
           break;
         }
       }
     }
+    if (foundIdx === -1) foundIdx = 0;
 
     finalResult = {
       correctIndex: foundIdx,
