@@ -865,6 +865,8 @@
   direction: rtl !important;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
   pointer-events: auto !important;
+  cursor: grab !important;
+  user-select: none !important;
   animation: qgHudSlideIn 0.25s ease-out !important;
 }
 
