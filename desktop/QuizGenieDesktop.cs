@@ -3017,7 +3017,7 @@ namespace QuizGenie
                 }
                 else if (id == GlobalSelectionMonitor.HOTKEY_SNIP_ID || id == GlobalSelectionMonitor.HOTKEY_F2_ID)
                 {
-                    StartScreenSnip();
+                    StartLiveDirectModeDesktop();
                 }
             }
             base.WndProc(ref m);
