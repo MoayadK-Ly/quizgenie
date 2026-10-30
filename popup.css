@@ -625,7 +625,30 @@ body::-webkit-scrollbar-thumb:hover {
   color: #a5b4fc;
 }
 
-/* 5. قائمة تجربة وحل فوري للسؤال - وردي مرجاني لطيف (Soft Coral Rose) */
+/* 5. قائمة الحل المباشر - أزرق سماوي نيون متوهج */
+.accordion-item.item-live-solve {
+  border-color: rgba(2, 132, 199, 0.3);
+}
+.accordion-item.item-live-solve:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+.accordion-item.item-live-solve.open {
+  border-color: #0284c7;
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.25);
+}
+.accordion-item.item-live-solve.open .accordion-header {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(15, 23, 42, 0.95));
+}
+.accordion-item.item-live-solve .accordion-icon {
+  background: rgba(2, 132, 199, 0.15);
+  border-color: rgba(2, 132, 199, 0.4);
+  color: #38bdf8;
+}
+.accordion-item.item-live-solve.open .accordion-title {
+  color: #38bdf8;
+}
+
+/* 6. قائمة تجربة وحل فوري للسؤال - وردي مرجاني لطيف (Soft Coral Rose) */
 .accordion-item.item-solver {
   border-color: rgba(251, 113, 133, 0.22);
 }
