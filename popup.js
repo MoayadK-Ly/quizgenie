@@ -1,4 +1,36 @@
-// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v1.7.0)
+// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v2.4.5)
+
+// Global Exception and Rejection Shields to prevent popup.html:0 errors
+function checkLastError() {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+      const msg = chrome.runtime.lastError.message;
+      return msg || true;
+    }
+  } catch (e) {}
+  return null;
+}
+
+window.addEventListener('error', (event) => {
+  try {
+    checkLastError();
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    }
+  } catch (e) {}
+  return true;
+}, true);
+
+window.addEventListener('unhandledrejection', (event) => {
+  try {
+    checkLastError();
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    }
+  } catch (e) {}
+}, true);
 
 document.addEventListener('DOMContentLoaded', () => {
   // شريط توضيح الخادم النشط الحالي (للعرض والإعلام فقط - غير قابل للنقر)
@@ -270,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentServer = (!data.serverType || data.serverType === 'free' || data.serverType === 'free_backup') ? 'gemini' : data.serverType;
     currentGeminiKey = (data.geminiKey && data.geminiKey.trim()) ? data.geminiKey.trim() : DEFAULT_GEMINI_KEY;
     if (data.serverType === 'free' || data.serverType === 'free_backup' || !data.geminiKey) {
-      chrome.storage.local.set({ serverType: currentServer, geminiKey: currentGeminiKey });
+      chrome.storage.local.set({ serverType: currentServer, geminiKey: currentGeminiKey }, () => { if (chrome.runtime.lastError) {} });
     }
     currentOpenaiKey = data.openaiKey || '';
     currentDeepseekKey = data.deepseekKey || '';
@@ -405,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     geminiKeyInput.addEventListener('input', () => {
       const key = geminiKeyInput.value.trim();
       currentGeminiKey = key;
-      chrome.storage.local.set({ geminiKey: key });
+      chrome.storage.local.set({ geminiKey: key }, () => { if (chrome.runtime.lastError) {} });
       chrome.runtime.sendMessage({ action: 'SET_STATE', data: { geminiKey: key } }, () => { if (chrome.runtime.lastError) {} });
     });
   }
@@ -428,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     groqKeyInput.addEventListener('input', () => {
       const key = groqKeyInput.value.trim();
       currentGroqKey = key;
-      chrome.storage.local.set({ groqKey: key });
+      chrome.storage.local.set({ groqKey: key }, () => { if (chrome.runtime.lastError) {} });
       chrome.runtime.sendMessage({ action: 'SET_STATE', data: { groqKey: key } }, () => { if (chrome.runtime.lastError) {} });
     });
   }
@@ -965,10 +997,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    chrome.storage.local.set({ customBorderShape: shape });
+    chrome.storage.local.set({ customBorderShape: shape }, () => { if (chrome.runtime.lastError) {} });
   }
 
   chrome.storage.local.get({ customBorderShape: 'smooth' }, (data) => {
+    if (chrome.runtime.lastError || !data) data = { customBorderShape: 'smooth' };
     applyToolBorderShape(data.customBorderShape || 'smooth');
   });
 
@@ -982,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openChangelogPage() {
     try {
-      chrome.tabs.create({ url: chrome.runtime.getURL('update.html') });
+      chrome.tabs.create({ url: chrome.runtime.getURL('update.html') }, () => { if (chrome.runtime.lastError) {} });
     } catch (e) {
       console.warn('Error opening update tab:', e);
     }
@@ -990,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function dismissUpdateNotice() {
     if (updateNoticeModal) updateNoticeModal.classList.add('hidden');
-    chrome.storage.local.set({ hasSeenUpdate200: true, lastSeenVersion: '2.0.0' });
+    chrome.storage.local.set({ hasSeenUpdate200: true, lastSeenVersion: '2.0.0' }, () => { if (chrome.runtime.lastError) {} });
   }
 
   if (btnOpenUpdatePage) {
@@ -1018,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // فحص ما إذا كان المستخدم لم يشاهد نافذة التحديث بعد
   try {
     chrome.storage.local.get(['hasSeenUpdate200', 'lastSeenVersion'], (data) => {
+      if (chrome.runtime.lastError) return;
       const safeData = data || {};
       if (!safeData.hasSeenUpdate200 || safeData.lastSeenVersion !== '2.0.0') {
         if (updateNoticeModal) {
@@ -1036,6 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnTriggerExamScan) {
     btnTriggerExamScan.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        checkLastError();
         if (tabs && tabs[0] && tabs[0].id) {
           const u = tabs[0].url || '';
           if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
@@ -1043,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
             action: 'TRIGGER_EXAM_SCAN',
             mode: currentDefaultMode || 'concise'
           }, (resp) => {
-            if (chrome.runtime.lastError) {
+            if (checkLastError()) {
               alert('يرجى التأكد من فتح صفحة الاختبار وتحديثها (F5) لتفعيل الماسح.');
             } else {
               window.close();
@@ -1057,13 +1092,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnClearExamHighlights) {
     btnClearExamHighlights.addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        checkLastError();
         if (tabs && tabs[0] && tabs[0].id) {
           const u = tabs[0].url || '';
           if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'CLEAR_EXAM_HIGHLIGHTS'
           }, () => {
-            if (chrome.runtime.lastError) {}
+            checkLastError();
           });
         }
       });
@@ -1111,51 +1147,60 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLiveModeConcise) {
     btnLiveModeConcise.addEventListener('click', () => {
       updateLiveModeButtonsUI('concise');
-      chrome.storage.local.set({ liveSolveMode: 'concise' });
+      chrome.storage.local.set({ liveSolveMode: 'concise' }, () => { if (chrome.runtime.lastError) {} });
     });
   }
 
   if (btnLiveModeDetailed) {
     btnLiveModeDetailed.addEventListener('click', () => {
       updateLiveModeButtonsUI('detailed');
-      chrome.storage.local.set({ liveSolveMode: 'detailed' });
+      chrome.storage.local.set({ liveSolveMode: 'detailed' }, () => { if (chrome.runtime.lastError) {} });
     });
   }
 
   function launchLiveDirectSolver(isFullScreen) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs || !tabs[0] || !tabs[0].id) return;
+      checkLastError();
+      if (!tabs || !tabs[0] || !tabs[0].id) {
+        window.close();
+        return;
+      }
       const tab = tabs[0];
       const tabId = tab.id;
       const url = tab.url || '';
 
       // فحص ما إذا كانت الصفحة المفتوحة صفحة نظام محمية لكروم
-      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:')) {
+      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:') || url.startsWith('chrome-search://')) {
         alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://).\nيرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الأداة.');
         return;
       }
+
+      const sendLiveMsg = () => {
+        chrome.tabs.sendMessage(tabId, {
+          action: 'START_LIVE_DIRECT_SOLVER',
+          isFullScreen: isFullScreen,
+          mode: selectedLiveMode
+        }, () => {
+          checkLastError();
+          window.close();
+        });
+      };
 
       chrome.tabs.sendMessage(tabId, {
         action: 'START_LIVE_DIRECT_SOLVER',
         isFullScreen: isFullScreen,
         mode: selectedLiveMode
       }, () => {
-        if (chrome.runtime.lastError) {
+        const err = checkLastError();
+        if (err) {
           if (chrome.scripting && chrome.scripting.executeScript) {
             chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
-              if (chrome.runtime.lastError) return;
+              checkLastError();
               chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
-                if (chrome.runtime.lastError) return;
+                checkLastError();
                 setTimeout(() => {
-                  chrome.tabs.sendMessage(tabId, {
-                    action: 'START_LIVE_DIRECT_SOLVER',
-                    isFullScreen: isFullScreen,
-                    mode: selectedLiveMode
-                  }, () => {
-                    if (chrome.runtime.lastError) {}
-                  });
-                }, 60);
-                window.close();
+                  sendLiveMsg();
+                }, 80);
               });
             });
             return;
@@ -1193,7 +1238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnOpenTestExamPage.addEventListener('click', () => {
       const testExamUrl = 'https://moayadk-ly.github.io/quizgenie/test-exam.html';
       if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-        chrome.tabs.create({ url: testExamUrl });
+        chrome.tabs.create({ url: testExamUrl }, () => { if (chrome.runtime.lastError) {} });
       } else {
         window.open(testExamUrl, '_blank');
       }
