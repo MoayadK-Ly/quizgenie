@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     customBgColor: '#0f172a',
     customGlowColor: '#10b981',
     customRingColor: '#ef4444',
-    customMiniToolbar: true
+    customMiniToolbar: false
   };
 
   // 1. Load Settings
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ringColor.value = settings.customRingColor || '#ef4444';
     ringColorHex.textContent = ringColor.value;
 
-    chkMiniToolbar.checked = settings.customMiniToolbar !== false;
+    chkMiniToolbar.checked = settings.customMiniToolbar === true;
 
     updateLivePreview();
   }
