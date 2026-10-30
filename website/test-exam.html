@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 منصة الاختبارات التجريبية - QuizGenie Exam Test Suite</title>
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-card: #131b2e;
+      --border: #1e293b;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --accent: #38bdf8;
+      --correct: #10b981;
+      --wrong: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Cairo", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 25px 15px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Header Banner */
+    .exam-header {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+      border: 1.5px solid #0284c7;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 25px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(2, 132, 199, 0.2);
+      text-align: center;
+      position: relative;
+    }
+
+    .badge-test {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .exam-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .exam-title span {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .exam-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 720px;
+      margin: 0 auto 16px auto;
+    }
+
+    /* Instructions Box */
+    .instructions-card {
+      background: rgba(2, 132, 199, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 14px 18px;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .inst-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Exam Question Card */
+    .question-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease;
+      position: relative;
+    }
+
+    .question-card:hover {
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .question-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+
+    .q-number-pill {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .q-category-tag {
+      background: rgba(139, 92, 246, 0.15);
+      color: #c084fc;
+      border: 1px solid #7c3aed;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .question-text {
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 18px;
+      line-height: 1.6;
+    }
+
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-item {
+      background: #0f172a;
+      border: 1.5px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 15px;
+      color: #e2e8f0;
+      user-select: none;
+    }
+
+    .option-item:hover {
+      background: #1e293b;
+      border-color: #38bdf8;
+    }
+
+    .option-letter {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 1.5px solid #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .option-item.selected {
+      background: rgba(2, 132, 199, 0.2);
+      border-color: #0284c7;
+    }
+
+    .option-item.selected .option-letter {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    /* Verification Badge */
+    .answer-verifier {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-reveal-solution {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reveal-solution:hover {
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .correct-answer-hint {
+      display: none;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #059669;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* Footer toolbar */
+    .exam-footer-toolbar {
+      position: sticky;
+      bottom: 20px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1.5px solid #0284c7;
+      border-radius: 14px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      margin-top: 30px;
+    }
+
+    .score-summary {
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-tool-action {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reset-exam {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #cbd5e1;
+    }
+
+    .btn-reset-exam:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .btn-check-all {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border: none;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    }
+
+    .btn-check-all:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="exam-header">
+      <div class="badge-test">✨ منصة الاختبارات التجريبية الحية</div>
+      <h1 class="exam-title">اختبر أداة <span>QuizGenie</span> وتأكد من قوتها</h1>
+      <p class="exam-desc">
+        هذه الصفحة مصممة خصيصاً لتتيح لك تجربة كافة مزايا الأداة (الحل المباشر، التلوين البصري الثلاثي، وسرعة الاستجابة) على أسئلة حقيقية من مناهج واختبارات متعددة!
+      </p>
+
+      <div class="instructions-card">
+        <div class="inst-item">
+          <span>⚡</span>
+          <span><strong>طريقة التجربة 1 (الحل المباشر):</strong> افتح الإضافة واضغط الزر الأزرق الكبير (⚡ الحل المباشر)، ثم اسحب بالفأرة فوق أي سؤال في الصفحة لترى كيف يتلون السؤال بالأصفر، والخيار الصحيح بالأخضر، والخاطئ بالأحمر!</span>
+        </div>
+        <div class="inst-item">
+          <span>🖱️</span>
+          <span><strong>طريقة التجربة 2 (التظليل والزر العائم):</strong> ظلل أي نص سؤال بالفأرة واضغط على الأيقونة العائمة لتجربة الإجابة بدون فلسفة أو المفصلة.</span>
+        </div>
+        <div class="inst-item">
+          <span>📸</span>
+          <span><strong>طريقة التجربة 3 (تصوير F2):</strong> اضغط F2 للقص المباشر في حال كانت الصفحة لا تقبل التحديد.</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Question 1: Biology -->
+    <div class="question-card" id="q1">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 1 من 5</span>
+        <span class="q-category-tag">🧬 علم الأحياء (Biology)</span>
+      </div>
+      <div class="question-text">
+        ما هي العضية الخلوية المسؤولة عن إنتاج الطاقة وتخزينها في صورة ATP داخل الخلية الحية؟
+      </div>
+      <div class="options-list">
+        <div class="option-item" data-correct="true">
+          <span class="option-letter">أ</span>
+          <span class="option-title">الميتوكوندريا (Mitochondria)</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ب</span>
+          <span class="option-title">النواة (Nucleus)</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ج</span>
+          <span class="option-title">جهاز جولجي (Golgi Apparatus)</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">د</span>
+          <span class="option-title">الريبوسومات (Ribosomes)</span>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint1')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint1">✅ الإجابة الصحيحة: (أ) الميتوكوندريا - بيت الطاقة في الخلية.</span>
+      </div>
+    </div>
+
+    <!-- Question 2: Math -->
+    <div class="question-card" id="q2">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 2 من 5</span>
+        <span class="q-category-tag">📐 الرياضيات (Mathematics)</span>
+      </div>
+      <div class="question-text">
+        إذا كانت المعادلة الخطية: 3x + 9 = 24، فما هي القيمة الحقيقية للمتغير x؟
+      </div>
+      <div class="options-list">
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">أ</span>
+          <span class="option-title">x = 3</span>
+        </div>
+        <div class="option-item" data-correct="true">
+          <span class="option-letter">ب</span>
+          <span class="option-title">x = 5</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ج</span>
+          <span class="option-title">x = 7</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">د</span>
+          <span class="option-title">x = 15</span>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint2')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint2">✅ الإجابة الصحيحة: (ب) x = 5 لأن (3 × 5 = 15 + 9 = 24).</span>
+      </div>
+    </div>
+
+    <!-- Question 3: Geography -->
+    <div class="question-card" id="q3">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 3 من 5</span>
+        <span class="q-category-tag">🌍 الدراسات الاجتماعية والجغرافيا</span>
+      </div>
+      <div class="question-text">
+        ما هي العاصمة الرسمية والسياسية للمملكة العربية السعودية؟
+      </div>
+      <div class="options-list">
+        <div class="option-item" data-correct="true">
+          <span class="option-letter">أ</span>
+          <span class="option-title">الرياض</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ب</span>
+          <span class="option-title">جدة</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ج</span>
+          <span class="option-title">مكة المكرمة</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">د</span>
+          <span class="option-title">الدمام</span>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint3')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint3">✅ الإجابة الصحيحة: (أ) الرياض - هي عاصمة المملكة العربية السعودية.</span>
+      </div>
+    </div>
+
+    <!-- Question 4: English Language -->
+    <div class="question-card" id="q4">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 4 من 5</span>
+        <span class="q-category-tag">🌐 اللغة الإنجليزية (English Grammar)</span>
+      </div>
+      <div class="question-text">
+        Choose the grammatically correct sentence from the following options:
+      </div>
+      <div class="options-list">
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">A</span>
+          <span class="option-title">She don't like reading books in the library.</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">B</span>
+          <span class="option-title">She doesn't likes reading books in the library.</span>
+        </div>
+        <div class="option-item" data-correct="true">
+          <span class="option-letter">C</span>
+          <span class="option-title">She doesn't like reading books in the library.</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">D</span>
+          <span class="option-title">She not like reading books in the library.</span>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint4')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint4">✅ Correct Answer: (C) She doesn't like reading books.</span>
+      </div>
+    </div>
+
+    <!-- Question 5: True / False Science -->
+    <div class="question-card" id="q5">
+      <div class="question-meta">
+        <span class="q-number-pill">السؤال 5 من 5</span>
+        <span class="q-category-tag">🌍 العلوم العامة (صح أو خطأ)</span>
+      </div>
+      <div class="question-text">
+        تدور الأرض حول الشمس في مدار بيضاوي (إهليلجي)، وتستغرق دورة كاملة واحدة حوالي 365.25 يوماً مسببة تعاقب الفصول الأربعة.
+      </div>
+      <div class="options-list">
+        <div class="option-item" data-correct="true">
+          <span class="option-letter">أ</span>
+          <span class="option-title">صح (صحيحة)</span>
+        </div>
+        <div class="option-item" data-correct="false">
+          <span class="option-letter">ب</span>
+          <span class="option-title">خطأ (خاطئة)</span>
+        </div>
+      </div>
+      <div class="answer-verifier">
+        <button type="button" class="btn-reveal-solution" onclick="toggleHint('hint5')">🔍 عرض الإجابة النموذجية للتحقق</button>
+        <span class="correct-answer-hint" id="hint5">✅ الإجابة الصحيحة: (أ) صح - تدور الأرض حول الشمس في مدار بيضاوي وتحدث الفصول الأربعة.</span>
+      </div>
+    </div>
+
+    <!-- Bottom Actions Toolbar -->
+    <div class="exam-footer-toolbar">
+      <div class="score-summary" id="scoreSummary">
+        🎯 جرب الأداة الآن وتحقق من دقة الحل 100%!
+      </div>
+      <div class="toolbar-actions">
+        <button type="button" class="btn-tool-action btn-reset-exam" onclick="resetExam()">🔄 إعادة تعيين الاختبار</button>
+        <button type="button" class="btn-tool-action btn-check-all" onclick="revealAllSolutions()">✨ إظهار كافة الإجابات الصحيحة</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Selection interaction
+    document.querySelectorAll('.question-card').forEach(card => {
+      const options = card.querySelectorAll('.option-item');
+      options.forEach(opt => {
+        opt.addEventListener('click', () => {
+          options.forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+        });
+      });
+    });
+
+    function toggleHint(hintId) {
+      const hint = document.getElementById(hintId);
+      if (hint) {
+        hint.style.display = (hint.style.display === 'block') ? 'none' : 'block';
+      }
+    }
+
+    function revealAllSolutions() {
+      for (let i = 1; i <= 5; i++) {
+        const hint = document.getElementById('hint' + i);
+        if (hint) hint.style.display = 'block';
+      }
+      document.getElementById('scoreSummary').textContent = '🎉 تم إظهار كافة الإجابات النموذجية لتتأكد من مطابقة الأداة!';
+    }
+
+    function resetExam() {
+      document.querySelectorAll('.option-item').forEach(o => o.classList.remove('selected'));
+      for (let i = 1; i <= 5; i++) {
+        const hint = document.getElementById('hint' + i);
+        if (hint) hint.style.display = 'none';
+      }
+      document.getElementById('scoreSummary').textContent = '🎯 جرب الأداة الآن وتحقق من دقة الحل 100%!';
+    }
+  </script>
+</body>
+</html>
