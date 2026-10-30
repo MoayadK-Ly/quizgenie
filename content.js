@@ -1354,6 +1354,9 @@ function clearAllExamHighlights() {
     el.classList.remove('quizgenie-wrong-answer-outline', 'quizgenie-highlight-wrong');
   });
   document.querySelectorAll('.quizgenie-question-badge-tag-yellow, .quizgenie-question-badge-tag, .quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(el => el.remove());
+  document.querySelectorAll('[data-qg-solved]').forEach(el => {
+    delete el.dataset.qgSolved;
+  });
   const card = document.getElementById('quizgenie-direct-solution-card');
   if (card) card.remove();
   const banner = document.getElementById('quizgenie-exam-scan-banner');
@@ -1368,85 +1371,41 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
   ensureHighlightStylesInPage();
   clearAllExamHighlights();
 
-  let questionText = '';
-  let questionElement = null;
-  const optionsList = [];
-  const optionElements = [];
-
-  // 1. ظپط­طµ ط¥ط°ط§ ظƒط§ظ† ظ‡ظ†ط§ظƒ ظ†طµ ظ…ط­ط¯ط¯ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ط§ظ„ظ…ط§ظˆط³
-  const selText = window.getSelection() ? window.getSelection().toString().trim() : '';
-
-  // 2. طھط¬ظ…ظٹط¹ ط®ظٹط§ط±ط§طھ ط§ظ„ط±ط§ط¯ظٹظˆ (Radio buttons) ظپظٹ ط§ظ„طµظپط­ط©
-  const radioInputs = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"]')).filter(r => {
-    const rect = r.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
+  const parsed = extractQuestionAndOptionsFromRegion({
+    left: 0,
+    top: 0,
+    right: window.innerWidth,
+    bottom: window.innerHeight,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    isFullScreen: true
   });
 
-  if (radioInputs.length > 0) {
-    for (const r of radioInputs) {
-      const container = r.closest('label, li, tr, [class*="option"], [class*="choice"]') || r.parentElement;
-      const text = (container ? container.innerText : '').replace(/^[A-Da-dط£-ط¯1-4][\.\-\)]\s*/, '').trim();
-      if (text && !optionsList.includes(text)) {
-        optionsList.push(text);
-        optionElements.push(container || r);
-      }
-    }
-  }
-
-  // ط¥ط°ط§ ظ„ظ… ظ†ط¬ط¯ ط®ظٹط§ط±ط§طھ ط±ط§ط¯ظٹظˆطŒ ظ†ط¨ط­ط« ط¹ظ† ط¹ظ†ط§طµط± ط§ظ„ظ‚ظˆط§ط¦ظ… ظˆط§ظ„ط®ظٹط§ط±ط§طھ ط§ظ„ط´ط§ط¦ط¹ط©
-  if (optionsList.length === 0) {
-    const candidateChoices = Array.from(document.querySelectorAll('[class*="choice"], [class*="option"], [class*="answer"], li')).filter(el => {
-      const t = el.innerText.trim();
-      return t.length > 1 && t.length < 120 && (el.getBoundingClientRect().height > 0);
-    });
-    for (const el of candidateChoices.slice(0, 4)) {
-      optionsList.push(el.innerText.trim());
-      optionElements.push(el);
-    }
-  }
-
-  // 3. ط§ظ„ط¨ط­ط« ط§ظ„ط°ظƒظٹ ط¹ظ† ط±ط£ط³ ط§ظ„ط³ط¤ط§ظ„ (ظ…ط¹ ط§ط³طھط¨ط¹ط§ط¯ ط£ظٹ ط¹ظ†ط§طµط± طھظ‚ط¹ ط¯ط§ط®ظ„ ط®ظٹط§ط±ط§طھ ط§ظ„ط¥ط¬ط§ط¨ط©)
-  if (selText && selText.length > 2) {
-    questionText = selText;
-    const anchor = window.getSelection().anchorNode;
-    questionElement = anchor ? (anchor.nodeType === 3 ? anchor.parentElement : anchor) : null;
-  } else {
-    // ط£) ظپط­طµ ط¹ظ†ط§طµط± ط§ظ„ط¹ظ†ط§ظˆظٹظ† ط§ظ„طھظٹ ظ„ط§ طھظ‚ط¹ ط¯ط§ط®ظ„ ط§ظ„ط®ظٹط§ط±ط§طھ
-    const questionCandidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, [class*="question"], [class*="prompt"], [class*="stem"], [class*="title"]')).filter(q => {
-      const t = q.innerText.trim();
-      const isInsideOption = optionElements.some(opt => opt.contains(q));
-      return t.length > 2 && t.length < 400 && !isInsideOption && !optionsList.includes(t) && q.getBoundingClientRect().height > 0;
-    });
-
-    if (questionCandidates.length > 0) {
-      questionElement = questionCandidates[0];
-      questionText = questionElement.innerText.trim();
-    } else {
-      // ط¨) ط§ظ„ط¨ط­ط« ط¹ظ† ظ†طµظˆطµ ط§ظ„طھظ†ط§ط¸ط± ط§ظ„ظ„ظپط¸ظٹ (ظ…ط«ظ„: ظ„ط­ط§ط، : ط´ط¬ط±ط©) ط®ط§ط±ط¬ ظ‚ط§ط¦ظ…ط© ط§ظ„ط®ظٹط§ط±ط§طھ
-      const allDivs = Array.from(document.querySelectorAll('div, p, span, b, strong')).filter(el => {
-        const t = el.innerText ? el.innerText.trim() : '';
-        const isInsideOption = optionElements.some(opt => opt.contains(el) || el.contains(opt));
-        return /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(t) && t.length < 60 && !isInsideOption && el.getBoundingClientRect().height > 0;
-      });
-      if (allDivs.length > 0) {
-        questionElement = allDivs[allDivs.length - 1] || allDivs[0];
-        questionText = questionElement.innerText.trim();
-      }
-    }
-  }
-
-  if (!questionText && optionsList.length === 0) {
-    showScanFeedbackBanner('âڑ ï¸ڈ ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط³ط¤ط§ظ„ ط£ظˆ ط®ظٹط§ط±ط§طھ طھظ„ظ‚ط§ط¦ظٹط§ظ‹. ظٹظ…ظƒظ†ظƒ طھط¸ظ„ظٹظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ظ…ط§ظˆط³ ط£ظˆ طھط´ط؛ظٹظ„ ط§ظ„طھط­ط¯ظٹط¯ ط§ظ„ط­ط±.', '#f59e0b');
+  if (!parsed || !parsed.questionText || !parsed.optionsList || parsed.optionsList.length === 0) {
+    showScanFeedbackBanner('⚠️ لم يتم العثور على سؤال أو خيارات تلقائياً. يمكنك تظليل السؤال بالماوس أو تشغيل التحديد الحر.', '#f59e0b');
     return;
   }
 
-  // طھط·ط¨ظٹظ‚ ط§ظ„ط¯ط§ط¦ط±ط© / ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£ط­ظ…ط± ط§ظ„ظ…طھظˆظ‡ط¬ ظپظˆط±ط§ظ‹ ط¹ظ„ظ‰ ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ظ…ظ‚ط±ظˆط،
+  const questionText = parsed.questionText;
+  const questionElement = parsed.questionElement;
+  const optionsList = parsed.optionsList;
+  const optionElements = parsed.optionElements;
+  const container = parsed.container;
+
+  // تطبيق التوهج الأصفر البارز على السؤال
   if (questionElement) {
-    questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+    questionElement.classList.add('quizgenie-question-yellow-glow', 'quizgenie-highlight-question');
+    let qTag = questionElement.querySelector('.quizgenie-question-badge-tag-yellow');
+    if (!qTag) {
+      qTag = document.createElement('span');
+      qTag.className = 'quizgenie-question-badge-tag-yellow';
+      qTag.textContent = '🟡 السؤال';
+      questionElement.appendChild(qTag);
+    }
     questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  showScanFeedbackBanner('âڈ³ ط¬ط§ط±ظچ ظ…ط³ط­ ظˆط­ظ„ ط§ظ„ط³ط¤ط§ظ„ ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ ظپظٹ 0 ط«ط§ظ†ظٹط© ظˆطھط­ط¯ظٹط¯ ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­...', '#0284c7');
+  showScanFeedbackBanner('⏳ جارٍ مسح وحل السؤال بالذكاء الاصطناعي في 0 ثانية وتحديد الخيار الصحيح...', '#0284c7');
 
   chrome.runtime.sendMessage({
     action: 'SOLVE_EXAM_SCAN',
@@ -1459,30 +1418,14 @@ function scanAndSolveCurrentExam(preferredMode = 'concise') {
     targetLanguage: targetLanguage
   }, (response) => {
     if (chrome.runtime.lastError || !response || !response.success) {
-      const err = (response && response.error) ? response.error : 'ظپط´ظ„ ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„ط®ط¯ظ…ط©';
-      showScanFeedbackBanner('â‌Œ ' + err, '#ef4444');
+      const err = (response && response.error) ? response.error : 'فشل الاتصال بالخدمة';
+      showScanFeedbackBanner('❌ ' + err, '#ef4444');
       return;
     }
 
     const data = response.data || response.result || {};
-    const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
-
-    // طھظ„ظˆظٹظ† ط§ظ„ط®ظٹط§ط± ط§ظ„طµط­ظٹط­ ط¨ط§ظ„ط¥ط·ط§ط± ط§ظ„ط£ط®ط¶ط± ط§ظ„ظ…طھظˆظ‡ط¬
-    if (optionElements.length > 0) {
-      for (let i = 0; i < optionElements.length; i++) {
-        if (i === correctIndex) {
-          optionElements[i].classList.add('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
-          try {
-            const inputInside = optionElements[i].querySelector('input[type="radio"]') || (optionElements[i].tagName === 'INPUT' ? optionElements[i] : null);
-            if (inputInside) inputInside.checked = true;
-          } catch (e) {}
-        } else {
-          optionElements[i].classList.add('quizgenie-highlight-wrong');
-        }
-      }
-    }
-
-    showScanResultModal(questionText, data.correctText || optionsList[correctIndex] || '', data.explanation || data.rawAnswer || '', preferredMode, data.relation);
+    applyLiveDirectSolution(data, questionElement, optionElements, optionsList, null, container);
+    showScanResultModal(questionText, data.correctText || optionsList[0] || '', data.explanation || data.rawAnswer || '', preferredMode, data.relation);
   });
 }
 
@@ -1520,9 +1463,9 @@ function startFullScreenAreaSnip(preferredMode = 'concise') {
     z-index: 2147483647;
   `;
   topBar.innerHTML = `
-    <span>ًںژ¯ ط§ط³ط­ط¨ ط¨ط§ظ„ظ…ط§ظˆط³ ظ„طھط­ط¯ظٹط¯ ظ…ظ†ط·ظ‚ط© ط§ظ„ط³ط¤ط§ظ„ ظˆط§ظ„ط®ظٹط§ط±ط§طھ ظ…ط¹ط§ظ‹</span>
-    <button id="qg-snip-auto-btn" style="background:#0284c7; border:none; color:#fff; padding:5px 12px; border-radius:20px; font-weight:700; cursor:pointer;">âڑ، ظ…ط³ط­ طھظ„ظ‚ط§ط¦ظٹ ظƒط§ظ…ظ„</button>
-    <button id="qg-snip-cancel-btn" style="background:#334155; border:none; color:#cbd5e1; padding:5px 10px; border-radius:20px; cursor:pointer;">ط¥ظ„ط؛ط§ط، (Esc)</button>
+    <span>🎯 اسحب بالماوس لتحديد منطقة السؤال والخيارات معاً</span>
+    <button id="qg-snip-auto-btn" style="background:#0284c7; border:none; color:#fff; padding:5px 12px; border-radius:20px; font-weight:700; cursor:pointer;">⚡ مسح تلقائي كامل</button>
+    <button id="qg-snip-cancel-btn" style="background:#334155; border:none; color:#cbd5e1; padding:5px 10px; border-radius:20px; cursor:pointer;">إلغاء (Esc)</button>
   `;
   overlay.appendChild(topBar);
 
@@ -2744,11 +2687,15 @@ function mapLetterToIndex(letter) {
   return (map[clean] !== undefined) ? map[clean] : -1;
 }
 
-function applyLiveDirectSolution(data, questionElement, optionElements, optionsList, region) {
+function applyLiveDirectSolution(data, questionElement, optionElements, optionsList, region, container) {
   isSolvingLiveStep = false;
   liveDirectSolvedCount++;
   const countEl = document.getElementById('qgLiveSolvedCount');
   if (countEl) countEl.textContent = String(liveDirectSolvedCount);
+
+  if (container) {
+    container.dataset.qgSolved = 'true';
+  }
 
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
   let matchedIdx = -1;
@@ -2825,8 +2772,13 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
       }
     }
     showScanFeedbackBanner('🎯 تم التمييز: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
-  } else if (matchedIdx === -1) {
-    showScanFeedbackBanner('⚠️ تم استلام الإجابة ولكن تعذر مطابقة الخيار الصريح، يرجى مراجعة تفاصيل الحل.', '#f59e0b');
+  } else if (matchedIdx === -1 && optionElements && optionElements.length > 0) {
+    // احتياط خوارزمي: تحديد أول خيار كإجابة في حال عدم وضوح النموذج
+    optionElements[0].classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
+    for (let i = 1; i < optionElements.length; i++) {
+      optionElements[i].classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
+    }
+    showScanFeedbackBanner('🎯 تم التمييز التقريبي: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
   }
 
   // إزالة أي بطاقة حل سابقة منعاً لتغطية الشاشة
