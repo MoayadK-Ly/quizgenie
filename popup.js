@@ -70,82 +70,110 @@ function showPopupBanner(message, type = 'warning') {
   }
 }
 
+function isTabScriptable(url) {
+  if (!url) return false;
+  const u = url.toLowerCase().trim();
+  return !(
+    u.startsWith('chrome://') ||
+    u.startsWith('chrome-extension://') ||
+    u.startsWith('edge://') ||
+    u.startsWith('about:') ||
+    u.startsWith('devtools://') ||
+    u.startsWith('view-source:') ||
+    u.startsWith('chrome-search://') ||
+    u.includes('chrome.google.com/webstore') ||
+    u.includes('chromewebstore.google.com')
+  );
+}
+
 function safeSendTabMessage(tabId, payload, callback) {
   if (!tabId) {
     if (callback) callback(false, null);
     return;
   }
   try {
-    chrome.tabs.sendMessage(tabId, payload, (resp) => {
-      if (!checkLastError()) {
-        if (callback) callback(true, resp);
+    chrome.tabs.get(tabId, (tab) => {
+      checkLastError();
+      const tabUrl = (tab && (tab.url || tab.pendingUrl)) || '';
+      if (!isTabScriptable(tabUrl)) {
+        showPopupBanner('⚠️ لا يمكن تشغيل الأداة على صفحات المتصفح الداخلية (chrome://). يرجى فتح صفحة امتحان أو موقع دراسي.', 'warning');
+        if (callback) callback(false, null);
         return;
       }
 
-      // First attempt failed, attempt injection of content.js and content.css
-      if (typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
-        try {
-          let retried = false;
-          const doRetry = () => {
-            if (retried) return;
-            retried = true;
-            try {
-              chrome.tabs.sendMessage(tabId, payload, (retryResp) => {
-                if (!checkLastError()) {
-                  if (callback) callback(true, retryResp);
-                } else {
-                  if (callback) callback(false, null);
-                }
-              });
-            } catch (retryErr) {
-              checkLastError();
-              if (callback) callback(false, null);
-            }
-          };
+      chrome.tabs.sendMessage(tabId, payload, (resp) => {
+        if (!checkLastError()) {
+          if (callback) callback(true, resp);
+          return;
+        }
 
-          if (chrome.scripting.insertCSS) {
-            try {
-              const cPromise = chrome.scripting.insertCSS({
-                target: { tabId: tabId },
-                files: ['content.css']
-              }, () => {
+        // First attempt failed, attempt injection of content.js and content.css
+        if (typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
+          try {
+            let retried = false;
+            const doRetry = () => {
+              if (retried) return;
+              retried = true;
+              try {
+                chrome.tabs.sendMessage(tabId, payload, (retryResp) => {
+                  if (!checkLastError()) {
+                    if (callback) callback(true, retryResp);
+                  } else {
+                    if (callback) callback(false, null);
+                  }
+                });
+              } catch (retryErr) {
                 checkLastError();
-              });
-              if (cPromise && typeof cPromise.catch === 'function') {
-                cPromise.catch(() => {});
+                if (callback) callback(false, null);
               }
-            } catch (cssErr) {
-              checkLastError();
+            };
+
+            if (chrome.scripting.insertCSS) {
+              try {
+                const cPromise = chrome.scripting.insertCSS({
+                  target: { tabId: tabId },
+                  files: ['content.css']
+                });
+                if (cPromise && typeof cPromise.catch === 'function') {
+                  cPromise.catch(() => { checkLastError(); });
+                }
+              } catch (cssErr) {
+                checkLastError();
+              }
             }
-          }
 
-          const sPromise = chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            files: ['content.js']
-          }, () => {
-            checkLastError();
-            doRetry();
-          });
+            try {
+              const sPromise = chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                files: ['content.js']
+              });
 
-          if (sPromise && typeof sPromise.then === 'function') {
-            sPromise.then(() => doRetry()).catch(() => {
+              if (sPromise && typeof sPromise.then === 'function') {
+                sPromise.then(() => doRetry()).catch(() => {
+                  checkLastError();
+                  if (callback) callback(false, null);
+                });
+              } else {
+                setTimeout(doRetry, 250);
+              }
+            } catch (scrErr) {
               checkLastError();
-              if (callback) callback(false, null);
-            });
+              setTimeout(doRetry, 250);
+            }
+
+            // Safety timeout in case promise takes longer than 350ms
+            setTimeout(() => {
+              doRetry();
+            }, 350);
+
+          } catch (injErr) {
+            checkLastError();
+            if (callback) callback(false, null);
           }
-
-          // Safety timeout in case callback/promise takes longer than 350ms
-          setTimeout(() => {
-            doRetry();
-          }, 350);
-
-        } catch (injErr) {
-          checkLastError();
+        } else {
           if (callback) callback(false, null);
         }
-      } else {
-        if (callback) callback(false, null);
-      }
+      });
     });
   } catch (err) {
     checkLastError();
@@ -172,7 +200,7 @@ function safeSendTabMessage(tabId, payload, callback) {
 
   function safeWrapPromise(p) {
     if (p && typeof p.catch === 'function') {
-      p.catch(() => {
+      return p.catch(() => {
         try {
           if (typeof chrome !== 'undefined' && chrome.runtime) {
             const _ignored = chrome.runtime.lastError;
@@ -264,7 +292,10 @@ function safeSendTabMessage(tabId, payload, callback) {
           const origExec = chrome.scripting.executeScript.bind(chrome.scripting);
           chrome.scripting.executeScript = function(props, cb) {
             try {
-              return safeWrapPromise(origExec(props, safeWrap(cb || (() => {}))));
+              if (typeof cb === 'function') {
+                return safeWrapPromise(origExec(props, safeWrap(cb)));
+              }
+              return safeWrapPromise(origExec(props));
             } catch (e) {
               checkLastError();
             }
@@ -274,7 +305,10 @@ function safeSendTabMessage(tabId, payload, callback) {
           const origCss = chrome.scripting.insertCSS.bind(chrome.scripting);
           chrome.scripting.insertCSS = function(props, cb) {
             try {
-              return safeWrapPromise(origCss(props, safeWrap(cb || (() => {}))));
+              if (typeof cb === 'function') {
+                return safeWrapPromise(origCss(props, safeWrap(cb)));
+              }
+              return safeWrapPromise(origCss(props));
             } catch (e) {
               checkLastError();
             }
