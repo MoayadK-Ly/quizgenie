@@ -636,9 +636,22 @@ chrome.runtime.onMessage.addListener((request) => {
     }
   }
 
-  // عند طلب الحل المباشر المستمر مع محدد الشاشة
+  // عند طلب الحل المباشر ووضع الريكورد
   if (request.action === 'START_LIVE_DIRECT_SOLVER') {
-    showLiveSelectorOverlay();
+    const liveMode = request.mode || currentMode || 'concise';
+    if (request.isFullScreen) {
+      startLiveDirectMode({
+        left: 0,
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        isFullScreen: true
+      }, liveMode);
+    } else {
+      showLiveSelectorOverlay(liveMode);
+    }
   }
 
   // عند طلب إيقاف الحل المباشر
@@ -1318,6 +1331,7 @@ function clearAllExamHighlights() {
     el.classList.remove('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
   });
   document.querySelectorAll('.quizgenie-highlight-wrong').forEach(el => el.classList.remove('quizgenie-highlight-wrong'));
+  document.querySelectorAll('.quizgenie-question-badge-tag, .quizgenie-correct-badge-tag').forEach(el => el.remove());
   const banner = document.getElementById('quizgenie-exam-scan-banner');
   if (banner) banner.remove();
   const modal = document.getElementById('quizgenie-scan-result-card');
@@ -1953,11 +1967,18 @@ let liveDirectRegion = null;
 let liveDirectLastQuestion = '';
 let liveDirectObserver = null;
 let liveDirectCheckTimer = null;
+let liveDirectTimerInterval = null;
+let liveDirectElapsedSeconds = 0;
+let liveDirectSolvedCount = 0;
+let activeLiveMode = 'concise';
 let isSolvingLiveStep = false;
+const speculativeResultCache = new Map();
 
-function showLiveSelectorOverlay() {
+function showLiveSelectorOverlay(preferredMode) {
   stopLiveDirectMode();
   clearAllExamHighlights();
+
+  if (preferredMode) activeLiveMode = preferredMode;
 
   const existing = document.getElementById('quizgenie-live-selector-overlay');
   if (existing) existing.remove();
@@ -1969,7 +1990,7 @@ function showLiveSelectorOverlay() {
   const toolbar = document.createElement('div');
   toolbar.className = 'qg-snipping-toolbar';
   toolbar.innerHTML = `
-    <button type="button" class="qg-snipping-btn active" id="qgSnipRectBtn" title="تحديد مستطيل (قص السؤال والخيارات)">
+    <button type="button" class="qg-snipping-btn active" id="qgSnipRectBtn" title="تحديد مستطيل مخصص (قص السؤال والخيارات)">
       <span style="font-size: 14px;">🔲</span>
       <span>تحديد مستطيل</span>
     </button>
@@ -1986,7 +2007,7 @@ function showLiveSelectorOverlay() {
 
   const hint = document.createElement('div');
   hint.className = 'qg-snipping-hint';
-  hint.textContent = '📸 اسحب الماوس لتحديد السؤال والخيارات مثل سكرين شوت ويندوز (Win+Shift+S) ليحل معك فوراً';
+  hint.textContent = '📸 اسحب الماوس لتحديد السؤال والخيارات (Win+Shift+S) — الخادم يقرأ معك السؤال لحظياً أثناء السحب!';
   overlay.appendChild(hint);
 
   // صندوق التحديد الشفاف المضيء من الداخل
@@ -2001,6 +2022,47 @@ function showLiveSelectorOverlay() {
   overlay.appendChild(box);
 
   let startX = 0, startY = 0, isDragging = false;
+  let speculativeThrottler = null;
+  let lastPrefetchedKey = '';
+
+  function triggerSpeculativeScan(w, h, l, t) {
+    if (w < 80 || h < 50) return;
+    const candidate = extractQuestionAndOptionsFromRegion({
+      left: l,
+      top: t,
+      right: l + w,
+      bottom: t + h,
+      width: w,
+      height: h,
+      isFullScreen: false
+    });
+    if (!candidate || !candidate.questionText || candidate.optionsList.length < 2) return;
+    const qKey = candidate.questionText.trim().replace(/\s+/g, ' ');
+    if (qKey === lastPrefetchedKey) return;
+    lastPrefetchedKey = qKey;
+
+    if (dimTag) {
+      dimTag.innerHTML = `<span>${w} × ${h} بكسل</span> <span style="color: #38bdf8; font-weight: 800;">(⚡ الخادم يقرأ معك السؤال...)</span>`;
+    }
+
+    chrome.runtime.sendMessage({
+      action: 'SOLVE_EXAM_SCAN',
+      question: candidate.questionText,
+      questionText: candidate.questionText,
+      options: candidate.optionsList,
+      optionsList: candidate.optionsList,
+      mode: activeLiveMode,
+      subject: subject || 'qudrat',
+      targetLanguage: targetLanguage || 'ar'
+    }, (resp) => {
+      if (resp && resp.success && resp.data) {
+        speculativeResultCache.set(qKey, resp.data);
+        if (dimTag && isDragging) {
+          dimTag.innerHTML = `<span>${w} × ${h} بكسل</span> <span style="color: #34d399; font-weight: 800;">(🎯 تم الحل مسبقاً! أفلت للمشاهدة)</span>`;
+        }
+      }
+    });
+  }
 
   const closeBtn = toolbar.querySelector('#qgSnipCloseBtn');
   const fullBtn = toolbar.querySelector('#qgSnipFullBtn');
@@ -2021,7 +2083,7 @@ function showLiveSelectorOverlay() {
       width: window.innerWidth,
       height: window.innerHeight,
       isFullScreen: true
-    });
+    }, activeLiveMode);
   });
 
   overlay.addEventListener('mousedown', (e) => {
@@ -2051,6 +2113,16 @@ function showLiveSelectorOverlay() {
     box.style.width = width + 'px';
     box.style.height = height + 'px';
     dimTag.textContent = `${width} × ${height} بكسل`;
+
+    // قراءة استباقية لحظية أثناء السحب مع الخادم
+    if (!speculativeThrottler) {
+      speculativeThrottler = setTimeout(() => {
+        speculativeThrottler = null;
+        if (isDragging) {
+          triggerSpeculativeScan(width, height, minX, minY);
+        }
+      }, 160);
+    }
   });
 
   overlay.addEventListener('mouseup', () => {
@@ -2068,7 +2140,7 @@ function showLiveSelectorOverlay() {
         width: rect.width,
         height: rect.height,
         isFullScreen: false
-      });
+      }, activeLiveMode);
     } else {
       showScanFeedbackBanner('💡 اسحب الفأرة لتحديد منطقة السؤال والخيارات.', '#0284c7');
     }
@@ -2085,13 +2157,16 @@ function showLiveSelectorOverlay() {
   (document.body || document.documentElement).appendChild(overlay);
 }
 
-function startLiveDirectMode(region) {
+function startLiveDirectMode(region, mode) {
   stopLiveDirectMode();
   ensureHighlightStylesInPage();
 
   liveDirectActive = true;
   liveDirectRegion = region;
   liveDirectLastQuestion = '';
+  liveDirectElapsedSeconds = 0;
+  liveDirectSolvedCount = 0;
+  if (mode) activeLiveMode = mode;
 
   const host = document.body || document.documentElement;
 
@@ -2106,22 +2181,33 @@ function startLiveDirectMode(region) {
     host.appendChild(frame);
   }
 
-  // 2. إظهار شريط التحكم أعلى اليمين (زر الإيقاف + العلامة الدائرية الحمراء المؤشرة + زر سكرين شوت جديد)
+  // 2. إظهار شريط التحكم أعلى اليمين (وضع الريكورد REC 🔴 + عداد الثواني الحي + زر الإيقاف + قص جديد)
   const hud = document.createElement('div');
   hud.id = 'quizgenie-live-direct-hud';
+  const modeLabel = (activeLiveMode === 'detailed') ? '📖 مفصل مع الشرح' : '⚡ بدون فلسفة';
   hud.innerHTML = `
-    <button type="button" class="qg-live-stop-btn" id="qgLiveStopBtn" title="اضغط هنا لإيقاف ميزة الحل المباشر">
-      <span>⏹️</span>
-      <span>إيقاف الحل المباشر</span>
-    </button>
-    <div class="qg-live-indicator-pill">
-      <span class="qg-pulsing-red-circle"></span>
-      <span style="font-size: 11px; font-weight: 700; color: #fca5a5;">الحل المباشر مفعّل</span>
+    <div class="qg-live-hud-top">
+      <div class="qg-live-rec-badge" title="وضع الريكورد المباشر نشط ويرصد الأسئلة لحظياً">
+        <span class="qg-pulsing-red-circle"></span>
+        <span class="qg-rec-label">REC</span>
+        <span class="qg-rec-timer" id="qgRecTimer">00:00</span>
+      </div>
+      <span class="qg-live-mode-badge" id="qgLiveModeBadge">${modeLabel}</span>
+      <button type="button" class="qg-live-stop-btn" id="qgLiveStopBtn" title="اضغط هنا لإيقاف ميزة الريكورد والحل المباشر">
+        <span>⏹️</span>
+        <span>إيقاف الريكورد</span>
+      </button>
     </div>
-    <button type="button" class="qg-live-resnip-btn" id="qgLiveResnipBtn" title="قص وتحديد سؤال جديد (مثل Win+Shift+S)">
-      <span>📸</span>
-      <span>قص سؤال جديد</span>
-    </button>
+    <div class="qg-live-hud-bottom">
+      <div class="qg-live-counter-pill">
+        <span>🎯 تم حل:</span>
+        <span id="qgLiveSolvedCount" style="color: #38bdf8; font-weight: 800;">0</span>
+        <span>أسئلة</span>
+      </div>
+      <button type="button" class="qg-live-resnip-btn" id="qgLiveResnipBtn" title="قص وتحديد سؤال جديد (مثل Win+Shift+S)">
+        <span>📸 قص وتحديد جديد</span>
+      </button>
+    </div>
   `;
   host.appendChild(hud);
 
@@ -2130,10 +2216,19 @@ function startLiveDirectMode(region) {
   });
 
   hud.querySelector('#qgLiveResnipBtn').addEventListener('click', () => {
-    showLiveSelectorOverlay();
+    showLiveSelectorOverlay(activeLiveMode);
   });
 
-  showScanFeedbackBanner('⚡ تم تفعيل الحل المباشر! جاري قراءة السؤال وحله معك فوراً...', '#0284c7');
+  // تشغيل عداد الثواني الحي للريكورد
+  liveDirectTimerInterval = setInterval(() => {
+    liveDirectElapsedSeconds++;
+    const m = String(Math.floor(liveDirectElapsedSeconds / 60)).padStart(2, '0');
+    const s = String(liveDirectElapsedSeconds % 60).padStart(2, '0');
+    const timerEl = document.getElementById('qgRecTimer');
+    if (timerEl) timerEl.textContent = `${m}:${s}`;
+  }, 1000);
+
+  showScanFeedbackBanner('🔴 تم بدء ريكورد الحل المباشر! الخادم يقرأ معك ويحل فوراً...', '#ef4444');
 
   // 3. تنفيذ الفحص والحل الأولي الفوري
   executeLiveDirectSolveStep();
@@ -2157,6 +2252,10 @@ function stopLiveDirectMode() {
   liveDirectRegion = null;
   liveDirectLastQuestion = '';
 
+  if (liveDirectTimerInterval) {
+    clearInterval(liveDirectTimerInterval);
+    liveDirectTimerInterval = null;
+  }
   if (liveDirectObserver) {
     liveDirectObserver.disconnect();
     liveDirectObserver = null;
@@ -2175,11 +2274,11 @@ function stopLiveDirectMode() {
   const overlay = document.getElementById('quizgenie-live-selector-overlay');
   if (overlay) overlay.remove();
 
-  // إزالة البطاقة العائمة السابقة إن وجدت
   const card = document.getElementById('quizgenie-direct-solution-card');
   if (card) card.remove();
 
-  showScanFeedbackBanner('⏹️ تم إيقاف ميزة الحل المباشر.', '#64748b');
+  clearAllExamHighlights();
+  showScanFeedbackBanner('⏹️ تم إيقاف وضع الريكورد والحل المباشر.', '#64748b');
 }
 
 // محرك استخراج السؤال والخيارات بذكاء من داخل إحداثيات السكرين شوت
@@ -2323,10 +2422,24 @@ function executeLiveDirectSolveStep() {
   const oldCard = document.getElementById('quizgenie-direct-solution-card');
   if (oldCard) oldCard.remove();
 
-  // 1. وضع الدائرة الحمراء المتوهجة حول السؤال المقروء
+  // 1. وضع الدائرة الحمراء المتوهجة حول السؤال المقروء مع شارة "السؤال المقروء ⭕"
   if (questionElement) {
     questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+    let qTag = questionElement.querySelector('.quizgenie-question-badge-tag');
+    if (!qTag) {
+      qTag = document.createElement('span');
+      qTag.className = 'quizgenie-question-badge-tag';
+      qTag.textContent = '⭕ السؤال المقروء';
+      questionElement.appendChild(qTag);
+    }
     try { questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+  }
+
+  // فحص الكاش الاستباقي للحل المسبق الفوري أثناء السحب
+  const cachedData = speculativeResultCache.get(questionKey);
+  if (cachedData) {
+    applyLiveDirectSolution(cachedData, questionElement, optionElements, optionsList, region);
+    return;
   }
 
   // 2. إرسال السؤال لحله فورياً عبر خادم الذكاء الاصطناعي
@@ -2336,64 +2449,81 @@ function executeLiveDirectSolveStep() {
     questionText: questionText,
     options: optionsList,
     optionsList: optionsList,
-    mode: 'concise',
+    mode: activeLiveMode,
     subject: subject || 'qudrat',
     targetLanguage: targetLanguage || 'ar'
   }, (response) => {
-    isSolvingLiveStep = false;
     if (chrome.runtime.lastError || !response || !response.success) {
+      isSolvingLiveStep = false;
       return;
     }
 
     const data = response.data || response.result || {};
-    const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
-    const correctChoiceText = data.correctChoiceText || data.correctText || '';
-    const explanation = data.explanation || '';
-    const relation = data.relation || '';
+    speculativeResultCache.set(questionKey, data);
+    applyLiveDirectSolution(data, questionElement, optionElements, optionsList, region);
+  });
+}
 
-    // 3. إضاءة الخيار الصحيح باللون الأخضر المتوهج
-    let matchedOptionElement = null;
-    if (correctIndex >= 0 && correctIndex < optionElements.length) {
-      matchedOptionElement = optionElements[correctIndex];
-    } else if (correctChoiceText) {
-      const cleanTarget = correctChoiceText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)]\s*/, '').trim();
-      for (let i = 0; i < optionsList.length; i++) {
-        const cleanOpt = optionsList[i].toLowerCase().trim();
-        if (cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) {
-          matchedOptionElement = optionElements[i];
-          break;
-        }
+function applyLiveDirectSolution(data, questionElement, optionElements, optionsList, region) {
+  isSolvingLiveStep = false;
+  liveDirectSolvedCount++;
+  const countEl = document.getElementById('qgLiveSolvedCount');
+  if (countEl) countEl.textContent = String(liveDirectSolvedCount);
+
+  const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
+  const correctChoiceText = data.correctChoiceText || data.correctText || '';
+  const explanation = data.explanation || '';
+  const relation = data.relation || '';
+
+  // 3. إضاءة الخيار الصحيح باللون الأخضر المتوهج مع شارة "الخيار الصحيح 🟢"
+  let matchedOptionElement = null;
+  if (correctIndex >= 0 && correctIndex < optionElements.length) {
+    matchedOptionElement = optionElements[correctIndex];
+  } else if (correctChoiceText) {
+    const cleanTarget = correctChoiceText.toLowerCase().replace(/^[a-dأ-د1-4][\.\-\)]\s*/, '').trim();
+    for (let i = 0; i < optionsList.length; i++) {
+      const cleanOpt = optionsList[i].toLowerCase().trim();
+      if (cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) {
+        matchedOptionElement = optionElements[i];
+        break;
       }
     }
+  }
 
-    if (matchedOptionElement) {
-      matchedOptionElement.classList.add('quizgenie-highlight-correct');
+  if (matchedOptionElement) {
+    matchedOptionElement.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
+    let ansTag = matchedOptionElement.querySelector('.quizgenie-correct-badge-tag');
+    if (!ansTag) {
+      ansTag = document.createElement('span');
+      ansTag.className = 'quizgenie-correct-badge-tag';
+      ansTag.textContent = '🟢 الخيار الصحيح';
+      matchedOptionElement.appendChild(ansTag);
     }
+  }
 
-    // 4. إظهار بطاقة الحل الذكية العائمة بجانب السؤال أو المنطقة
-    const answerDisplay = correctChoiceText || (optionsList[correctIndex] || 'الإجابة المحددة');
-    const card = document.createElement('div');
-    card.id = 'quizgenie-direct-solution-card';
-    card.className = 'qg-direct-solution-card';
-    
-    let spawnLeft = region.right + 15;
-    let spawnTop = region.top;
-    if (spawnLeft + 350 > window.innerWidth) {
-      spawnLeft = Math.max(15, region.left - 365);
-    }
-    card.style.left = spawnLeft + 'px';
-    card.style.top = Math.max(20, spawnTop) + 'px';
+  // 4. إظهار بطاقة الحل الذكية العائمة
+  const answerDisplay = correctChoiceText || (optionsList[correctIndex] || 'الإجابة المحددة');
+  const card = document.createElement('div');
+  card.id = 'quizgenie-direct-solution-card';
+  card.className = 'qg-direct-solution-card';
+  
+  let spawnLeft = (region && region.right) ? region.right + 15 : window.innerWidth - 380;
+  let spawnTop = (region && region.top) ? region.top : 70;
+  if (spawnLeft + 350 > window.innerWidth) {
+    spawnLeft = Math.max(15, (region && region.left ? region.left - 365 : 15));
+  }
+  card.style.left = spawnLeft + 'px';
+  card.style.top = Math.max(20, spawnTop) + 'px';
 
-    card.innerHTML = `
-      <div class="qg-direct-solution-header">
-        <span>🎯 الإجابة الصحيحة:</span>
-        <span style="color: #38bdf8; font-weight: 800;">${answerDisplay}</span>
-      </div>
-      ${relation ? `<div style="font-size: 11.5px; color: #fbbf24; margin-bottom: 4px;">🔗 <strong>العلاقة:</strong> ${relation}</div>` : ''}
-      ${explanation ? `<div class="qg-direct-solution-body">${explanation}</div>` : ''}
-    `;
-    (document.body || document.documentElement).appendChild(card);
-  });
+  card.innerHTML = `
+    <div class="qg-direct-solution-header">
+      <span>🎯 الإجابة الصحيحة:</span>
+      <span style="color: #38bdf8; font-weight: 800;">${answerDisplay}</span>
+    </div>
+    ${relation ? `<div style="font-size: 11.5px; color: #fbbf24; margin-bottom: 4px;">🔗 <strong>العلاقة:</strong> ${relation}</div>` : ''}
+    ${(explanation && activeLiveMode === 'detailed') ? `<div class="qg-direct-solution-body">${explanation}</div>` : ''}
+  `;
+  (document.body || document.documentElement).appendChild(card);
 }
 
 // الاستماع لاختصار لوحة المفاتيح Ctrl+Shift+S أو F2 داخل صفحة الويب
