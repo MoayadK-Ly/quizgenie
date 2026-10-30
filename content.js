@@ -1722,37 +1722,19 @@ function showScanResultModal(questionText, correctText, rawAnswer, mode, relatio
   });
 }
 
-// زر الماسح العائم على صفحات الاختبارات
+// زر الماسح العائم والشريط العائم تم إزالتهما بطلب المستخدم لمنع أي تشتيت
 function initExamScannerFab() {
-  if (document.getElementById('quizgenie-exam-scanner-pill')) return;
-  const pill = document.createElement('button');
-  pill.id = 'quizgenie-exam-scanner-pill';
-  pill.className = 'quizgenie-scanner-fab';
-  pill.innerHTML = `
-    <span style="font-size:15px;">🔍</span>
-    <span>مسح وحل الامتحان</span>
-  `;
-  pill.addEventListener('click', () => {
-    scanAndSolveCurrentExam(currentMode);
-  });
-  document.body.appendChild(pill);
+  const existing = document.getElementById('quizgenie-exam-scanner-pill');
+  if (existing) existing.remove();
 }
 
-// تفعيل الزر العائم للامتحانات تلقائياً عند وجود مؤشرات الاختبار
-setTimeout(() => {
-  const isExamPage = document.querySelector('input[type="radio"], [role="radio"], [class*="exam"], [class*="quiz"], [class*="question"]');
-  if (isExamPage && extensionEnabled && fabEnabled) {
-    initExamScannerFab();
-  }
-}, 1000);
-
-// --- مركز تخصيص المظهر وشكل الحواف والشريط العائم v2.1.0 ---
+// --- مركز تخصيص المظهر وشكل الحواف v2.1.0 ---
 let activeBorderShape = 'smooth';
 let activePrimaryColor = '#0284c7';
 let activeBgColor = '#0f172a';
 let activeGlowColor = '#10b981';
 let activeRingColor = '#ef4444';
-let isMiniToolbarEnabled = true;
+let isMiniToolbarEnabled = false;
 
 function loadThemeSettings() {
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -1762,21 +1744,17 @@ function loadThemeSettings() {
       customBgColor: '#0f172a',
       customGlowColor: '#10b981',
       customRingColor: '#ef4444',
-      customMiniToolbar: true
+      customMiniToolbar: false
     }, (data) => {
       activeBorderShape = data.customBorderShape || 'smooth';
       activePrimaryColor = data.customPrimaryColor || '#0284c7';
       activeBgColor = data.customBgColor || '#0f172a';
       activeGlowColor = data.customGlowColor || '#10b981';
       activeRingColor = data.customRingColor || '#ef4444';
-      isMiniToolbarEnabled = data.customMiniToolbar !== false;
+      isMiniToolbarEnabled = false;
 
       updatePageThemeVariables();
-      if (isMiniToolbarEnabled && extensionEnabled) {
-        ensureMiniExamToolbar();
-      } else {
-        removeMiniExamToolbar();
-      }
+      removeMiniExamToolbar();
     });
   }
 }
@@ -1796,112 +1774,14 @@ function updatePageThemeVariables() {
 }
 
 function ensureMiniExamToolbar() {
-  if (document.getElementById('quizgenie-mini-exam-bar')) return;
-  if (!document.body) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => ensureMiniExamToolbar(), { once: true });
-    }
-    return;
-  }
-  const bar = document.createElement('div');
-  bar.id = 'quizgenie-mini-exam-bar';
-  bar.innerHTML = `
-    <span class="qg-drag-handle" title="اسحب لتحريك الشريط بحرية في الشاشة">⠿</span>
-    <button type="button" class="qg-mini-btn qg-mini-btn-concise" id="qgMiniBtnConcise" title="حل مباشر وفوري (0.0 ثانية)">⚡ مباشر</button>
-    <button type="button" class="qg-mini-btn qg-mini-btn-detailed" id="qgMiniBtnDetailed" title="حل مفصل مع الشرح">📖 مفصل</button>
-    <button type="button" class="qg-mini-btn qg-mini-btn-snip" id="qgMiniBtnSnip" title="أداة التحديد والقص الحر">✂️ قص</button>
-    <button type="button" class="qg-mini-btn-toggle" id="qgMiniBtnMinimize" title="تصغير لنقطة خفية">─</button>
-  `;
-  document.body.appendChild(bar);
-
-  // استعادة المكان المحفوظ
-  try {
-    const savedPos = JSON.parse(localStorage.getItem('quizgenie_mini_bar_pos') || 'null');
-    if (savedPos && savedPos.x !== undefined && savedPos.y !== undefined) {
-      bar.style.bottom = 'auto';
-      bar.style.left = savedPos.x + 'px';
-      bar.style.top = savedPos.y + 'px';
-    }
-  } catch (e) {}
-
-  // السحب الحر (Draggable)
-  let isDragging = false;
-  let startX, startY, initialX, initialY;
-  const handle = bar.querySelector('.qg-drag-handle');
-
-  if (handle) {
-    handle.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      const rect = bar.getBoundingClientRect();
-      initialX = rect.left;
-      initialY = rect.top;
-      bar.style.transition = 'none';
-      e.preventDefault();
-    });
-  }
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    const newX = Math.max(10, Math.min(window.innerWidth - bar.offsetWidth - 10, initialX + dx));
-    const newY = Math.max(10, Math.min(window.innerHeight - bar.offsetHeight - 10, initialY + dy));
-    bar.style.bottom = 'auto';
-    bar.style.left = newX + 'px';
-    bar.style.top = newY + 'px';
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      bar.style.transition = 'transform 0.2s, box-shadow 0.2s, opacity 0.2s';
-      const rect = bar.getBoundingClientRect();
-      localStorage.setItem('quizgenie_mini_bar_pos', JSON.stringify({ x: rect.left, y: rect.top }));
-    }
-  });
-
-  // أزرار الشريط
-  const bConcise = bar.querySelector('#qgMiniBtnConcise');
-  if (bConcise) {
-    bConcise.addEventListener('click', () => {
-      scanAndSolveCurrentExam('concise');
-    });
-  }
-
-  const bDetailed = bar.querySelector('#qgMiniBtnDetailed');
-  if (bDetailed) {
-    bDetailed.addEventListener('click', () => {
-      scanAndSolveCurrentExam('detailed');
-    });
-  }
-
-  const bSnip = bar.querySelector('#qgMiniBtnSnip');
-  if (bSnip) {
-    bSnip.addEventListener('click', () => {
-      startFullScreenAreaSnip('concise');
-    });
-  }
-
-  const btnMin = bar.querySelector('#qgMiniBtnMinimize');
-  if (btnMin) {
-    btnMin.addEventListener('click', (e) => {
-      e.stopPropagation();
-      bar.classList.add('minimized');
-    });
-  }
-
-  bar.addEventListener('click', (e) => {
-    if (bar.classList.contains('minimized')) {
-      bar.classList.remove('minimized');
-    }
-  });
+  removeMiniExamToolbar();
 }
 
 function removeMiniExamToolbar() {
   const bar = document.getElementById('quizgenie-mini-exam-bar');
   if (bar) bar.remove();
+  const pill = document.getElementById('quizgenie-exam-scanner-pill');
+  if (pill) pill.remove();
 }
 
 // الاستماع لرسائل مزامنة الثيم الحية
@@ -2452,13 +2332,49 @@ function stopLiveDirectMode() {
   showScanFeedbackBanner('⏹️ تم إيقاف وضع الريكورد والحل المباشر.', '#64748b');
 }
 
-// محرك استخراج السؤال والخيارات بذكاء فائق ودقة 100% مع عزل كل سؤال عن الأسئلة الأخرى لمنع أي التباس
+// دالة مساعدة ذكية لاستخراج نص الخيار الدائري أو المربع بدقة وربطه بعنصره القابل للنقر
+function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNORED_TEXT) {
+  if (!el || el.closest(IGNORED_SELECTORS)) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return null;
+
+  // الحاوية الخارجية للخيار (تغطي الراديو الدائري والنص والأيقونات)
+  const containerEl = el.closest('label, li, tr, [class*="option" i], [class*="choice" i], [class*="radio" i], [class*="answer" i], .form-check, [role="radio"]') || el.parentElement || el;
+  if (!containerEl || containerEl.closest(IGNORED_SELECTORS)) return null;
+
+  // استخراج النص من الحاوية أو التسمية المرتبطة (label for) أو السمات (aria-label, value)
+  let text = '';
+  if (el.id) {
+    try {
+      const forLabel = (targetContainer || document).querySelector(`label[for="${CSS.escape(el.id)}"]`);
+      if (forLabel && forLabel.innerText) text = forLabel.innerText;
+    } catch (e) {}
+  }
+  if (!text) {
+    text = (containerEl ? containerEl.innerText : el.innerText || '') || '';
+  }
+  if (!text.trim()) {
+    text = el.getAttribute('aria-label') || el.value || el.getAttribute('title') || (el.nextElementSibling ? el.nextElementSibling.innerText : '') || '';
+  }
+
+  // تنظيف الرموز والدوائر والنقاط والبادئات (مثل أ، ب، ج، د أو 1، 2، 3 أو دوائر اليونيكود ◯ ○ ● 🔘 ⭕)
+  text = text
+    .replace(/^[A-Da-dأ-د1-4\u25cb\u25cf\u25ef\u2b58\u25ce\u25c9\u2299\u229a\u25d0-\u25d3🔘⭕\(\)\[\]\.\-\s:]+\s*/u, '')
+    .trim();
+
+  if (text.length > 0 && text.length < 160 && !IGNORED_TEXT.test(text)) {
+    return { text, containerEl };
+  }
+  return null;
+}
+
+// محرك استخراج السؤال والخيارات بذكاء فائق ودقة 100% مع دعم الراديو الدائري وأسئلة صح وخطأ
 function extractQuestionAndOptionsFromRegion(region) {
   const IGNORED_SELECTORS = '#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card, #quizgenie-countdown-overlay, #quizgenie-corner-rec-badge, .answer-verifier, .question-meta, .btn-reveal-solution, .correct-answer-hint, .exam-footer-toolbar, .instructions-card, .exam-header, [class*="goal" i], [id*="goal" i], [class*="boost" i], [id*="boost" i], [class*="popup" i], [class*="modal" i], [role="dialog"], [class*="streak" i], [class*="gamif" i], [class*="reward" i], [class*="badge-container" i]';
   const IGNORED_TEXT = /^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|كشف|عرض الإجابة|تحقق|تأكيد|مساعدة|مراجعة|إلغاء|حذف|مسح|Of|Show|Check|Verify|Hint|Skip|Solution|Goal|Boost|XP|Streak|Bonus|Reward|Score|Points|هدف|تعزيز|مكافأة|نقاط|المستوى|إغلاق|Close)/i;
 
-  // 1. فحص حاويات الأسئلة المنظمة (مثل question-card أو que أو quiz-question أو fieldset)
-  const cardSelectors = '.question-card, .question, .que, [class*="question-item"], [class*="question-card"], [class*="quiz-question"], [class*="question_wrapper"], fieldset, [role="listitem"]';
+  // 1. فحص حاويات الأسئلة المنظمة (مثل question-card أو que أو quiz-question أو fieldset أو الصفوف)
+  const cardSelectors = '.question-card, .question, .que, [class*="question-item" i], [class*="question-card" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question" i], [id*="question" i], [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], fieldset, [role="listitem"], tr.question-row, tr[class*="question" i]';
   let containers = Array.from(document.querySelectorAll(cardSelectors)).filter(c => {
     if (c.closest(IGNORED_SELECTORS)) return false;
     const r = c.getBoundingClientRect();
@@ -2487,10 +2403,10 @@ function extractQuestionAndOptionsFromRegion(region) {
 
     if (targetContainer) {
       // استخراج رأس السؤال من الحاوية المستهدفة فقط
-      let questionElement = targetContainer.querySelector('.question-text, .q-text, [class*="question-title"], h1, h2, h3, h4, h5, [class*="stem"]');
+      let questionElement = targetContainer.querySelector('.question-text, .q-text, [class*="question-title" i], [class*="question-body" i], [class*="stem" i], [class*="prompt" i], h1, h2, h3, h4, h5, legend, .form-label');
       if (!questionElement) {
         const potentialQ = Array.from(targetContainer.querySelectorAll('div, p, span, b, strong')).filter(el => {
-          if (el.closest('.option-item, .choice, .option, label, li, ' + IGNORED_SELECTORS)) return false;
+          if (el.closest('.option-item, .choice, .option, label, li, tr, ' + IGNORED_SELECTORS)) return false;
           const t = (el.innerText || '').trim();
           return t.length > 5 && !IGNORED_TEXT.test(t);
         });
@@ -2498,8 +2414,9 @@ function extractQuestionAndOptionsFromRegion(region) {
       }
       const questionText = questionElement ? questionElement.innerText.trim() : '';
 
-      // استخراج خيارات هذه الحاوية حصراً (دون أي اختلاط مع خيارات الأسئلة الأخرى)
-      const choiceCandidates = Array.from(targetContainer.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], .option-item, .option, .choice, label, li')).filter(el => {
+      // استخراج خيارات هذه الحاوية حصراً (بما فيها الراديو الدائري، خيارات صح وخطأ، بطاقات الخيارات)
+      const choiceSelector = 'input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"], .option-item, .option, .choice, label, li, [class*="radio" i], [class*="circle" i], [class*="form-check" i], svg circle, svg[class*="radio" i], svg[class*="circle" i]';
+      const choiceCandidates = Array.from(targetContainer.querySelectorAll(choiceSelector)).filter(el => {
         if (el.closest(IGNORED_SELECTORS)) return false;
         if (questionElement && (el === questionElement || questionElement.contains(el))) return false;
         const r = el.getBoundingClientRect();
@@ -2509,11 +2426,10 @@ function extractQuestionAndOptionsFromRegion(region) {
       const optionsList = [];
       const optionElements = [];
       for (const el of choiceCandidates) {
-        const containerEl = el.closest('label, li, tr, [class*="option"], [class*="choice"], [class*="radio"]') || el.parentElement || el;
-        const text = (containerEl ? containerEl.innerText : el.innerText || '').replace(/^[A-Da-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
-        if (text && text.length > 0 && text.length < 150 && !optionsList.includes(text) && !IGNORED_TEXT.test(text)) {
-          optionsList.push(text);
-          optionElements.push(containerEl);
+        const res = extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNORED_TEXT);
+        if (res && !optionsList.includes(res.text) && !optionElements.includes(res.containerEl)) {
+          optionsList.push(res.text);
+          optionElements.push(res.containerEl);
         }
       }
 
@@ -2532,7 +2448,7 @@ function extractQuestionAndOptionsFromRegion(region) {
 
   // 2. إذا لم تكن الصفحة مقسمة إلى حاويات، نستخدم التحديد الجغرافي داخل المنطقة المحددة
   let candidateElements = [];
-  const all = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, button, input'));
+  const all = Array.from(document.querySelectorAll('div, p, span, label, li, h1, h2, h3, h4, h5, b, strong, button, input, tr, td, svg, circle'));
   if (region.isFullScreen) {
     candidateElements = all.filter(el => {
       const r = el.getBoundingClientRect();
@@ -2554,15 +2470,14 @@ function extractQuestionAndOptionsFromRegion(region) {
   let questionText = '';
 
   for (const el of candidateElements) {
-    const isRadio = (el.tagName === 'INPUT' && (el.type === 'radio' || el.type === 'checkbox')) || el.getAttribute('role') === 'radio';
-    const isChoiceCls = el.classList.contains('choice') || el.classList.contains('option') || el.classList.contains('option-item') || el.tagName === 'LI' || el.tagName === 'LABEL';
+    const cls = typeof el.className === 'string' ? el.className.toLowerCase() : '';
+    const isRadio = (el.tagName === 'INPUT' && (el.type === 'radio' || el.type === 'checkbox')) || el.getAttribute('role') === 'radio' || el.tagName === 'circle' || (el.tagName === 'svg' && el.querySelector('circle'));
+    const isChoiceCls = /choice|option|radio|answer|select|check|form-check|circle/i.test(cls) || el.tagName === 'LI' || el.tagName === 'LABEL';
     if (isRadio || isChoiceCls) {
-      const container = el.closest('label, li, tr, [class*="option"], [class*="choice"], [class*="radio"]') || el.parentElement || el;
-      if (container && container.closest(IGNORED_SELECTORS)) continue;
-      const text = (container ? container.innerText : el.innerText || '').replace(/^[A-Da-dأ-د1-4][\.\-\)\s:]+\s*/, '').trim();
-      if (text && text.length > 0 && text.length < 150 && !optionsList.includes(text) && !IGNORED_TEXT.test(text)) {
-        optionsList.push(text);
-        optionElements.push(container);
+      const res = extractOptionFromCandidate(el, null, IGNORED_SELECTORS, IGNORED_TEXT);
+      if (res && !optionsList.includes(res.text) && !optionElements.includes(res.containerEl)) {
+        optionsList.push(res.text);
+        optionElements.push(res.containerEl);
       }
     }
   }
@@ -2671,7 +2586,7 @@ function normalizeExamText(str) {
     .replace(/[أإآ]/g, 'ا')
     .replace(/[ىي]/g, 'ي')
     .replace(/ة/g, 'ه')
-    .replace(/^[\(\[\{]?[a-dأ-د1-4][\)\]\}]?[\.\-\:\s]\s*/, '')
+    .replace(/^[\(\[\{]?[a-dأ-د1-4\u25cb\u25cf\u25ef\u2b58\u25ce\u25c9\u2299\u229a\u25d0-\u25d3🔘⭕]?[\)\]\}]?[\.\-\:\s]\s*/u, '')
     .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -2702,13 +2617,19 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
   let matchedIdx = -1;
 
-  // 1. مطابقة نص الخيار أولاً بدقة متناهية عبر التطبيع العربي الشامل
+  // 1. مطابقة نص الخيار أولاً بدقة متناهية عبر التطبيع العربي الشامل ودعم خيارات صح وخطأ (True/False)
   const cleanTarget = normalizeExamText(correctChoiceText);
+  const isTrueVariant = (t) => /^(صح|صواب|صحيح|صحيحة|true|t)$/i.test((t || '').trim());
+  const isFalseVariant = (t) => /^(خطأ|خطا|خاطئ|خاطئة|false|f)$/i.test((t || '').trim());
 
   if (cleanTarget.length > 0) {
     for (let i = 0; i < optionsList.length; i++) {
       const cleanOpt = normalizeExamText(optionsList[i]);
-      if (cleanOpt === cleanTarget || (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt))) {
+      if (cleanOpt === cleanTarget || 
+          (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
+          (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
+          (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
+          (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
         matchedIdx = i;
         break;
       }
@@ -2733,7 +2654,7 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   if (optionElements && optionElements.length > 0 && matchedIdx !== -1) {
     for (let i = 0; i < optionElements.length; i++) {
       const optEl = optionElements[i];
-      const targetContainer = (optEl.tagName === 'INPUT' || optEl.tagName === 'IMG') ? (optEl.parentElement || optEl) : optEl;
+      const targetContainer = (optEl.tagName === 'INPUT' || optEl.tagName === 'IMG' || optEl.tagName === 'circle') ? (optEl.parentElement || optEl) : optEl;
       try {
         if (window.getComputedStyle(targetContainer).position === 'static') {
           targetContainer.style.position = 'relative';
@@ -2754,9 +2675,23 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         const oldWrong = targetContainer.querySelector('.quizgenie-wrong-badge-tag');
         if (oldWrong) oldWrong.remove();
 
+        // تفعيل وتمييز زر الراديو الدائري وعناصر الدوائر
         try {
-          const radioInside = targetContainer.querySelector('input[type="radio"]') || (targetContainer.tagName === 'INPUT' ? targetContainer : null);
-          if (radioInside) radioInside.checked = true;
+          const radioInside = targetContainer.querySelector('input[type="radio"]') || (targetContainer.tagName === 'INPUT' && targetContainer.type === 'radio' ? targetContainer : null);
+          if (radioInside) {
+            radioInside.checked = true;
+            radioInside.style.accentColor = '#10b981';
+            radioInside.classList.remove('quizgenie-circle-wrong');
+            radioInside.classList.add('quizgenie-circle-correct');
+            radioInside.dispatchEvent(new Event('input', { bubbles: true }));
+            radioInside.dispatchEvent(new Event('change', { bubbles: true }));
+            try { radioInside.click(); } catch (e) {}
+          }
+          const circularElements = targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]');
+          circularElements.forEach(cEl => {
+            cEl.classList.remove('quizgenie-circle-wrong');
+            cEl.classList.add('quizgenie-circle-correct');
+          });
         } catch (e) {}
       } else {
         // الإجابة الخاطئة: خط بارز أحمر متوهج
@@ -2771,6 +2706,21 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         }
         const oldCorrect = targetContainer.querySelector('.quizgenie-correct-badge-tag');
         if (oldCorrect) oldCorrect.remove();
+
+        // تمييز زر الراديو الدائري الخاطئ
+        try {
+          const radioInside = targetContainer.querySelector('input[type="radio"]') || (targetContainer.tagName === 'INPUT' && targetContainer.type === 'radio' ? targetContainer : null);
+          if (radioInside) {
+            radioInside.style.accentColor = '#ef4444';
+            radioInside.classList.remove('quizgenie-circle-correct');
+            radioInside.classList.add('quizgenie-circle-wrong');
+          }
+          const circularElements = targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]');
+          circularElements.forEach(cEl => {
+            cEl.classList.remove('quizgenie-circle-correct');
+            cEl.classList.add('quizgenie-circle-wrong');
+          });
+        } catch (e) {}
       }
     }
     showScanFeedbackBanner('🎯 تم التمييز: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
