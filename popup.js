@@ -1,6 +1,6 @@
-// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v2.4.5)
+// QuizGenie - Comprehensive Popup Controller (Active Server Display & Key Validator v2.4.6)
 
-// Global Exception and Rejection Shields to prevent popup.html:0 errors
+// Bulletproof Universal Chrome API and Exception Shield to eliminate popup.html:0 errors
 function checkLastError() {
   try {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
@@ -10,6 +10,95 @@ function checkLastError() {
   } catch (e) {}
   return null;
 }
+
+(function installUniversalChromeShield() {
+  function safeWrap(cb) {
+    if (typeof cb !== 'function') return cb;
+    return function shieldedCallback() {
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          const _ignored = chrome.runtime.lastError;
+        }
+      } catch (e) {}
+      try {
+        return cb.apply(this, arguments);
+      } catch (err) {
+        console.warn('Shielded callback warning:', err);
+      }
+    };
+  }
+
+  try {
+    if (typeof chrome !== 'undefined') {
+      if (chrome.storage && chrome.storage.local) {
+        const origGet = chrome.storage.local.get.bind(chrome.storage.local);
+        chrome.storage.local.get = function(keys, cb) {
+          return origGet(keys, safeWrap(cb));
+        };
+        const origSet = chrome.storage.local.set.bind(chrome.storage.local);
+        chrome.storage.local.set = function(items, cb) {
+          return origSet(items, safeWrap(cb));
+        };
+      }
+      if (chrome.runtime && chrome.runtime.sendMessage) {
+        const origSendMessage = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = function() {
+          const args = Array.from(arguments);
+          const lastIdx = args.length - 1;
+          if (typeof args[lastIdx] === 'function') {
+            args[lastIdx] = safeWrap(args[lastIdx]);
+          } else {
+            args.push(safeWrap(() => {}));
+          }
+          return origSendMessage.apply(chrome.runtime, args);
+        };
+      }
+      if (chrome.tabs) {
+        if (chrome.tabs.sendMessage) {
+          const origTabsSend = chrome.tabs.sendMessage.bind(chrome.tabs);
+          chrome.tabs.sendMessage = function() {
+            const args = Array.from(arguments);
+            const lastIdx = args.length - 1;
+            if (typeof args[lastIdx] === 'function') {
+              args[lastIdx] = safeWrap(args[lastIdx]);
+            } else {
+              args.push(safeWrap(() => {}));
+            }
+            return origTabsSend.apply(chrome.tabs, args);
+          };
+        }
+        if (chrome.tabs.query) {
+          const origTabsQuery = chrome.tabs.query.bind(chrome.tabs);
+          chrome.tabs.query = function(q, cb) {
+            return origTabsQuery(q, safeWrap(cb));
+          };
+        }
+        if (chrome.tabs.create) {
+          const origTabsCreate = chrome.tabs.create.bind(chrome.tabs);
+          chrome.tabs.create = function(props, cb) {
+            return origTabsCreate(props, safeWrap(cb || (() => {})));
+          };
+        }
+      }
+      if (chrome.scripting) {
+        if (chrome.scripting.executeScript) {
+          const origExec = chrome.scripting.executeScript.bind(chrome.scripting);
+          chrome.scripting.executeScript = function(props, cb) {
+            return origExec(props, safeWrap(cb || (() => {})));
+          };
+        }
+        if (chrome.scripting.insertCSS) {
+          const origCss = chrome.scripting.insertCSS.bind(chrome.scripting);
+          chrome.scripting.insertCSS = function(props, cb) {
+            return origCss(props, safeWrap(cb || (() => {})));
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Shield init warning:', e);
+  }
+})();
 
 window.addEventListener('error', (event) => {
   try {
@@ -1160,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function launchLiveDirectSolver(isFullScreen) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      checkLastError();
+      if (chrome.runtime.lastError) {}
       if (!tabs || !tabs[0] || !tabs[0].id) {
         window.close();
         return;
@@ -1169,38 +1258,32 @@ document.addEventListener('DOMContentLoaded', () => {
       const tabId = tab.id;
       const url = tab.url || '';
 
-      // فحص ما إذا كانت الصفحة المفتوحة صفحة نظام محمية لكروم
-      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:') || url.startsWith('chrome-search://')) {
-        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://).\nيرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الأداة.');
+      // فحص ما إذا كانت الصفحة المفتوحة صفحة نظام محمية لكروم أو سوق كروم
+      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:') || url.startsWith('chrome-search://') || url.includes('chrome.google.com/webstore') || url.includes('chromewebstore.google.com')) {
+        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية أو سوق كروم.\nيرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الأداة.');
         return;
       }
 
-      const sendLiveMsg = () => {
-        chrome.tabs.sendMessage(tabId, {
-          action: 'START_LIVE_DIRECT_SOLVER',
-          isFullScreen: isFullScreen,
-          mode: selectedLiveMode
-        }, () => {
-          checkLastError();
-          window.close();
-        });
+      const payload = {
+        action: 'START_LIVE_DIRECT_SOLVER',
+        isFullScreen: (isFullScreen !== false),
+        mode: selectedLiveMode || currentDefaultMode || 'concise'
       };
 
-      chrome.tabs.sendMessage(tabId, {
-        action: 'START_LIVE_DIRECT_SOLVER',
-        isFullScreen: isFullScreen,
-        mode: selectedLiveMode
-      }, () => {
-        const err = checkLastError();
-        if (err) {
+      chrome.tabs.sendMessage(tabId, payload, (response) => {
+        const lastErr = chrome.runtime.lastError;
+        if (lastErr) {
           if (chrome.scripting && chrome.scripting.executeScript) {
             chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
-              checkLastError();
+              if (chrome.runtime.lastError) {}
               chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
-                checkLastError();
+                if (chrome.runtime.lastError) {}
                 setTimeout(() => {
-                  sendLiveMsg();
-                }, 80);
+                  chrome.tabs.sendMessage(tabId, payload, () => {
+                    if (chrome.runtime.lastError) {}
+                    window.close();
+                  });
+                }, 120);
               });
             });
             return;
@@ -1214,14 +1297,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnMainLiveDirectSolve = document.getElementById('btnMainLiveDirectSolve');
   if (btnMainLiveDirectSolve) {
     btnMainLiveDirectSolve.addEventListener('click', () => {
-      launchLiveDirectSolver(false);
+      launchLiveDirectSolver(true);
     });
   }
 
   const btnStartLiveDirectSolver = document.getElementById('btnStartLiveDirectSolver');
   if (btnStartLiveDirectSolver) {
     btnStartLiveDirectSolver.addEventListener('click', () => {
-      launchLiveDirectSolver(false);
+      launchLiveDirectSolver(true);
     });
   }
 
