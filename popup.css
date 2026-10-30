@@ -1763,3 +1763,52 @@ input:checked + .slider:before {
   from { opacity: 0; transform: translateY(-3px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- شكل حواف خيارات وبطاقات الأداة نفسها v2.1.0 --- */
+body.shape-sharp .server-card,
+body.shape-sharp .mode-card,
+body.shape-sharp .subject-item,
+body.shape-sharp .lang-item,
+body.shape-sharp .accordion-header,
+body.shape-sharp .accordion-item,
+body.shape-sharp .action-btn,
+body.shape-sharp .btn-solve,
+body.shape-sharp .btn-primary,
+body.shape-sharp .active-server-display-card,
+body.shape-sharp .setting-row,
+body.shape-sharp .modal-content,
+body.shape-sharp button {
+  border-radius: 4px !important;
+}
+
+body.shape-smooth .server-card,
+body.shape-smooth .mode-card,
+body.shape-smooth .subject-item,
+body.shape-smooth .lang-item,
+body.shape-smooth .accordion-header,
+body.shape-smooth .accordion-item,
+body.shape-smooth .action-btn,
+body.shape-smooth .btn-solve,
+body.shape-smooth .btn-primary,
+body.shape-smooth .active-server-display-card,
+body.shape-smooth .setting-row,
+body.shape-smooth .modal-content,
+body.shape-smooth button {
+  border-radius: 12px !important;
+}
+
+body.shape-capsule .server-card,
+body.shape-capsule .mode-card,
+body.shape-capsule .subject-item,
+body.shape-capsule .lang-item,
+body.shape-capsule .accordion-header,
+body.shape-capsule .accordion-item,
+body.shape-capsule .action-btn,
+body.shape-capsule .btn-solve,
+body.shape-capsule .btn-primary,
+body.shape-capsule .active-server-display-card,
+body.shape-capsule .setting-row,
+body.shape-capsule .modal-content,
+body.shape-capsule button {
+  border-radius: 26px !important;
+}
