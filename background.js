@@ -401,29 +401,43 @@ if (chrome.commands && chrome.commands.onCommand) {
             if (chrome.runtime.lastError) {
               if (chrome.scripting && chrome.scripting.executeScript) {
                 try {
+                  let retried = false;
+                  const retrySend = () => {
+                    if (retried) return;
+                    retried = true;
+                    chrome.tabs.sendMessage(tab.id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
+                      if (chrome.runtime.lastError) {}
+                    });
+                  };
+
+                  if (chrome.scripting.insertCSS) {
+                    try {
+                      const cP = chrome.scripting.insertCSS({
+                        target: { tabId: tab.id },
+                        files: ['content.css']
+                      }, () => {
+                        if (chrome.runtime.lastError) {}
+                      });
+                      if (cP && typeof cP.catch === 'function') cP.catch(() => {});
+                    } catch (e) {
+                      if (chrome.runtime.lastError) {}
+                    }
+                  }
+
                   const sP = chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['content.js']
                   }, () => {
                     if (chrome.runtime.lastError) {}
+                    retrySend();
                   });
-                  if (sP && typeof sP.catch === 'function') sP.catch(() => {});
-
-                  if (chrome.scripting.insertCSS) {
-                    const cP = chrome.scripting.insertCSS({
-                      target: { tabId: tab.id },
-                      files: ['content.css']
-                    }, () => {
+                  if (sP && typeof sP.then === 'function') {
+                    sP.then(() => retrySend()).catch(() => {
                       if (chrome.runtime.lastError) {}
                     });
-                    if (cP && typeof cP.catch === 'function') cP.catch(() => {});
                   }
 
-                  setTimeout(() => {
-                    chrome.tabs.sendMessage(tab.id, { action: 'START_LIVE_DIRECT_SOLVER' }, () => {
-                      if (chrome.runtime.lastError) {}
-                    });
-                  }, 150);
+                  setTimeout(retrySend, 350);
                 } catch (e) {
                   if (chrome.runtime.lastError) {}
                 }
