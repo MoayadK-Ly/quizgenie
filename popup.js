@@ -28,16 +28,37 @@ function checkLastError() {
     };
   }
 
+  function safeWrapPromise(p) {
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.runtime) {
+            const _ignored = chrome.runtime.lastError;
+          }
+        } catch (e) {}
+      });
+    }
+    return p;
+  }
+
   try {
     if (typeof chrome !== 'undefined') {
       if (chrome.storage && chrome.storage.local) {
         const origGet = chrome.storage.local.get.bind(chrome.storage.local);
         chrome.storage.local.get = function(keys, cb) {
-          return origGet(keys, safeWrap(cb));
+          try {
+            return safeWrapPromise(origGet(keys, safeWrap(cb)));
+          } catch (e) {
+            checkLastError();
+          }
         };
         const origSet = chrome.storage.local.set.bind(chrome.storage.local);
         chrome.storage.local.set = function(items, cb) {
-          return origSet(items, safeWrap(cb));
+          try {
+            return safeWrapPromise(origSet(items, safeWrap(cb)));
+          } catch (e) {
+            checkLastError();
+          }
         };
       }
       if (chrome.runtime && chrome.runtime.sendMessage) {
@@ -50,7 +71,11 @@ function checkLastError() {
           } else {
             args.push(safeWrap(() => {}));
           }
-          return origSendMessage.apply(chrome.runtime, args);
+          try {
+            return safeWrapPromise(origSendMessage.apply(chrome.runtime, args));
+          } catch (e) {
+            checkLastError();
+          }
         };
       }
       if (chrome.tabs) {
@@ -64,19 +89,31 @@ function checkLastError() {
             } else {
               args.push(safeWrap(() => {}));
             }
-            return origTabsSend.apply(chrome.tabs, args);
+            try {
+              return safeWrapPromise(origTabsSend.apply(chrome.tabs, args));
+            } catch (e) {
+              checkLastError();
+            }
           };
         }
         if (chrome.tabs.query) {
           const origTabsQuery = chrome.tabs.query.bind(chrome.tabs);
           chrome.tabs.query = function(q, cb) {
-            return origTabsQuery(q, safeWrap(cb));
+            try {
+              return safeWrapPromise(origTabsQuery(q, safeWrap(cb)));
+            } catch (e) {
+              checkLastError();
+            }
           };
         }
         if (chrome.tabs.create) {
           const origTabsCreate = chrome.tabs.create.bind(chrome.tabs);
           chrome.tabs.create = function(props, cb) {
-            return origTabsCreate(props, safeWrap(cb || (() => {})));
+            try {
+              return safeWrapPromise(origTabsCreate(props, safeWrap(cb || (() => {}))));
+            } catch (e) {
+              checkLastError();
+            }
           };
         }
       }
@@ -84,13 +121,21 @@ function checkLastError() {
         if (chrome.scripting.executeScript) {
           const origExec = chrome.scripting.executeScript.bind(chrome.scripting);
           chrome.scripting.executeScript = function(props, cb) {
-            return origExec(props, safeWrap(cb || (() => {})));
+            try {
+              return safeWrapPromise(origExec(props, safeWrap(cb || (() => {}))));
+            } catch (e) {
+              checkLastError();
+            }
           };
         }
         if (chrome.scripting.insertCSS) {
           const origCss = chrome.scripting.insertCSS.bind(chrome.scripting);
           chrome.scripting.insertCSS = function(props, cb) {
-            return origCss(props, safeWrap(cb || (() => {})));
+            try {
+              return safeWrapPromise(origCss(props, safeWrap(cb || (() => {}))));
+            } catch (e) {
+              checkLastError();
+            }
           };
         }
       }
@@ -1161,8 +1206,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         checkLastError();
         if (tabs && tabs[0] && tabs[0].id) {
-          const u = tabs[0].url || '';
-          if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
+          const u = (tabs[0].url || tabs[0].pendingUrl || '').toLowerCase();
+          if (!u || u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:') || u.startsWith('chrome-extension://')) return;
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'TRIGGER_EXAM_SCAN',
             mode: currentDefaultMode || 'concise'
@@ -1183,8 +1228,8 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         checkLastError();
         if (tabs && tabs[0] && tabs[0].id) {
-          const u = tabs[0].url || '';
-          if (u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:')) return;
+          const u = (tabs[0].url || tabs[0].pendingUrl || '').toLowerCase();
+          if (!u || u.startsWith('chrome://') || u.startsWith('edge://') || u.startsWith('about:') || u.startsWith('chrome-extension://')) return;
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'CLEAR_EXAM_HIGHLIGHTS'
           }, () => {
@@ -1249,18 +1294,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function launchLiveDirectSolver(isFullScreen) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (chrome.runtime.lastError) {}
+      checkLastError();
       if (!tabs || !tabs[0] || !tabs[0].id) {
         window.close();
         return;
       }
       const tab = tabs[0];
       const tabId = tab.id;
-      const url = tab.url || '';
+      const rawUrl = tab.url || tab.pendingUrl || '';
+      const url = rawUrl.toLowerCase().trim();
 
-      // فحص ما إذا كانت الصفحة المفتوحة صفحة نظام محمية لكروم أو سوق كروم
-      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('view-source:') || url.startsWith('chrome-search://') || url.includes('chrome.google.com/webstore') || url.includes('chromewebstore.google.com')) {
-        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية أو سوق كروم.\nيرجى فتح صفحة اختبار أو موقع دراسي عادي لتجربة الأداة.');
+      // فحص صارم ومحكم لصفحات النظام الداخلية وسوق كروم
+      const isRestricted = !url ||
+                           url.startsWith('chrome://') || 
+                           url.startsWith('chrome-extension://') || 
+                           url.startsWith('edge://') || 
+                           url.startsWith('about:') || 
+                           url.startsWith('devtools://') || 
+                           url.startsWith('view-source:') || 
+                           url.startsWith('chrome-search://') || 
+                           url.includes('chrome.google.com/webstore') || 
+                           url.includes('chromewebstore.google.com');
+
+      if (isRestricted) {
+        alert('⚠️ تنبيه: لا يمكن تشغيل ماسح الشاشة على صفحات المتصفح الداخلية (chrome://) أو سوق كروم.\nيرجى فتح صفحة اختبار أو موقع دراسي عادي (مثل موقع اختبار الأداة) لتجربة الحل المباشر.');
         return;
       }
 
@@ -1271,23 +1328,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       chrome.tabs.sendMessage(tabId, payload, (response) => {
-        const lastErr = chrome.runtime.lastError;
-        if (lastErr) {
-          if (chrome.scripting && chrome.scripting.executeScript) {
-            chrome.scripting.insertCSS({ target: { tabId: tabId }, files: ['content.css'] }, () => {
-              if (chrome.runtime.lastError) {}
-              chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }, () => {
-                if (chrome.runtime.lastError) {}
-                setTimeout(() => {
-                  chrome.tabs.sendMessage(tabId, payload, () => {
-                    if (chrome.runtime.lastError) {}
-                    window.close();
-                  });
-                }, 120);
-              });
-            });
-            return;
-          }
+        if (checkLastError()) {
+          alert('يرجى تحديث صفحة الاختبار (F5) لتفعيل الماسح.');
+          return;
         }
         window.close();
       });
