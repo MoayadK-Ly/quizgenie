@@ -85,30 +85,10 @@ function safeSendTabMessage(tabId, payload, callback) {
       // First attempt failed, attempt injection of content.js and content.css
       if (typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
         try {
-          const sPromise = chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            files: ['content.js']
-          }, () => {
-            checkLastError();
-          });
-          if (sPromise && typeof sPromise.catch === 'function') {
-            sPromise.catch(() => {});
-          }
-
-          if (chrome.scripting.insertCSS) {
-            const cPromise = chrome.scripting.insertCSS({
-              target: { tabId: tabId },
-              files: ['content.css']
-            }, () => {
-              checkLastError();
-            });
-            if (cPromise && typeof cPromise.catch === 'function') {
-              cPromise.catch(() => {});
-            }
-          }
-
-          // Retry sending message after script injection
-          setTimeout(() => {
+          let retried = false;
+          const doRetry = () => {
+            if (retried) return;
+            retried = true;
             try {
               chrome.tabs.sendMessage(tabId, payload, (retryResp) => {
                 if (!checkLastError()) {
@@ -121,7 +101,44 @@ function safeSendTabMessage(tabId, payload, callback) {
               checkLastError();
               if (callback) callback(false, null);
             }
-          }, 150);
+          };
+
+          if (chrome.scripting.insertCSS) {
+            try {
+              const cPromise = chrome.scripting.insertCSS({
+                target: { tabId: tabId },
+                files: ['content.css']
+              }, () => {
+                checkLastError();
+              });
+              if (cPromise && typeof cPromise.catch === 'function') {
+                cPromise.catch(() => {});
+              }
+            } catch (cssErr) {
+              checkLastError();
+            }
+          }
+
+          const sPromise = chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          }, () => {
+            checkLastError();
+            doRetry();
+          });
+
+          if (sPromise && typeof sPromise.then === 'function') {
+            sPromise.then(() => doRetry()).catch(() => {
+              checkLastError();
+              if (callback) callback(false, null);
+            });
+          }
+
+          // Safety timeout in case callback/promise takes longer than 350ms
+          setTimeout(() => {
+            doRetry();
+          }, 350);
+
         } catch (injErr) {
           checkLastError();
           if (callback) callback(false, null);
