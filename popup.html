@@ -96,7 +96,7 @@
     <div class="accordion-container">
 
       <!-- القائمة 1: خوادم الذكاء الاصطناعي الثلاثة -->
-      <div class="accordion-item open item-servers" id="accItemServers">
+      <div class="accordion-item item-servers" id="accItemServers">
         <div class="accordion-header" data-target="accItemServers">
           <div class="accordion-title-group">
             <span class="accordion-icon icon-servers">🖥️</span>
@@ -471,48 +471,52 @@
         </div>
       </div>
 
-      <!-- خيار وضع الريكورد والحل المباشر الذكي (REC 🔴) -->
-      <div class="direct-solve-card" id="cardLiveDirectSolve" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)); border: 1.5px solid #0284c7; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.25);">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="display: inline-block; width: 11px; height: 11px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444;"></span>
-            <div>
-              <div style="font-size: 14px; font-weight: 800; color: #38bdf8;">الحل والتلوين المباشر (وضع الريكورد 🔴)</div>
-              <div style="font-size: 11px; color: #94a3b8;">تلوين السؤال بالأصفر، الخيار الصحيح بالأخضر، والخيارات الخاطئة بالأحمر</div>
+      <!-- القائمة 5: الحل المباشر -->
+      <div class="accordion-item item-live-solve" id="accItemLiveSolve">
+        <div class="accordion-header" data-target="accItemLiveSolve">
+          <div class="accordion-title-group">
+            <span class="accordion-icon icon-live-solve" style="background: rgba(2, 132, 199, 0.2); border-color: #0284c7; color: #38bdf8;">⚡</span>
+            <div class="accordion-text">
+              <span class="accordion-title">⚡ الحل المباشر</span>
+              <span class="accordion-subtitle">تلوين السؤال بالأصفر، الخيار الصحيح بالأخضر، والخاطئ بالأحمر</span>
             </div>
           </div>
-          <span style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.5px;">REC 🔴</span>
-        </div>
-
-        <!-- اختيار نمط الإجابة المسبق قبل التفعيل -->
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 11px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-            <span>🎯 نمط الحل قبل التشغيل:</span>
-            <span id="lblLiveModeSelected" style="color: #38bdf8; font-size: 10.5px;">⚡ بدون فلسفة</span>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            <button type="button" id="btnLiveModeConcise" class="live-mode-toggle-btn active" data-live-mode="concise" style="padding: 7px 6px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; border: 1.5px solid #0284c7; background: rgba(2, 132, 199, 0.3); color: #38bdf8; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease;">
-              <span>⚡</span>
-              <span>بدون فلسفة (مباشر)</span>
-            </button>
-            <button type="button" id="btnLiveModeDetailed" class="live-mode-toggle-btn" data-live-mode="detailed" style="padding: 7px 6px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; border: 1.5px solid #475569; background: #1e293b; color: #94a3b8; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease;">
-              <span>📖</span>
-              <span>مفصل مع الشرح</span>
-            </button>
+          <div class="accordion-meta">
+            <span class="accordion-badge live-badge-color" id="accLiveBadge" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444;">REC 🔴</span>
+            <span class="accordion-chevron">▾</span>
           </div>
         </div>
+        <div class="accordion-body">
+          <!-- اختيار نمط الإجابة المسبق قبل التفعيل -->
+          <div style="margin-bottom: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+              <span>🎯 نمط الحل قبل التشغيل:</span>
+              <span id="lblLiveModeSelected" style="color: #38bdf8; font-size: 10.5px;">⚡ بدون فلسفة</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+              <button type="button" id="btnLiveModeConcise" class="live-mode-toggle-btn active" data-live-mode="concise" style="padding: 7px 6px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; border: 1.5px solid #0284c7; background: rgba(2, 132, 199, 0.3); color: #38bdf8; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease;">
+                <span>⚡</span>
+                <span>بدون فلسفة (مباشر)</span>
+              </button>
+              <button type="button" id="btnLiveModeDetailed" class="live-mode-toggle-btn" data-live-mode="detailed" style="padding: 7px 6px; font-size: 11.5px; font-weight: 700; border-radius: 8px; cursor: pointer; border: 1.5px solid #475569; background: #1e293b; color: #94a3b8; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease;">
+                <span>📖</span>
+                <span>مفصل مع الشرح</span>
+              </button>
+            </div>
+          </div>
 
-        <!-- الزر الرئيسي الموحد: الحل المباشر -->
-        <button type="button" id="btnMainLiveDirectSolve" class="primary-live-solve-btn" style="width: 100%; background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); color: #ffffff; border: none; padding: 13px 20px; border-radius: 30px; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px rgba(2, 132, 199, 0.45); transition: transform 0.15s ease, box-shadow 0.15s ease; margin-bottom: 10px;">
-          <span style="font-size: 18px;">⚡</span>
-          <span>الحل المباشر</span>
-        </button>
+          <!-- الزر الرئيسي الموحد: تشغيل الحل المباشر -->
+          <button type="button" id="btnMainLiveDirectSolve" class="primary-live-solve-btn" style="width: 100%; background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); color: #ffffff; border: none; padding: 13px 20px; border-radius: 30px; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px rgba(2, 132, 199, 0.45); transition: transform 0.15s ease, box-shadow 0.15s ease; margin-bottom: 10px;">
+            <span style="font-size: 18px;">⚡</span>
+            <span>بدء الحل المباشر</span>
+          </button>
 
-        <!-- توضيح علامات الرصد -->
-        <div style="background: rgba(0, 0, 0, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 10.5px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;">
-          <span style="display: flex; align-items: center; gap: 4px;">🟡 <strong style="color: #facc15;">أصفر</strong> على السؤال</span>
-          <span style="display: flex; align-items: center; gap: 4px;">🟢 <strong style="color: #34d399;">أخضر</strong> للصحيح</span>
-          <span style="display: flex; align-items: center; gap: 4px;">🔴 <strong style="color: #f87171;">أحمر</strong> للخاطئ</span>
+          <!-- توضيح علامات الرصد -->
+          <div style="background: rgba(0, 0, 0, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 10.5px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 4px;">🟡 <strong style="color: #facc15;">أصفر</strong> على السؤال</span>
+            <span style="display: flex; align-items: center; gap: 4px;">🟢 <strong style="color: #34d399;">أخضر</strong> للصحيح</span>
+            <span style="display: flex; align-items: center; gap: 4px;">🔴 <strong style="color: #f87171;">أحمر</strong> للخاطئ</span>
+          </div>
         </div>
       </div>
 
