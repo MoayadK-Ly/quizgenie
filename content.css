@@ -569,38 +569,46 @@
   }
 }
 
-/* Floating Exam Scanner Action Pill */
+/* Mini Exam Toolbar and Scanner Fab Disabled / Hidden */
+#quizgenie-mini-exam-bar,
 .quizgenie-scanner-fab {
-  position: fixed !important;
-  bottom: 24px !important;
-  left: 24px !important;
-  z-index: 2147483645 !important;
-  background: linear-gradient(135deg, #0284c7, #4338ca) !important;
-  border: 1.5px solid #38bdf8 !important;
-  color: #ffffff !important;
-  padding: 8px 16px !important;
-  border-radius: 30px !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.4) !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  transition: all 0.25s ease !important;
-  direction: rtl !important;
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
-.quizgenie-scanner-fab:hover {
-  transform: translateY(-2px) scale(1.04) !important;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75), 0 0 25px rgba(56, 189, 248, 0.65) !important;
-  border-color: #7dd3fc !important;
+/* Circular Radio Button Glow and Highlighting */
+.quizgenie-circle-correct,
+input[type="radio"].quizgenie-circle-correct {
+  border-color: #10b981 !important;
+  background-color: #10b981 !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.95), 0 0 4px #10b981 !important;
+  accent-color: #10b981 !important;
+  transform: scale(1.15) !important;
+  transition: all 0.2s ease !important;
 }
 
-.quizgenie-scanner-fab.active {
-  background: linear-gradient(135deg, #10b981, #047857) !important;
-  border-color: #34d399 !important;
+.quizgenie-circle-wrong,
+input[type="radio"].quizgenie-circle-wrong {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.25) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.75) !important;
+  accent-color: #ef4444 !important;
+  transition: all 0.2s ease !important;
+}
+
+svg circle.quizgenie-circle-correct,
+svg.quizgenie-circle-correct circle {
+  fill: #10b981 !important;
+  stroke: #34d399 !important;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)) !important;
+}
+
+svg circle.quizgenie-circle-wrong,
+svg.quizgenie-circle-wrong circle {
+  fill: rgba(239, 68, 68, 0.25) !important;
+  stroke: #ef4444 !important;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.7)) !important;
 }
 
 /* 3 Border Shapes for Option Elements */
@@ -614,27 +622,6 @@
 
 .quizgenie-shape-capsule {
   border-radius: 26px !important;
-}
-
-/* Mini Exam Floating Draggable Toolbar v2.1.0 */
-#quizgenie-mini-exam-bar {
-  position: fixed !important;
-  bottom: 24px !important;
-  left: 24px !important;
-  z-index: 2147483645 !important;
-  background: var(--qg-bar-bg, rgba(15, 23, 42, 0.94)) !important;
-  border: 1.5px solid var(--qg-bar-primary, #0284c7) !important;
-  border-radius: 14px !important;
-  padding: 6px 10px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(2, 132, 199, 0.25) !important;
-  backdrop-filter: blur(12px) !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif !important;
-  direction: rtl !important;
-  user-select: none !important;
-  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s !important;
 }
 
 #quizgenie-mini-exam-bar.minimized {
