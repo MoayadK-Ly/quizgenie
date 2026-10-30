@@ -1324,14 +1324,18 @@ function ensureHighlightStylesInPage() {
 }
 
 function clearAllExamHighlights() {
-  document.querySelectorAll('.quizgenie-question-ring-red, .quizgenie-highlight-question').forEach(el => {
-    el.classList.remove('quizgenie-question-ring-red', 'quizgenie-highlight-question');
+  document.querySelectorAll('.quizgenie-question-yellow-glow, .quizgenie-question-ring-red, .quizgenie-highlight-question').forEach(el => {
+    el.classList.remove('quizgenie-question-yellow-glow', 'quizgenie-question-ring-red', 'quizgenie-highlight-question');
   });
   document.querySelectorAll('.quizgenie-correct-answer-glow, .quizgenie-highlight-correct').forEach(el => {
     el.classList.remove('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
   });
-  document.querySelectorAll('.quizgenie-highlight-wrong').forEach(el => el.classList.remove('quizgenie-highlight-wrong'));
-  document.querySelectorAll('.quizgenie-question-badge-tag, .quizgenie-correct-badge-tag').forEach(el => el.remove());
+  document.querySelectorAll('.quizgenie-wrong-answer-outline, .quizgenie-highlight-wrong').forEach(el => {
+    el.classList.remove('quizgenie-wrong-answer-outline', 'quizgenie-highlight-wrong');
+  });
+  document.querySelectorAll('.quizgenie-question-badge-tag-yellow, .quizgenie-question-badge-tag, .quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(el => el.remove());
+  const card = document.getElementById('quizgenie-direct-solution-card');
+  if (card) card.remove();
   const banner = document.getElementById('quizgenie-exam-scan-banner');
   if (banner) banner.remove();
   const modal = document.getElementById('quizgenie-scan-result-card');
@@ -2418,18 +2422,18 @@ function executeLiveDirectSolveStep() {
 
   clearAllExamHighlights();
 
-  // إزالة البطاقة السابقة
+  // إزالة أي بطاقة سابقة
   const oldCard = document.getElementById('quizgenie-direct-solution-card');
   if (oldCard) oldCard.remove();
 
-  // 1. وضع الدائرة الحمراء المتوهجة حول السؤال المقروء مع شارة "السؤال المقروء ⭕"
+  // 1. وضع خط وتوهج أصفر بارز حول السؤال المقروء مع شارة "🟡 السؤال"
   if (questionElement) {
-    questionElement.classList.add('quizgenie-question-ring-red', 'quizgenie-highlight-question');
-    let qTag = questionElement.querySelector('.quizgenie-question-badge-tag');
+    questionElement.classList.add('quizgenie-question-yellow-glow', 'quizgenie-highlight-question');
+    let qTag = questionElement.querySelector('.quizgenie-question-badge-tag-yellow');
     if (!qTag) {
       qTag = document.createElement('span');
-      qTag.className = 'quizgenie-question-badge-tag';
-      qTag.textContent = '⭕ السؤال المقروء';
+      qTag.className = 'quizgenie-question-badge-tag-yellow';
+      qTag.textContent = '🟡 السؤال';
       questionElement.appendChild(qTag);
     }
     try { questionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
@@ -2472,10 +2476,8 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
   const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
-  const explanation = data.explanation || '';
-  const relation = data.relation || '';
 
-  // 3. إضاءة الخيار الصحيح باللون الأخضر المتوهج مع شارة "الخيار الصحيح 🟢"
+  // تحديد عنصر الإجابة الصحيحة
   let matchedOptionElement = null;
   if (correctIndex >= 0 && correctIndex < optionElements.length) {
     matchedOptionElement = optionElements[correctIndex];
@@ -2490,40 +2492,50 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
     }
   }
 
-  if (matchedOptionElement) {
-    matchedOptionElement.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
-    let ansTag = matchedOptionElement.querySelector('.quizgenie-correct-badge-tag');
-    if (!ansTag) {
-      ansTag = document.createElement('span');
-      ansTag.className = 'quizgenie-correct-badge-tag';
-      ansTag.textContent = '🟢 الخيار الصحيح';
-      matchedOptionElement.appendChild(ansTag);
+  // 3. وضع خط وتوهج أخضر بارز على الإجابة الصحيحة وخط أحمر بارز حول كل إجابة خاطئة
+  if (optionElements && optionElements.length > 0) {
+    for (let i = 0; i < optionElements.length; i++) {
+      const optEl = optionElements[i];
+      if (optEl === matchedOptionElement || (!matchedOptionElement && i === correctIndex)) {
+        // الإجابة الصحيحة: خط وتوهج أخضر
+        optEl.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
+        optEl.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
+        let ansTag = optEl.querySelector('.quizgenie-correct-badge-tag');
+        if (!ansTag) {
+          ansTag = document.createElement('span');
+          ansTag.className = 'quizgenie-correct-badge-tag';
+          ansTag.textContent = '🟢 الخيار الصحيح';
+          optEl.appendChild(ansTag);
+        }
+        const oldWrong = optEl.querySelector('.quizgenie-wrong-badge-tag');
+        if (oldWrong) oldWrong.remove();
+
+        try {
+          const radioInside = optEl.querySelector('input[type="radio"]') || (optEl.tagName === 'INPUT' ? optEl : null);
+          if (radioInside) radioInside.checked = true;
+        } catch (e) {}
+      } else {
+        // الإجابة الخاطئة: خط بارز أحمر
+        optEl.classList.remove('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
+        optEl.classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
+        let wrongTag = optEl.querySelector('.quizgenie-wrong-badge-tag');
+        if (!wrongTag) {
+          wrongTag = document.createElement('span');
+          wrongTag.className = 'quizgenie-wrong-badge-tag';
+          wrongTag.textContent = '🔴 خيار خاطئ';
+          optEl.appendChild(wrongTag);
+        }
+        const oldCorrect = optEl.querySelector('.quizgenie-correct-badge-tag');
+        if (oldCorrect) oldCorrect.remove();
+      }
     }
   }
 
-  // 4. إظهار بطاقة الحل الذكية العائمة
-  const answerDisplay = correctChoiceText || (optionsList[correctIndex] || 'الإجابة المحددة');
-  const card = document.createElement('div');
-  card.id = 'quizgenie-direct-solution-card';
-  card.className = 'qg-direct-solution-card';
-  
-  let spawnLeft = (region && region.right) ? region.right + 15 : window.innerWidth - 380;
-  let spawnTop = (region && region.top) ? region.top : 70;
-  if (spawnLeft + 350 > window.innerWidth) {
-    spawnLeft = Math.max(15, (region && region.left ? region.left - 365 : 15));
-  }
-  card.style.left = spawnLeft + 'px';
-  card.style.top = Math.max(20, spawnTop) + 'px';
+  // إزالة أي بطاقة حل سابقة منعاً لتغطية الشاشة والاعتماد التام على التلوين المباشر
+  const card = document.getElementById('quizgenie-direct-solution-card');
+  if (card) card.remove();
 
-  card.innerHTML = `
-    <div class="qg-direct-solution-header">
-      <span>🎯 الإجابة الصحيحة:</span>
-      <span style="color: #38bdf8; font-weight: 800;">${answerDisplay}</span>
-    </div>
-    ${relation ? `<div style="font-size: 11.5px; color: #fbbf24; margin-bottom: 4px;">🔗 <strong>العلاقة:</strong> ${relation}</div>` : ''}
-    ${(explanation && activeLiveMode === 'detailed') ? `<div class="qg-direct-solution-body">${explanation}</div>` : ''}
-  `;
-  (document.body || document.documentElement).appendChild(card);
+  showScanFeedbackBanner('🎯 تم التمييز: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
 }
 
 // الاستماع لاختصار لوحة المفاتيح Ctrl+Shift+S أو F2 داخل صفحة الويب
