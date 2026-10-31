@@ -692,6 +692,84 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return false;
 });
 
+// دالة مساعدة ذكية تكشف ما إذا كان التحديد جزءاً من سؤال في امتحان وتستخرج الخيارات التابعة له تلقائياً
+function getEnrichedSelectionText(selection) {
+  if (!selection || !selection.rangeCount) return '';
+  const rawText = selection.toString().trim();
+  if (!rawText || rawText.length < 3) return rawText;
+
+  // إذا كان التحديد يحتوي مسبقاً على خيارين أو أكثر (A, B أو 1, 2 أو أ، ب)، نتركه كما هو
+  const choicePattern = /(?:^|\n)\s*(?:[A-Da-d\u0623\u0628\u062c\u062f1-4][\.\-\:\)\/]|[\(\[][A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]])/g;
+  const directMatches = rawText.match(choicePattern);
+  if (directMatches && directMatches.length >= 2) {
+    return rawText;
+  }
+
+  try {
+    const range = selection.getRangeAt(0);
+    let node = range.commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return rawText;
+
+    const IGNORED_SELECTORS = '#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card, #quizgenie-countdown-overlay, #quizgenie-corner-rec-badge, .answer-verifier, .question-meta, .btn-reveal-solution, .correct-answer-hint, .exam-footer-toolbar, .instructions-card, .exam-header';
+    const IGNORED_TEXT = /^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|كشف|عرض الإجابة|تحقق|تأكيد|مساعدة|مراجعة|إلغاء|حذف|مسح|Of|Show|Check|Verify|Hint|Skip|Solution|Goal|Boost|XP|Streak|Bonus|Reward|Score|Points|هدف|تعزيز|مكافأة|نقاط|المستوى|إغلاق|Close)/i;
+
+    const cardSelectors = '.question-card, [class*="question-card" i], [class*="question-item" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question-wrapper" i], [class*="question-container" i], [class*="question-block" i], .que, fieldset, [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], tr.question-row, tr[class*="question" i]';
+    let container = (node.parentElement ? node.parentElement.closest(cardSelectors) : null) || node.closest(cardSelectors);
+
+    if (!container) {
+      let cur = node;
+      for (let depth = 0; depth < 5 && cur && cur !== document.body; depth++) {
+        const optCheck = cur.parentElement ? cur.parentElement.querySelectorAll('.option-item, .choice-item, .option, .choice, input[type="radio"], label, li') : [];
+        if (optCheck.length >= 2) {
+          container = cur.parentElement;
+          break;
+        }
+        cur = cur.parentElement;
+      }
+    }
+
+    if (container) {
+      const choiceSelector = '.option-item, .choice-item, .quiz-option, .exam-option, input[type="radio"], input[type="checkbox"], [role="radio"], label, li, [class*="true-false" i], [class*="tf-option" i], [class*="custom-control" i], svg circle';
+      let rawChoiceCandidates = Array.from(container.querySelectorAll(choiceSelector)).filter(el => {
+        if (el.closest(IGNORED_SELECTORS)) return false;
+        if (node.contains(el)) return false;
+        const cls = (typeof el.className === 'string') ? el.className.toLowerCase() : '';
+        if (/options-list|choices-list|answers-list|options-container|choices-container|wrapper|grid/.test(cls)) return false;
+        if (/letter|title|icon|badge|hint|prefix|number/.test(cls)) return false;
+        const r = el.getBoundingClientRect();
+        return (r.width > 0 && r.height > 0) || (el.offsetWidth > 0 || el.offsetHeight > 0) || (el.innerText && el.innerText.trim().length > 0);
+      });
+
+      const choiceCandidates = rawChoiceCandidates.filter(c => !rawChoiceCandidates.some(other => other !== c && c.contains(other)));
+
+      const extractedOptions = [];
+      for (const el of choiceCandidates) {
+        const res = extractOptionFromCandidate(el, container, IGNORED_SELECTORS, IGNORED_TEXT);
+        if (res && res.text && !extractedOptions.includes(res.text) && !res.text.includes(rawText)) {
+          extractedOptions.push(res.text);
+        }
+      }
+
+      if (extractedOptions.length >= 2) {
+        const formattedOpts = extractedOptions.map((opt, idx) => {
+          const letter = String.fromCharCode(65 + idx);
+          if (/^([A-Da-d\u0623-\u062f1-4][\.\-\:\)\/\s]|[\(\[][A-Da-d\u0623-\u062f1-4][\)\]])/.test(opt)) {
+            return opt;
+          }
+          return `(${letter}) ${opt}`;
+        }).join('\n');
+
+        return `${rawText}\n\nالخيارات المتاحة:\n${formattedOpts}`;
+      }
+    }
+  } catch (err) {
+    console.warn('Enrich selection error:', err);
+  }
+
+  return rawText;
+}
+
 // التفكير الاستباقي الحي المسبق أثناء حركة التحديد (Pre-computation 0s)
 let preSolveDebounceTimer = null;
 document.addEventListener('selectionchange', () => {
@@ -700,20 +778,23 @@ document.addEventListener('selectionchange', () => {
   preSolveDebounceTimer = setTimeout(() => {
     try {
       const sel = window.getSelection();
-      const txt = sel ? sel.toString().trim() : '';
-      if (txt.length >= 4 && txt !== currentQuestionCache.text) {
-        if (chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({
-            action: 'PRE_SOLVE',
-            text: txt,
-            mode: currentMode,
-            subject: subject,
-            targetLanguage: targetLanguage
-          }).catch(() => {});
+      const rawTxt = sel ? sel.toString().trim() : '';
+      if (rawTxt.length >= 4) {
+        const targetTxt = getEnrichedSelectionText(sel) || rawTxt;
+        if (targetTxt !== currentQuestionCache.text) {
+          if (chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+              action: 'PRE_SOLVE',
+              text: targetTxt,
+              mode: currentMode,
+              subject: subject,
+              targetLanguage: targetLanguage
+            }).catch(() => {});
+          }
         }
       }
     } catch (e) {}
-  }, 180);
+  }, 160);
 });
 
 // مراقبة تحديد النصوص في الصفحة
@@ -730,9 +811,9 @@ function handleSelectionEvent(e) {
 
   setTimeout(() => {
     const selection = window.getSelection();
-    const text = selection ? selection.toString().trim() : '';
+    const rawText = selection ? selection.toString().trim() : '';
 
-    if (text.length > 0) {
+    if (rawText.length > 0) {
       const activeEl = document.activeElement;
       if (activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'password') {
         removeFAB();
@@ -745,8 +826,10 @@ function handleSelectionEvent(e) {
       const rect = range.getBoundingClientRect();
       if (!rect || (rect.width === 0 && rect.height === 0)) return;
 
-      selectedTextCache = text;
-      triggerPrefetch(text);
+      const enrichedText = getEnrichedSelectionText(selection);
+      const textToUse = enrichedText || rawText;
+      selectedTextCache = textToUse;
+      triggerPrefetch(textToUse);
       showFAB(rect);
     } else if (!menuElement && !panelElement) {
       removeFAB();
@@ -1318,7 +1401,8 @@ function ensureHighlightStylesInPage() {
     .quizgenie-wrong-badge-tag {
       position: absolute !important;
       top: 50% !important;
-      left: 10px !important;
+      left: 12px !important;
+      right: auto !important;
       transform: translateY(-50%) !important;
       background: rgba(239, 68, 68, 0.2) !important;
       border: 1px solid #ef4444 !important;
@@ -1330,6 +1414,11 @@ function ensureHighlightStylesInPage() {
       z-index: 2147483640 !important;
       font-family: system-ui, -apple-system, sans-serif !important;
       white-space: nowrap !important;
+    }
+    .quizgenie-correct-badge-tag.qg-badge-ltr,
+    .quizgenie-wrong-badge-tag.qg-badge-ltr {
+      left: auto !important;
+      right: 12px !important;
     }
     .quizgenie-circle-correct,
     input[type="radio"].quizgenie-circle-correct {
@@ -2395,11 +2484,20 @@ function stopLiveDirectMode() {
 function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNORED_TEXT) {
   if (!el || el.closest(IGNORED_SELECTORS)) return null;
   const r = el.getBoundingClientRect();
-  if (r.width === 0 || r.height === 0) return null;
+  const hasVisualOrText = (r.width > 0 && r.height > 0) || (el.offsetWidth > 0 || el.offsetHeight > 0) || (el.innerText && el.innerText.trim().length > 0);
+  if (!hasVisualOrText) return null;
 
   // الحاوية الخارجية للخيار (تغطي الراديو الدائري والنص والأيقونات)
-  let containerEl = el.closest('label, li, tr, [class*="option" i], [class*="choice" i], [class*="radio" i], [class*="answer" i], .form-check, [role="radio"]') || el.parentElement || el;
+  let containerEl = el.closest('.option-item, .choice-item, .quiz-option, .exam-option, label, li, tr, .form-check, [role="radio"]') ||
+                    el.closest('[class*="option" i], [class*="choice" i]') ||
+                    el.parentElement || el;
   if (!containerEl || containerEl.closest(IGNORED_SELECTORS)) return null;
+
+  // استبعاد الحاويات العامة ومجموعات الخيارات
+  const cCls = (typeof containerEl.className === 'string') ? containerEl.className.toLowerCase() : '';
+  if (/options-list|choices-list|answers-list|options-container|choices-container|grid|wrapper/.test(cCls)) {
+    containerEl = el;
+  }
 
   // إذا كانت الحاوية بدون نص كافٍ وكانت مجرد غلاف للزر الدائري، نتوسع للحاوية الأب المشتركة
   const directText = (containerEl.innerText || '').trim();
@@ -2426,7 +2524,7 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
 
   // تنظيف الرموز والدوائر والنقاط والبادئات واللواحق (◯ ○ ● 🔘 ⭕ ⚪ ⚫ ⚬ ⦿ ◦ •)
   text = text
-    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][.\-:\)\/]\s*|[\(\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb]\s*)+/g, '')
+    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][.\-:\)\/\s]\s*|[\(\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb]\s*)+/g, '')
     .replace(/[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb.\-:\(\)\[\]\s]+$/g, '')
     .trim();
 
@@ -2443,27 +2541,62 @@ function extractQuestionAndOptionsFromRegion(region) {
   const IGNORED_TEXT = /^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|كشف|عرض الإجابة|تحقق|تأكيد|مساعدة|مراجعة|إلغاء|حذف|مسح|Of|Show|Check|Verify|Hint|Skip|Solution|Goal|Boost|XP|Streak|Bonus|Reward|Score|Points|هدف|تعزيز|مكافأة|نقاط|المستوى|إغلاق|Close)/i;
 
   // 1. فحص حاويات الأسئلة المنظمة (مثل question-card أو que أو quiz-question أو fieldset أو الصفوف)
-  const cardSelectors = '.question-card, .question, .que, [class*="question-item" i], [class*="question-card" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question" i], [id*="question" i], [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], fieldset, [role="listitem"], tr.question-row, tr[class*="question" i]';
+  const cardSelectors = '.question-card, [class*="question-card" i], [class*="question-item" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question-wrapper" i], [class*="question-container" i], [class*="question-block" i], .que, fieldset, [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], tr.question-row, tr[class*="question" i]';
   let containers = Array.from(document.querySelectorAll(cardSelectors)).filter(c => {
     if (c.closest(IGNORED_SELECTORS)) return false;
     const r = c.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) return false;
     if (!region.isFullScreen) {
-      return (r.left >= region.left - 30 && r.right <= region.right + 30 &&
-              r.top >= region.top - 30 && r.bottom <= region.bottom + 30);
+      const intersects = (r.left < region.right + 30 && r.right > region.left - 30 &&
+                          r.top < region.bottom + 30 && r.bottom > region.top - 30);
+      if (intersects) return true;
+      const qEl = c.querySelector('.question-text, .q-text, [class*="question-title" i], [class*="question-body" i], [class*="stem" i], h1, h2, h3, h4, h5');
+      if (qEl) {
+        const qr = qEl.getBoundingClientRect();
+        return (qr.left < region.right + 30 && qr.right > region.left - 30 &&
+                qr.top < region.bottom + 30 && qr.bottom > region.top - 30);
+      }
+      return false;
     }
     return true;
   });
 
   if (containers.length > 0) {
-    // تحديد الحاوية النشطة: أول حاوية غير محلولة ظاهرة في نطاق الشاشة، أو أول غير محلولة
+    // تحديد الحاوية النشطة: الحاوية الأكثر تطابقاً مع المنطقة المحددة
     let targetContainer = null;
-    for (const c of containers) {
-      if (c.dataset.qgSolved === 'true') continue;
-      const r = c.getBoundingClientRect();
-      if (r.bottom > 20 && r.top < window.innerHeight - 20) {
-        targetContainer = c;
-        break;
+    if (!region.isFullScreen) {
+      let bestScore = -1;
+      for (const c of containers) {
+        if (c.dataset.qgSolved === 'true') continue;
+        const r = c.getBoundingClientRect();
+        const xOverlap = Math.max(0, Math.min(r.right, region.right) - Math.max(r.left, region.left));
+        const yOverlap = Math.max(0, Math.min(r.bottom, region.bottom) - Math.max(r.top, region.top));
+        const overlapArea = xOverlap * yOverlap;
+
+        const qEl = c.querySelector('.question-text, .q-text, [class*="question-title" i], [class*="question-body" i], [class*="stem" i], h1, h2, h3, h4, h5');
+        let qOverlap = 0;
+        if (qEl) {
+          const qr = qEl.getBoundingClientRect();
+          const qx = Math.max(0, Math.min(qr.right, region.right) - Math.max(qr.left, region.left));
+          const qy = Math.max(0, Math.min(qr.bottom, region.bottom) - Math.max(qr.top, region.top));
+          qOverlap = qx * qy;
+        }
+
+        const score = overlapArea + (qOverlap * 10);
+        if (score > bestScore && score > 0) {
+          bestScore = score;
+          targetContainer = c;
+        }
+      }
+    }
+
+    if (!targetContainer) {
+      for (const c of containers) {
+        if (c.dataset.qgSolved === 'true') continue;
+        const r = c.getBoundingClientRect();
+        if (r.bottom > 20 && r.top < window.innerHeight - 20) {
+          targetContainer = c;
+          break;
+        }
       }
     }
     if (!targetContainer) {
@@ -2483,14 +2616,20 @@ function extractQuestionAndOptionsFromRegion(region) {
       }
       const questionText = questionElement ? questionElement.innerText.trim() : '';
 
-      // استخراج خيارات هذه الحاوية حصراً (بما فيها الراديو الدائري، خيارات صح وخطأ، بطاقات الخيارات)
-      const choiceSelector = 'input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"], .option-item, .option, .choice, label, li, [class*="radio" i], [class*="circle" i], [class*="form-check" i], [class*="true-false" i], [class*="tf-option" i], [class*="custom-control" i], svg circle, svg[class*="radio" i], svg[class*="circle" i]';
-      const choiceCandidates = Array.from(targetContainer.querySelectorAll(choiceSelector)).filter(el => {
+      // استخراج خيارات هذه الحاوية حصراً دون الحاويات المجمعة أو العناصر الداخلية
+      const choiceSelector = '.option-item, .choice-item, .quiz-option, .exam-option, input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"], label, li, [class*="true-false" i], [class*="tf-option" i], [class*="custom-control" i], svg circle';
+      let rawChoiceCandidates = Array.from(targetContainer.querySelectorAll(choiceSelector)).filter(el => {
         if (el.closest(IGNORED_SELECTORS)) return false;
         if (questionElement && (el === questionElement || questionElement.contains(el))) return false;
+        const cls = (typeof el.className === 'string') ? el.className.toLowerCase() : '';
+        if (/options-list|choices-list|answers-list|options-container|choices-container|wrapper|grid/.test(cls)) return false;
+        if (/letter|title|icon|badge|hint|prefix|number/.test(cls)) return false;
         const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0;
+        return (r.width > 0 && r.height > 0) || (el.offsetWidth > 0 || el.offsetHeight > 0) || (el.innerText && el.innerText.trim().length > 0);
       });
+
+      // استبعاد أي حاوية تضم داخلها خيارات أخرى لمنع التكرار والتداخل
+      const choiceCandidates = rawChoiceCandidates.filter(c => !rawChoiceCandidates.some(other => other !== c && c.contains(other)));
 
       const optionsList = [];
       const optionElements = [];
@@ -2538,16 +2677,21 @@ function extractQuestionAndOptionsFromRegion(region) {
   let questionElement = null;
   let questionText = '';
 
-  for (const el of candidateElements) {
+  const rawChoiceEls = candidateElements.filter(el => {
     const cls = typeof el.className === 'string' ? el.className.toLowerCase() : '';
+    if (/options-list|choices-list|answers-list|options-container|choices-container|wrapper|grid/.test(cls)) return false;
+    if (/letter|title|icon|badge|hint|prefix|number/.test(cls)) return false;
     const isRadio = (el.tagName === 'INPUT' && (el.type === 'radio' || el.type === 'checkbox')) || el.getAttribute('role') === 'radio' || el.tagName === 'circle' || (el.tagName === 'svg' && el.querySelector('circle'));
     const isChoiceCls = /choice|option|radio|answer|select|check|form-check|circle|true-false|tf-option/i.test(cls) || el.tagName === 'LI' || el.tagName === 'LABEL';
-    if (isRadio || isChoiceCls) {
-      const res = extractOptionFromCandidate(el, null, IGNORED_SELECTORS, IGNORED_TEXT);
-      if (res && !optionsList.includes(res.text) && !optionElements.includes(res.containerEl)) {
-        optionsList.push(res.text);
-        optionElements.push(res.containerEl);
-      }
+    return isRadio || isChoiceCls;
+  });
+  const filteredChoiceEls = rawChoiceEls.filter(c => !rawChoiceEls.some(other => other !== c && c.contains(other)));
+
+  for (const el of filteredChoiceEls) {
+    const res = extractOptionFromCandidate(el, null, IGNORED_SELECTORS, IGNORED_TEXT);
+    if (res && !optionsList.includes(res.text) && !optionElements.includes(res.containerEl)) {
+      optionsList.push(res.text);
+      optionElements.push(res.containerEl);
     }
   }
 
@@ -2686,51 +2830,51 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
   let matchedIdx = -1;
 
-  // 1. مطابقة نص الخيار أولاً بدقة متناهية عبر التطبيع العربي الشامل ودعم خيارات صح وخطأ (True/False)
-  const cleanTarget = normalizeExamText(correctChoiceText);
-  const isTrueVariant = (t) => {
-    const raw = (t || '').trim().toLowerCase();
-    const clean = normalizeExamText(raw);
-    return /^(صح|صواب|صحيح|صحيحة|صحيحه|نعم|true|t|yes|y)$/i.test(raw) ||
-           /^(صح|صواب|صحيح|صحيحه|نعم|true|t|yes|y)$/i.test(clean) ||
-           clean === 'صح' || clean === 'صواب' || clean === 'صحيح' || clean === 'صحيحه' || clean === 'true' ||
-           raw.includes('صح') || raw.includes('صواب') || raw.includes('صحيح') || raw.includes('true');
-  };
-  const isFalseVariant = (t) => {
-    const raw = (t || '').trim().toLowerCase();
-    const clean = normalizeExamText(raw);
-    return /^(خطأ|خطا|خاطئ|خاطئة|خاطئه|لا|false|f|no|n)$/i.test(raw) ||
-           /^(خطأ|خطا|خاطئ|خاطئه|لا|false|f|no|n)$/i.test(clean) ||
-           clean === 'خطا' || clean === 'خاطئ' || clean === 'خاطئه' || clean === 'false' ||
-           raw.includes('خطأ') || raw.includes('خطا') || raw.includes('خاطئ') || raw.includes('false');
-  };
+  // 1. فحص رمز الخيار الصريح أولاً (A, B, C, D أو أ، ب، ج، د) بدقة 100%
+  const rawChar = data.correctLetter || '';
+  const charIdx = mapLetterToIndex(rawChar);
+  if (charIdx >= 0 && charIdx < optionElements.length) {
+    matchedIdx = charIdx;
+  }
 
-  if (cleanTarget.length > 0) {
-    for (let i = 0; i < optionsList.length; i++) {
-      const cleanOpt = normalizeExamText(optionsList[i]);
-      if (cleanOpt === cleanTarget || 
-          (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
-          (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
-          (isTrueVariant(correctChoiceText) && isTrueVariant(optionsList[i])) ||
-          (isFalseVariant(correctChoiceText) && isFalseVariant(optionsList[i])) ||
-          (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
-          (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
-        matchedIdx = i;
-        break;
+  // 2. مطابقة نص الخيار بدقة متناهية عبر التطبيع ودعم خيارات صح وخطأ (True/False)
+  if (matchedIdx === -1) {
+    const cleanTarget = normalizeExamText(correctChoiceText);
+    const isTrueVariant = (t) => {
+      const raw = (t || '').trim().toLowerCase();
+      const clean = normalizeExamText(raw);
+      return /^(صح|صواب|صحيح|صحيحة|صحيحه|نعم|true|t|yes|y)$/i.test(raw) ||
+             /^(صح|صواب|صحيح|صحيحه|نعم|true|t|yes|y)$/i.test(clean) ||
+             clean === 'صح' || clean === 'صواب' || clean === 'صحيح' || clean === 'صحيحه' || clean === 'true' ||
+             raw.includes('صح') || raw.includes('صواب') || raw.includes('صحيح') || raw.includes('true');
+    };
+    const isFalseVariant = (t) => {
+      const raw = (t || '').trim().toLowerCase();
+      const clean = normalizeExamText(raw);
+      return /^(خطأ|خطا|خاطئ|خاطئة|خاطئه|لا|false|f|no|n)$/i.test(raw) ||
+             /^(خطأ|خطا|خاطئ|خاطئه|لا|false|f|no|n)$/i.test(clean) ||
+             clean === 'خطا' || clean === 'خاطئ' || clean === 'خاطئه' || clean === 'false' ||
+             raw.includes('خطأ') || raw.includes('خطا') || raw.includes('خاطئ') || raw.includes('false');
+    };
+
+    if (cleanTarget.length > 0) {
+      for (let i = 0; i < optionsList.length; i++) {
+        const cleanOpt = normalizeExamText(optionsList[i]);
+        if (cleanOpt === cleanTarget || 
+            (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
+            (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
+            (isTrueVariant(correctChoiceText) && isTrueVariant(optionsList[i])) ||
+            (isFalseVariant(correctChoiceText) && isFalseVariant(optionsList[i])) ||
+            (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
+            (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
+          matchedIdx = i;
+          break;
+        }
       }
     }
   }
 
-  // 2. إذا لم يطابق النص، التحقق من رمز الخيار الصريح (أ، ب، ج، د / A, B, C, D)
-  if (matchedIdx === -1) {
-    const rawChar = data.correctLetter || '';
-    const charIdx = mapLetterToIndex(rawChar);
-    if (charIdx >= 0 && charIdx < optionElements.length) {
-      matchedIdx = charIdx;
-    }
-  }
-
-  // 3. إذا لم يطابق الرمز، استخدم رقم الفهرس القادم من الخادم إذا كان صحيحاً وفي النطاق
+  // 3. إذا لم يطابق الرمز أو النص، استخدم رقم الفهرس القادم من الخادم
   if (matchedIdx === -1 && typeof data.correctIndex === 'number' && data.correctIndex >= 0 && data.correctIndex < optionElements.length) {
     matchedIdx = data.correctIndex;
   }
@@ -2766,19 +2910,18 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         }
       } catch (e) {}
 
+      // تنظيف أي شارات سابقة لمنع التكرار والتراكم
+      targetContainer.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(b => b.remove());
+      const isEnglish = /[a-zA-Z]{3,}/.test(targetContainer.innerText || '');
+
       if (i === matchedIdx) {
         // الإجابة الصحيحة: خط وتوهج أخضر نيون
         targetContainer.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         targetContainer.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
-        let ansTag = targetContainer.querySelector('.quizgenie-correct-badge-tag');
-        if (!ansTag) {
-          ansTag = document.createElement('span');
-          ansTag.className = 'quizgenie-correct-badge-tag';
-          ansTag.textContent = '🟢 الخيار الصحيح';
-          try { targetContainer.appendChild(ansTag); } catch (e) {}
-        }
-        const oldWrong = targetContainer.querySelector('.quizgenie-wrong-badge-tag');
-        if (oldWrong) oldWrong.remove();
+        const ansTag = document.createElement('span');
+        ansTag.className = 'quizgenie-correct-badge-tag' + (isEnglish ? ' qg-badge-ltr' : '');
+        ansTag.textContent = '🟢 الخيار الصحيح';
+        try { targetContainer.appendChild(ansTag); } catch (e) {}
 
         // تفعيل وتمييز زر الراديو الدائري وعناصر الدوائر
         try {
@@ -2812,15 +2955,10 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         // الإجابة الخاطئة: خط بارز أحمر متوهج
         targetContainer.classList.remove('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         targetContainer.classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
-        let wrongTag = targetContainer.querySelector('.quizgenie-wrong-badge-tag');
-        if (!wrongTag) {
-          wrongTag = document.createElement('span');
-          wrongTag.className = 'quizgenie-wrong-badge-tag';
-          wrongTag.textContent = '🔴 خيار خاطئ';
-          try { targetContainer.appendChild(wrongTag); } catch (e) {}
-        }
-        const oldCorrect = targetContainer.querySelector('.quizgenie-correct-badge-tag');
-        if (oldCorrect) oldCorrect.remove();
+        const wrongTag = document.createElement('span');
+        wrongTag.className = 'quizgenie-wrong-badge-tag' + (isEnglish ? ' qg-badge-ltr' : '');
+        wrongTag.textContent = '🔴 خيار خاطئ';
+        try { targetContainer.appendChild(wrongTag); } catch (e) {}
 
         // تمييز زر الراديو الدائري الخاطئ
         try {
