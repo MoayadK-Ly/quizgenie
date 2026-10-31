@@ -518,6 +518,15 @@ ${subjectDesc}
 ${langDesc}`;
   }
 
+  const isEnglishQuestion = /[a-zA-Z]{4,}/.test(cleanText);
+  if (isEnglishQuestion) {
+    systemPrompt += `\n\n🎯 تعليمات خاصة بالأسئلة والخيارات باللغة الإنجليزية (English Language & Grammar):
+إذا كان السؤال أو الخيارات المرفقة باللغة الإنجليزية:
+1. اقرأ السؤال وخياراته بعناية ودقة لغوية ونحوية كاملة.
+2. حدد رمز الخيار الإنجليزي الصحيح (مثل (A) أو (B) أو (C) أو (D)) متبوعاً بنص الجملة أو الكلمة الإنجليزية الصحيحة كما هي في السؤال دون أي تغيير.
+3. إذا احتوى النص المرفق على "الخيارات المتاحة:" أو خيارات A/B/C/D، اختر الإجابة منها مباشرة ولا تطلب خيارات إضافية أبداً.`;
+  }
+
   const isAnalogy = /[\u0600-\u06FF\w]+\s*:\s*[\u0600-\u06FF\w]+/.test(cleanText);
   if (isAnalogy) {
     systemPrompt += `\n\n🎯 تنبيه تخصصي فائق الأهمية (محرك التناظر اللفظي - القدرات العامة):
@@ -581,6 +590,7 @@ async function solveExamScanDispatcher(questionText, options, mode, subject, tar
 2. "خيارات الإجابة المعروضة" هي البدائل المتاحة للاختيار من بينها. إياك قطعياً أن تخلط بين السؤال والخيارات، أو تحل أحد الخيارات وتحسبه هو السؤال!
 3. مهمتك هي قراءة رأس السؤال وفهمه، ثم مطابقة خيارات الإجابة واختيار الخيار الوحيد المطابق والصحيح أكاديمياً.
 4. إذا كان السؤال عبارة أو جملة والمطلوب الحكم على صحتها بخيارات صح/خطأ أو صواب/خطأ (True/False)، تحقق بدقة لغوية وعلمية من صحة العبارة: إن كانت غير صحيحة اختر (False / خطأ)، وإن كانت صحيحة اختر (True / صح).
+5. إذا كان السؤال أو الخيارات باللغة الإنجليزية (English Grammar, Vocabulary, Reading Comprehension): قم بحل السؤال بالدقة اللغوية الإنجليزية الكاملة وحدد الحرف (A, B, C, D) والنص الإنجليزي المطابق للخيار الصحيح بدقة 100%.
 
 رأس السؤال الرئيسي:
 "${cleanQ}"
@@ -593,10 +603,11 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
 نمط الإجابة المطلوب: ${isConcise ? 'بدون فلسفة (مباشر وسريع جداً: حدد الخيار الصحيح بأقل كلمات لتوفير وقت الاختبار)' : 'مفصل مع الشرح الأكاديمي الكامل والتحليل'}
 
 المطلوب بدقة:
-حدد رقم فهرس الخيار الصحيح (من 0 إلى ${(options && options.length) ? options.length - 1 : 3})، نص الخيار، والشرح ${isConcise ? 'المختصر جداً' : 'المفصل'}.
+حدد رقم فهرس الخيار الصحيح (من 0 إلى ${(options && options.length) ? options.length - 1 : 3})، حرف الخيار (أ، ب، ج، د أو A, B, C, D)، نص الخيار الصحيح بدقة، والشرح ${isConcise ? 'المختصر جداً' : 'المفصل'}.
 أخرج النتيجة حصراً بصيغة JSON نظيفة بدون أي علامات markdown:
 {
   "correctIndex": 1,
+  "correctLetter": "C",
   "correctText": "نص الخيار الصحيح",
   "relation": "نوع العلاقة أو الفكرة المركزية",
   "explanation": "${isConcise ? 'الخيار الصحيح مباشرة' : 'شرح توضيحي مركز لسبب صحة هذا الخيار واستبعاد البقية'}"
@@ -635,6 +646,7 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
       const parsed = JSON.parse(jsonMatch[0]);
       let cIdx = (typeof parsed.correctIndex === 'number') ? parsed.correctIndex : -1;
       let cText = parsed.correctText || '';
+      let cLetter = (parsed.correctLetter || parsed.letter || '').toString().trim().toUpperCase();
 
       // Helper for Arabic normalization
       function normStr(s) {
@@ -644,6 +656,14 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
           .replace(/^[\(\[\{]?[a-dأ-د1-4][\)\]\}]?[\.\-\:\s]\s*/, '')
           .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
           .replace(/\s+/g, ' ').trim();
+      }
+
+      // Match by correctLetter if cIdx is invalid
+      if ((cIdx < 0 || cIdx >= options.length) && cLetter) {
+        const map = { 'أ': 0, 'A': 0, '1': 0, 'ب': 1, 'B': 1, '2': 1, 'ج': 2, 'C': 2, '3': 2, 'د': 3, 'D': 3, '4': 3 };
+        if (map[cLetter] !== undefined && map[cLetter] < options.length) {
+          cIdx = map[cLetter];
+        }
       }
 
       // Match cText against options if cIdx is invalid or out of bounds
@@ -661,8 +681,13 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
       }
       if (cIdx < 0 || cIdx >= options.length) cIdx = 0;
 
+      if (!cLetter && typeof cIdx === 'number' && cIdx >= 0 && cIdx < options.length) {
+        cLetter = String.fromCharCode(65 + cIdx);
+      }
+
       finalResult = {
         correctIndex: cIdx,
+        correctLetter: cLetter,
         correctText: cText || options[cIdx] || '',
         relation: parsed.relation || '',
         explanation: parsed.explanation || rawResponse,
@@ -677,9 +702,11 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
   if (!finalResult) {
     // Advanced heuristic detection from rawResponse
     let foundIdx = -1;
+    let foundLetter = '';
     const letterMatch = rawResponse.match(/(?:الخيار|الإجابة|الجواب|الحل|الاختيار|الرمز)\s*(?:الصحيح|الصحيحة|هو|هي)?\s*[:\-\)]?\s*[\(\[\*]*([أ-دA-Da-d1-4])[\)\]\*]*/i);
     if (letterMatch) {
       const char = letterMatch[1].toUpperCase();
+      foundLetter = char;
       const map = { 'أ': 0, 'A': 0, '1': 0, 'ب': 1, 'B': 1, '2': 1, 'ج': 2, 'C': 2, '3': 2, 'د': 3, 'D': 3, '4': 3 };
       if (map[char] !== undefined && map[char] < options.length) {
         foundIdx = map[char];
@@ -703,9 +730,11 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
       }
     }
     if (foundIdx === -1) foundIdx = 0;
+    if (!foundLetter) foundLetter = String.fromCharCode(65 + foundIdx);
 
     finalResult = {
       correctIndex: foundIdx,
+      correctLetter: foundLetter,
       correctText: options[foundIdx] || '',
       relation: '',
       explanation: rawResponse,
