@@ -629,12 +629,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // عند طلب الحل من قائمة الزر الأيمن
   if (request.action === 'CONTEXT_MENU_TRIGGER') {
     if (request.text) {
-      selectedTextCache = request.text;
+      let enriched = '';
+      try {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) enriched = getEnrichedSelectionText(sel);
+      } catch (e) {}
+      selectedTextCache = enriched || selectedTextCache || request.text;
       currentMode = request.mode || currentMode || 'concise';
       if (request.serverType) serverType = request.serverType;
       if (request.subject) subject = request.subject;
       if (request.targetLanguage) targetLanguage = request.targetLanguage;
-      showResponsePanel(request.text, currentMode);
+      showResponsePanel(selectedTextCache, currentMode);
     }
     if (typeof sendResponse === 'function') sendResponse({ success: true });
     return false;
@@ -693,28 +698,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // دالة مساعدة ذكية تكشف ما إذا كان التحديد جزءاً من سؤال في امتحان وتستخرج الخيارات التابعة له تلقائياً
-function getEnrichedSelectionText(selection) {
-  if (!selection || !selection.rangeCount) return '';
+function getEnrichedSelectionInfo(selection) {
+  if (!selection || !selection.rangeCount) return { text: '', hasOptions: false, optCount: 0 };
   const rawText = selection.toString().trim();
-  if (!rawText || rawText.length < 3) return rawText;
+  if (!rawText || rawText.length < 3) return { text: rawText, hasOptions: false, optCount: 0 };
 
   // إذا كان التحديد يحتوي مسبقاً على خيارين أو أكثر (A, B أو 1, 2 أو أ، ب)، نتركه كما هو
   const choicePattern = /(?:^|\n)\s*(?:[A-Da-d\u0623\u0628\u062c\u062f1-4][\.\-\:\)\/]|[\(\[][A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]])/g;
   const directMatches = rawText.match(choicePattern);
   if (directMatches && directMatches.length >= 2) {
-    return rawText;
+    return { text: rawText, hasOptions: true, optCount: directMatches.length };
   }
 
   try {
     const range = selection.getRangeAt(0);
     let node = range.commonAncestorContainer;
     if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    if (!node || node.nodeType !== Node.ELEMENT_NODE) return rawText;
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return { text: rawText, hasOptions: false, optCount: 0 };
 
-    const IGNORED_SELECTORS = '#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card, #quizgenie-countdown-overlay, #quizgenie-corner-rec-badge, .answer-verifier, .question-meta, .btn-reveal-solution, .correct-answer-hint, .exam-footer-toolbar, .instructions-card, .exam-header';
+    const IGNORED_SELECTORS = '#quizgenie-live-selector-overlay, #quizgenie-live-direct-hud, #quizgenie-toast-container, #quizgenie-monitored-area-frame, #quizgenie-direct-solution-card, #quizgenie-countdown-overlay, #quizgenie-corner-rec-badge, #quizgenie-selection-live-indicator, .answer-verifier, .question-meta, .btn-reveal-solution, .correct-answer-hint, .exam-footer-toolbar, .instructions-card, .exam-header';
     const IGNORED_TEXT = /^(Previous|Next|Submit|السابق|التالي|إرسال|حفظ|درجة|وقت|كشف|عرض الإجابة|تحقق|تأكيد|مساعدة|مراجعة|إلغاء|حذف|مسح|Of|Show|Check|Verify|Hint|Skip|Solution|Goal|Boost|XP|Streak|Bonus|Reward|Score|Points|هدف|تعزيز|مكافأة|نقاط|المستوى|إغلاق|Close)/i;
 
-    const cardSelectors = '.question-card, [class*="question-card" i], [class*="question-item" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question-wrapper" i], [class*="question-container" i], [class*="question-block" i], .que, fieldset, [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], tr.question-row, tr[class*="question" i]';
+    const cardSelectors = '.question-card, [class*="question-card" i], [class*="question-item" i], [class*="quiz-question" i], [class*="question_wrapper" i], [class*="question-wrapper" i], [class*="question-container" i], [class*="question-block" i], .que, fieldset, [role="radiogroup"], .form-group, [class*="quiz-item" i], [class*="exam-item" i], [class*="test-item" i], tr.question-row, tr[class*="question" i], .question, [class*="question" i]:not(.question-text):not(.q-text):not([class*="title" i]):not([class*="body" i])';
     let container = (node.parentElement ? node.parentElement.closest(cardSelectors) : null) || node.closest(cardSelectors);
 
     if (!container) {
@@ -726,6 +731,14 @@ function getEnrichedSelectionText(selection) {
           break;
         }
         cur = cur.parentElement;
+      }
+    }
+
+    // فحص العناصر الشقيقة المجاورة (مثل options-list بجوار question-text)
+    if (!container && node.nextElementSibling) {
+      const sibOpts = node.nextElementSibling.querySelectorAll('.option-item, .choice-item, .option, .choice, input[type="radio"], label, li');
+      if (sibOpts && sibOpts.length >= 2) {
+        container = node.parentElement || node.nextElementSibling;
       }
     }
 
@@ -746,7 +759,7 @@ function getEnrichedSelectionText(selection) {
       const extractedOptions = [];
       for (const el of choiceCandidates) {
         const res = extractOptionFromCandidate(el, container, IGNORED_SELECTORS, IGNORED_TEXT);
-        if (res && res.text && !extractedOptions.includes(res.text) && !res.text.includes(rawText)) {
+        if (res && res.text && !extractedOptions.includes(res.text) && res.text.toLowerCase().trim() !== rawText.toLowerCase().trim() && !node.contains(res.containerEl)) {
           extractedOptions.push(res.text);
         }
       }
@@ -760,27 +773,110 @@ function getEnrichedSelectionText(selection) {
           return `(${letter}) ${opt}`;
         }).join('\n');
 
-        return `${rawText}\n\nالخيارات المتاحة:\n${formattedOpts}`;
+        return {
+          text: `${rawText}\n\nالخيارات المتاحة (Options):\n${formattedOpts}`,
+          hasOptions: true,
+          optCount: extractedOptions.length
+        };
       }
     }
   } catch (err) {
     console.warn('Enrich selection error:', err);
   }
 
-  return rawText;
+  return { text: rawText, hasOptions: false, optCount: 0 };
+}
+
+function getEnrichedSelectionText(selection) {
+  const info = getEnrichedSelectionInfo(selection);
+  return info ? info.text : '';
+}
+
+// شريط القراءة الاستباقية اللحظية أثناء حركة التحديد (Live Reader Pill)
+let liveSelectionIndicatorEl = null;
+
+function removeLiveSelectionIndicator() {
+  if (liveSelectionIndicatorEl) {
+    liveSelectionIndicatorEl.remove();
+    liveSelectionIndicatorEl = null;
+  }
+}
+
+function showLiveSelectionIndicator(rect, hasOptions, optCount) {
+  if (!extensionEnabled || !fabEnabled) return;
+  if (!rect || (rect.width === 0 && rect.height === 0)) return;
+
+  if (!liveSelectionIndicatorEl) {
+    liveSelectionIndicatorEl = document.createElement('div');
+    liveSelectionIndicatorEl.id = 'quizgenie-selection-live-indicator';
+    liveSelectionIndicatorEl.style.cssText = `
+      position: absolute;
+      z-index: 2147483645;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1.5px solid #38bdf8;
+      color: #38bdf8;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 800;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      direction: rtl;
+      font-family: system-ui, -apple-system, sans-serif;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    `;
+    (document.body || document.documentElement).appendChild(liveSelectionIndicatorEl);
+  }
+
+  const msg = hasOptions
+    ? `⚡ يقرأ معك السؤال وخياراته (${optCount})...`
+    : `⚡ QuizGenie يقرأ معك السؤال...`;
+
+  liveSelectionIndicatorEl.innerHTML = `
+    <span style="display:inline-block; animation:qgPulseYellowQuestion 1.2s infinite ease-in-out;">⚡</span>
+    <span>${msg}</span>
+  `;
+
+  let top = rect.bottom + window.scrollY + 8;
+  let left = rect.left + window.scrollX;
+  if (left + 230 > window.innerWidth + window.scrollX) {
+    left = window.innerWidth + window.scrollX - 235;
+  }
+  liveSelectionIndicatorEl.style.top = `${top}px`;
+  liveSelectionIndicatorEl.style.left = `${left}px`;
 }
 
 // التفكير الاستباقي الحي المسبق أثناء حركة التحديد (Pre-computation 0s)
 let preSolveDebounceTimer = null;
 document.addEventListener('selectionchange', () => {
   if (!extensionEnabled || !fabEnabled) return;
-  clearTimeout(preSolveDebounceTimer);
-  preSolveDebounceTimer = setTimeout(() => {
-    try {
-      const sel = window.getSelection();
-      const rawTxt = sel ? sel.toString().trim() : '';
-      if (rawTxt.length >= 4) {
-        const targetTxt = getEnrichedSelectionText(sel) || rawTxt;
+
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) {
+    removeLiveSelectionIndicator();
+    return;
+  }
+
+  const rawTxt = sel.toString().trim();
+  if (rawTxt.length < 4) {
+    removeLiveSelectionIndicator();
+    return;
+  }
+
+  try {
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const enrichedInfo = getEnrichedSelectionInfo(sel);
+      const targetTxt = enrichedInfo.text || rawTxt;
+      showLiveSelectionIndicator(rect, enrichedInfo.hasOptions, enrichedInfo.optCount);
+
+      clearTimeout(preSolveDebounceTimer);
+      preSolveDebounceTimer = setTimeout(() => {
         if (targetTxt !== currentQuestionCache.text) {
           if (chrome.runtime && chrome.runtime.sendMessage) {
             chrome.runtime.sendMessage({
@@ -792,16 +888,19 @@ document.addEventListener('selectionchange', () => {
             }).catch(() => {});
           }
         }
-      }
-    } catch (e) {}
-  }, 160);
+      }, 140);
+    }
+  } catch (e) {}
 });
 
-// مراقبة تحديد النصوص في الصفحة
+// مراقبة إفلات تحديد النصوص في الصفحة
 document.addEventListener('mouseup', handleSelectionEvent, { capture: true });
 document.addEventListener('keyup', handleSelectionEvent, { capture: true });
 
 function handleSelectionEvent(e) {
+  // إخفاء مؤشر القراءة اللحظي فور إفلات الفأرة
+  removeLiveSelectionIndicator();
+
   // إذا كانت الأداة متوقفة أو ميزة الزر العائم متوقفة، لا نفعل شيئاً
   if (!extensionEnabled || !fabEnabled) return;
 
@@ -1377,6 +1476,7 @@ function ensureHighlightStylesInPage() {
       position: absolute !important;
       top: 50% !important;
       left: 10px !important;
+      right: auto !important;
       transform: translateY(-50%) !important;
       background: #10b981 !important;
       color: #ffffff !important;
@@ -2493,9 +2593,10 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
                     el.parentElement || el;
   if (!containerEl || containerEl.closest(IGNORED_SELECTORS)) return null;
 
-  // استبعاد الحاويات العامة ومجموعات الخيارات
+  // استبعاد الحاويات العامة ومجموعات الخيارات إذا كانت تحوي أكثر من خيار
   const cCls = (typeof containerEl.className === 'string') ? containerEl.className.toLowerCase() : '';
-  if (/options-list|choices-list|answers-list|options-container|choices-container|grid|wrapper/.test(cCls)) {
+  if (/options-list|choices-list|answers-list|options-container|choices-container|grid|wrapper/.test(cCls) ||
+      containerEl.querySelectorAll('.option-item, .choice-item, input[type="radio"], label, li').length > 1) {
     containerEl = el;
   }
 
@@ -2522,11 +2623,13 @@ function extractOptionFromCandidate(el, targetContainer, IGNORED_SELECTORS, IGNO
     text = el.getAttribute('aria-label') || el.value || el.getAttribute('title') || (el.nextElementSibling ? el.nextElementSibling.innerText : '') || '';
   }
 
-  // تنظيف الرموز والدوائر والنقاط والبادئات واللواحق (◯ ○ ● 🔘 ⭕ ⚪ ⚫ ⚬ ⦿ ◦ •)
-  text = text
-    .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][.\-:\)\/\s]\s*|[\(\[]?[A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]]\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb]\s*)+/g, '')
-    .replace(/[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb.\-:\(\)\[\]\s]+$/g, '')
-    .trim();
+  // تنظيف الرموز والدوائر والنقاط والبادئات واللواحق (مع الحفاظ على أدوات اللغة الإنجليزية مثل A car / A book)
+  if (text.trim().length > 2) {
+    text = text
+      .replace(/^(([A-Da-d\u0623\u0628\u062c\u062f1-4][.\-:\)\/]\s*|[\(\[][A-Da-d\u0623\u0628\u062c\u062f1-4][\)\]]\s*|[\u0623\u0628\u062c\u062f1-4]\s+|[A-Da-d]\n\s*)|[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb]\s*)+/g, '')
+      .replace(/[\u2022\u2023\u2043\u2299\u229a\u25cb-\u25cf\u25cd-\u25d3\u25e6\u25ef\u26aa\u26ab\u26ac\u29bf\u2b24\u2b55\u2b58\u25cf\u25cb.\-:\(\)\[\]\s]+$/g, '')
+      .trim();
+  }
 
   if (text.length > 0 && text.length < 160 && !IGNORED_TEXT.test(text)) {
     try { containerEl._qgRadioEl = el; } catch (e) {}
@@ -2807,12 +2910,14 @@ function normalizeExamText(str) {
 
 function mapLetterToIndex(letter) {
   if (!letter) return -1;
-  const clean = letter.toString().trim().toUpperCase();
+  const match = letter.toString().match(/[A-Da-d\u0623\u0628\u062c\u062f1-4]/);
+  if (!match) return -1;
+  const clean = match[0].toUpperCase();
   const map = {
-    'أ': 0, 'A': 0, '1': 0,
-    'ب': 1, 'B': 1, '2': 1,
-    'ج': 2, 'C': 2, '3': 2,
-    'د': 3, 'D': 3, '4': 3
+    '\u0623': 0, 'أ': 0, 'A': 0, '1': 0,
+    '\u0628': 1, 'ب': 1, 'B': 1, '2': 1,
+    '\u062c': 2, 'ج': 2, 'C': 2, '3': 2,
+    '\u062f': 3, 'د': 3, 'D': 3, '4': 3
   };
   return (map[clean] !== undefined) ? map[clean] : -1;
 }
@@ -2912,14 +3017,37 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
       // تنظيف أي شارات سابقة لمنع التكرار والتراكم
       targetContainer.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(b => b.remove());
-      const isEnglish = /[a-zA-Z]{3,}/.test(targetContainer.innerText || '');
+      if (optEl !== targetContainer) {
+        optEl.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(b => b.remove());
+      }
+
+      // تحديد موضع الشارة هندسياً:
+      // إذا كان الرمز/الراديو أو الحرف في النصف الأيسر، توضع الشارة في الطرف الأيمن (LTR).
+      // وإذا كان في النصف الأيمن (مثل صفحات RTL)، توضع الشارة في الطرف الأيسر لمنع حجب الحرف أو الدائرة قطعياً.
+      let isLtrBadge = false;
+      try {
+        const radioOrLetter = targetContainer.querySelector('.option-letter, input[type="radio"], input[type="checkbox"], [role="radio"], circle, [class*="letter" i]');
+        if (radioOrLetter) {
+          const rRect = radioOrLetter.getBoundingClientRect();
+          const cRect = targetContainer.getBoundingClientRect();
+          if (rRect.left - cRect.left < cRect.right - rRect.right) {
+            isLtrBadge = true;
+          } else {
+            isLtrBadge = false;
+          }
+        } else {
+          isLtrBadge = (window.getComputedStyle(targetContainer).direction === 'ltr');
+        }
+      } catch (e) {
+        isLtrBadge = false;
+      }
 
       if (i === matchedIdx) {
         // الإجابة الصحيحة: خط وتوهج أخضر نيون
         targetContainer.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         targetContainer.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         const ansTag = document.createElement('span');
-        ansTag.className = 'quizgenie-correct-badge-tag' + (isEnglish ? ' qg-badge-ltr' : '');
+        ansTag.className = 'quizgenie-correct-badge-tag' + (isLtrBadge ? ' qg-badge-ltr' : '');
         ansTag.textContent = '🟢 الخيار الصحيح';
         try { targetContainer.appendChild(ansTag); } catch (e) {}
 
@@ -2956,7 +3084,7 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         targetContainer.classList.remove('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         targetContainer.classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         const wrongTag = document.createElement('span');
-        wrongTag.className = 'quizgenie-wrong-badge-tag' + (isEnglish ? ' qg-badge-ltr' : '');
+        wrongTag.className = 'quizgenie-wrong-badge-tag' + (isLtrBadge ? ' qg-badge-ltr' : '');
         wrongTag.textContent = '🔴 خيار خاطئ';
         try { targetContainer.appendChild(wrongTag); } catch (e) {}
 
@@ -2999,6 +3127,10 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
   const card = document.getElementById('quizgenie-direct-solution-card');
   if (card) card.remove();
 }
+
+// الاسم المعياري المترادف لميزة الحل المباشر
+const highlightLiveDirectResult = applyLiveDirectSolution;
+try { window.highlightLiveDirectResult = applyLiveDirectSolution; } catch (e) {}
 
 // الاستماع لاختصار لوحة المفاتيح Ctrl+Shift+S أو F2 داخل صفحة الويب
 document.addEventListener('keydown', (e) => {
