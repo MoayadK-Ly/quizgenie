@@ -605,6 +605,23 @@ try {
       }
     });
   }
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.liveAutoClickEnabled) {
+        liveAutoClickEnabled = !!changes.liveAutoClickEnabled.newValue;
+        const autoClickBadge = document.getElementById('qgLiveAutoClickBadge');
+        if (autoClickBadge) {
+          if (liveAutoClickEnabled) {
+            autoClickBadge.classList.add('active');
+            autoClickBadge.textContent = '⚡ نقر تلقائي';
+          } else {
+            autoClickBadge.classList.remove('active');
+            autoClickBadge.textContent = '⚪ بدون نقر';
+          }
+        }
+      }
+    });
+  }
 } catch (e) {
   console.warn('Init state error:', e);
 }
@@ -1368,7 +1385,7 @@ function renderAnswerContent(markdownText, container) {
     const t = lines[i].trim();
     if (!t) continue;
 
-    if (t.startsWith('🎯') || t.startsWith('⚡') || t.startsWith('📘') || t.startsWith('📐') || t.startsWith('🔍') || t.startsWith('💡')) {
+    if (t.startsWith('🎯') || t.startsWith('⚡') || t.startsWith('📘') || t.startsWith('📐') || t.startsWith('🔍') || t.startsWith('💡') || t.startsWith('🟢') || t.startsWith('✅') || t.startsWith('🔢')) {
       if (currentSec.header || currentSec.lines.length > 0) {
         sections.push(currentSec);
       }
@@ -1386,8 +1403,12 @@ function renderAnswerContent(markdownText, container) {
       const card = document.createElement('div');
       card.className = 'quizgenie-section-card';
 
-      if (sec.header.startsWith('🎯')) {
+      if (sec.header.startsWith('🎯') || sec.header.startsWith('✅')) {
         card.classList.add('card-answer');
+      } else if (sec.header.startsWith('🟢')) {
+        card.classList.add('card-confidence');
+      } else if (sec.header.startsWith('🔢')) {
+        card.classList.add('card-sequence');
       } else if (sec.header.startsWith('⚡')) {
         card.classList.add('card-concise');
       } else if (sec.header.startsWith('📘')) {
@@ -1918,11 +1939,8 @@ function processSnipSelectionRect(rect, preferredMode) {
       return;
     }
     const data = response.data || response.result || {};
+    applyLiveDirectSolution(data, questionElement, optionElements, optionsList, null, null);
     const correctIndex = (typeof data.correctIndex === 'number') ? data.correctIndex : 0;
-
-    if (optionElements[correctIndex]) {
-      optionElements[correctIndex].classList.add('quizgenie-correct-answer-glow', 'quizgenie-highlight-correct');
-    }
     showScanResultModal(questionText, data.correctText || optionsList[correctIndex] || '', data.explanation || data.rawAnswer || '', preferredMode, data.relation);
   });
 }
@@ -2529,6 +2547,27 @@ function startLiveDirectMode(region, mode) {
     showLiveSelectorOverlay(activeLiveMode);
   });
 
+  const hudAutoClickBtn = hud.querySelector('#qgLiveAutoClickBadge');
+  if (hudAutoClickBtn) {
+    hudAutoClickBtn.style.cursor = 'pointer';
+    hudAutoClickBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      liveAutoClickEnabled = !liveAutoClickEnabled;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ liveAutoClickEnabled: liveAutoClickEnabled });
+      }
+      if (liveAutoClickEnabled) {
+        hudAutoClickBtn.classList.add('active');
+        hudAutoClickBtn.textContent = '⚡ نقر تلقائي';
+        showScanFeedbackBanner('🔘 تم تفعيل النقر التلقائي الذكي فوراً', '#10b981');
+      } else {
+        hudAutoClickBtn.classList.remove('active');
+        hudAutoClickBtn.textContent = '⚪ بدون نقر';
+        showScanFeedbackBanner('⚪ تم إيقاف النقر التلقائي (وضع الرصد فقط)', '#64748b');
+      }
+    });
+  }
+
   // تفعيل سحب شريط الريكورد بحرية في الشاشة حتى لا يحجب أي جزء من السؤال
   let isHudDragging = false, hudStartX = 0, hudStartY = 0, hudInitLeft = 0, hudInitTop = 0;
   hud.addEventListener('mousedown', (e) => {
@@ -3001,54 +3040,58 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
   const correctChoiceText = data.correctChoiceText || data.correctText || '';
   let matchedIdx = -1;
+  let isConfidentMatch = false;
 
-  // 1. فحص رمز الخيار الصريح أولاً (A, B, C, D أو أ، ب، ج، د) بدقة 100%
-  const rawChar = data.correctLetter || '';
-  const charIdx = mapLetterToIndex(rawChar);
-  if (charIdx >= 0 && charIdx < optionElements.length) {
-    matchedIdx = charIdx;
+  // 1. مطابقة نص الخيار أولاً بدقة متناهية عبر التطبيع ودعم خيارات صح وخطأ (True/False)
+  const cleanTarget = normalizeExamText(correctChoiceText);
+  const isTrueVariant = (t) => {
+    const raw = (t || '').trim().toLowerCase();
+    const clean = normalizeExamText(raw);
+    return /^(صح|صواب|صحيح|صحيحة|صحيحه|نعم|true|t|yes|y)$/i.test(raw) ||
+           /^(صح|صواب|صحيح|صحيحه|نعم|true|t|yes|y)$/i.test(clean) ||
+           clean === 'صح' || clean === 'صواب' || clean === 'صحيح' || clean === 'صحيحه' || clean === 'true' ||
+           raw.includes('صح') || raw.includes('صواب') || raw.includes('صحيح') || raw.includes('true');
+  };
+  const isFalseVariant = (t) => {
+    const raw = (t || '').trim().toLowerCase();
+    const clean = normalizeExamText(raw);
+    return /^(خطأ|خطا|خاطئ|خاطئة|خاطئه|لا|false|f|no|n)$/i.test(raw) ||
+           /^(خطأ|خطا|خاطئ|خاطئه|لا|false|f|no|n)$/i.test(clean) ||
+           clean === 'خطا' || clean === 'خاطئ' || clean === 'خاطئه' || clean === 'false' ||
+           raw.includes('خطأ') || raw.includes('خطا') || raw.includes('خاطئ') || raw.includes('false');
+  };
+
+  if (cleanTarget.length > 0 && optionsList && optionsList.length > 0) {
+    for (let i = 0; i < optionsList.length; i++) {
+      const cleanOpt = normalizeExamText(optionsList[i]);
+      if (cleanOpt === cleanTarget || 
+          (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
+          (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
+          (isTrueVariant(correctChoiceText) && isTrueVariant(optionsList[i])) ||
+          (isFalseVariant(correctChoiceText) && isFalseVariant(optionsList[i])) ||
+          (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
+          (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
+        matchedIdx = i;
+        isConfidentMatch = true;
+        break;
+      }
+    }
   }
 
-  // 2. مطابقة نص الخيار بدقة متناهية عبر التطبيع ودعم خيارات صح وخطأ (True/False)
+  // 2. فحص رمز الخيار الصريح (A, B, C, D أو أ، ب، ج، د) إذا لم يتطابق النص
   if (matchedIdx === -1) {
-    const cleanTarget = normalizeExamText(correctChoiceText);
-    const isTrueVariant = (t) => {
-      const raw = (t || '').trim().toLowerCase();
-      const clean = normalizeExamText(raw);
-      return /^(صح|صواب|صحيح|صحيحة|صحيحه|نعم|true|t|yes|y)$/i.test(raw) ||
-             /^(صح|صواب|صحيح|صحيحه|نعم|true|t|yes|y)$/i.test(clean) ||
-             clean === 'صح' || clean === 'صواب' || clean === 'صحيح' || clean === 'صحيحه' || clean === 'true' ||
-             raw.includes('صح') || raw.includes('صواب') || raw.includes('صحيح') || raw.includes('true');
-    };
-    const isFalseVariant = (t) => {
-      const raw = (t || '').trim().toLowerCase();
-      const clean = normalizeExamText(raw);
-      return /^(خطأ|خطا|خاطئ|خاطئة|خاطئه|لا|false|f|no|n)$/i.test(raw) ||
-             /^(خطأ|خطا|خاطئ|خاطئه|لا|false|f|no|n)$/i.test(clean) ||
-             clean === 'خطا' || clean === 'خاطئ' || clean === 'خاطئه' || clean === 'false' ||
-             raw.includes('خطأ') || raw.includes('خطا') || raw.includes('خاطئ') || raw.includes('false');
-    };
-
-    if (cleanTarget.length > 0) {
-      for (let i = 0; i < optionsList.length; i++) {
-        const cleanOpt = normalizeExamText(optionsList[i]);
-        if (cleanOpt === cleanTarget || 
-            (cleanTarget.length > 3 && cleanOpt.includes(cleanTarget)) || 
-            (cleanOpt.length > 3 && cleanTarget.includes(cleanOpt)) ||
-            (isTrueVariant(correctChoiceText) && isTrueVariant(optionsList[i])) ||
-            (isFalseVariant(correctChoiceText) && isFalseVariant(optionsList[i])) ||
-            (isTrueVariant(cleanTarget) && isTrueVariant(cleanOpt)) ||
-            (isFalseVariant(cleanTarget) && isFalseVariant(cleanOpt))) {
-          matchedIdx = i;
-          break;
-        }
-      }
+    const rawChar = data.correctLetter || '';
+    const charIdx = mapLetterToIndex(rawChar);
+    if (charIdx >= 0 && charIdx < optionElements.length) {
+      matchedIdx = charIdx;
+      isConfidentMatch = true;
     }
   }
 
   // 3. إذا لم يطابق الرمز أو النص، استخدم رقم الفهرس القادم من الخادم
   if (matchedIdx === -1 && typeof data.correctIndex === 'number' && data.correctIndex >= 0 && data.correctIndex < optionElements.length) {
     matchedIdx = data.correctIndex;
+    isConfidentMatch = true;
   }
 
   const confidence = data.confidence || '99.4%';
@@ -3057,20 +3100,44 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
 
   // دالة مساعدة للعثور على زر الراديو أو الدائرة القابلة للنقر المرتبطة بالخيار
   function findRadioOrCircle(container, optElement) {
-    let el = container.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]') ||
-             (container.tagName === 'INPUT' && (container.type === 'radio' || container.type === 'checkbox') ? container : null);
-    if (!el && container.htmlFor) el = document.getElementById(container.htmlFor);
-    if (!el && container.getAttribute('for')) el = document.getElementById(container.getAttribute('for'));
-    if (!el && container._qgRadioEl) el = container._qgRadioEl;
+    // 1. فحص داخل الحاوية أو العنصر المباشر
+    let el = container ? container.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]') : null;
+    if (!el && container && (container.tagName === 'INPUT' && (container.type === 'radio' || container.type === 'checkbox'))) {
+      el = container;
+    }
+    if (!el && optElement && (optElement.tagName === 'INPUT' && (optElement.type === 'radio' || optElement.type === 'checkbox'))) {
+      el = optElement;
+    }
+    if (!el && container && container.getAttribute('role') === 'radio') {
+      el = container;
+    }
+    if (!el && optElement && optElement.getAttribute('role') === 'radio') {
+      el = optElement;
+    }
+    // 2. فحص ارتباط التسمية id / for
+    if (!el && container && container.htmlFor) el = document.getElementById(container.htmlFor);
+    if (!el && container && container.getAttribute('for')) el = document.getElementById(container.getAttribute('for'));
+    if (!el && optElement && optElement.htmlFor) el = document.getElementById(optElement.htmlFor);
+    if (!el && optElement && optElement.getAttribute('for')) el = document.getElementById(optElement.getAttribute('for'));
+    // 3. فحص الإشارات المخبأة في العنصر
+    if (!el && container && container._qgRadioEl) el = container._qgRadioEl;
     if (!el && optElement && optElement._qgRadioEl) el = optElement._qgRadioEl;
-    if (!el && container.parentElement) {
-      el = container.parentElement.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]');
+    // 4. فحص الأشقاء المباشرين (قبل أو بعد العنصر مباشرة)
+    if (!el && container) {
+      if (container.previousElementSibling && container.previousElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
+        el = container.previousElementSibling;
+      } else if (container.nextElementSibling && container.nextElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
+        el = container.nextElementSibling;
+      }
     }
-    if (!el && container.previousElementSibling && container.previousElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
-      el = container.previousElementSibling;
-    }
-    if (!el && container.nextElementSibling && container.nextElementSibling.matches('input[type="radio"], input[type="checkbox"], [role="radio"]')) {
-      el = container.nextElementSibling;
+    // 5. فحص غلاف الخيار الفردي فقط (دون التوسع لحاوية الأسئلة العامة)
+    if (!el && container && container.parentElement) {
+      const p = container.parentElement;
+      const isOptionWrap = p.matches && p.matches('.option-item, .choice-item, label, li, tr, .form-check, [class*="option" i], [class*="choice" i]');
+      const radioCount = p.querySelectorAll('input[type="radio"], [role="radio"]').length;
+      if (isOptionWrap && radioCount === 1) {
+        el = p.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]');
+      }
     }
     return el;
   }
@@ -3262,8 +3329,8 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
           });
         } catch (e) {}
 
-        // النقر التلقائي فائق الدقة 100% فقط عند تفعيل الخيار من قبل المستخدم (Feature #2)
-        if (liveAutoClickEnabled) {
+        // النقر التلقائي فائق الدقة 100% فقط عند تفعيل الخيار من قبل المستخدم ومطابقة مؤكدة (Feature #2)
+        if (liveAutoClickEnabled && isConfidentMatch) {
           performUltraPreciseAutoClick(targetContainer, optEl, confidence);
         }
       } else {
@@ -3301,8 +3368,10 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
       }
     }
 
-    if (liveAutoClickEnabled) {
+    if (liveAutoClickEnabled && isConfidentMatch) {
       showScanFeedbackBanner(`🔘 تم النقر التلقائي بدقة 100% على الخيار الصحيح! • يقين: ${confidence}`, '#10b981');
+    } else if (liveAutoClickEnabled && !isConfidentMatch) {
+      showScanFeedbackBanner(`🎯 تم رصد الخيار تقريبياً • يقين: ${confidence} (تجاوز النقر للأمان الأكاديمي)`, '#eab308');
     } else {
       showScanFeedbackBanner(`🎯 تم رصد الخيار الصحيح • نسبة اليقين: ${confidence} 🟢`, '#10b981');
     }
