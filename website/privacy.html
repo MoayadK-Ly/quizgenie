@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سياسة الخصوصية | QuizGenie</title>
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --primary: #00f0ff;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #1e293b;
+    }
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      direction: rtl;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    h1 {
+      color: var(--primary);
+      font-size: 28px;
+      margin-top: 0;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    h2 {
+      color: #38bdf8;
+      font-size: 20px;
+      margin-top: 28px;
+    }
+    p, li {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    ul {
+      padding-right: 20px;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--primary);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="margin-bottom: 12px;">
+      <span class="badge">QuizGenie Extension Policy</span>
+    </div>
+    <h1>سياسة الخصوصية لأداة QuizGenie</h1>
+    <p>تاريخ آخر تحديث: 31 أكتوبر 2026</p>
+
+    <p>نحن في <strong>QuizGenie</strong> نلتزم بأعلى معايير حماية خصوصية المستخدمين. تهدف هذه السياسة إلى توضيح كيفية تعامل الإضافة مع البيانات أثناء استخدامها لمساعدة الطلاب في حل ومراجعة الأسئلة التعليمية.</p>
+
+    <h2>1. البيانات التي يتم التعامل معها</h2>
+    <ul>
+      <li><strong>نصوص الأسئلة المحددة:</strong> عند قيام المستخدم بتحديد سؤال أو النقر على ميزة الحل المباشر، يتم إرسال نص السؤال وخياراته فقط إلى واجهات برمجة الذكاء الاصطناعي (مثل Google Gemini) لغرض استخراج الإجابة النموذجية فوراً.</li>
+      <li><strong>إعدادات ومفاتيح المستخدم:</strong> يتم حفظ تفضيلات المستخدم (مثل نمط الحل، اللغة المختارة، والمفاتيح البرمجية إن وُجدت) محلياً داخل متصفح المستخدم عبر التخزين الآمن <code>chrome.storage.local</code>.</li>
+    </ul>
+
+    <h2>2. عدم جمع أو بيع البيانات الشخصية</h2>
+    <p>تؤكد أداة QuizGenie بشكل قاطع أنها:</p>
+    <ul>
+      <li><strong>لا تجمع</strong> أي بيانات هوية شخصية، مثل الأسماء أو البريد الإلكتروني أو كلمات المرور أو أرقام الهواتف.</li>
+      <li><strong>لا تتبع</strong> سجل تصفح المستخدم ولا ترصد أي نشاط للمستخدم خارج نطاق الأسئلة التي يطلب حلها.</li>
+      <li><strong>لا تبيع</strong> أو تشارك أو تؤجر أي بيانات لأي أطراف ثالثة أو معلنين بأي شكل من الأشكال.</li>
+    </ul>
+
+    <h2>3. الأذونات المطلوبة وسبب استخدامها</h2>
+    <ul>
+      <li><code>storage</code>: لحفظ إعدادات المظهر والخيارات المفضلة محلياً في جهاز المستخدم.</li>
+      <li><code>activeTab</code> / <code>scripting</code>: لعرض الإجابة النموذجية وتمييز الخيار الصحيح بصرياً فوق صفحة الامتحان النشطة فقط.</li>
+    </ul>
+
+    <h2>4. الأمان وحماية البيانات</h2>
+    <p>جميع الاتصالات بين الإضافة وخوادم الذكاء الاصطناعي تتم عبر بروتوكولات تشفير آمنة ومعتمدة (HTTPS/TLS) لضمان عدم اعتراض أي بيانات أثناء النقل.</p>
+
+    <h2>5. التعديلات على سياسة الخصوصية</h2>
+    <p>قد نقوم بتحديث سياسة الخصوصية هذه من حين لآخر لتعكس التحسينات في الأداة. سيتم نشر أي تعديل فوراً في هذه الصفحة.</p>
+
+    <div class="footer">
+      QuizGenie - Smart AI Exam Assistant &bull; جميع الحقوق محفوظة
+    </div>
+  </div>
+</body>
+</html>
