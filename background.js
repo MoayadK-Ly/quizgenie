@@ -659,12 +659,15 @@ ${isAnalogy ? 'ملاحظة: هذا السؤال هو تناظر لفظي (عل�
       }
 
       // Match by correctLetter if cIdx is invalid
-      if ((cIdx < 0 || cIdx >= options.length) && cLetter) {
+      const rawMatch = cLetter.match(/[A-Dأ-د1-4]/);
+      const cleanChar = rawMatch ? rawMatch[0] : cLetter;
+      if ((cIdx < 0 || cIdx >= options.length) && cleanChar) {
         const map = { 'أ': 0, 'A': 0, '1': 0, 'ب': 1, 'B': 1, '2': 1, 'ج': 2, 'C': 2, '3': 2, 'د': 3, 'D': 3, '4': 3 };
-        if (map[cLetter] !== undefined && map[cLetter] < options.length) {
-          cIdx = map[cLetter];
+        if (map[cleanChar] !== undefined && map[cleanChar] < options.length) {
+          cIdx = map[cleanChar];
         }
       }
+      if (cleanChar) cLetter = cleanChar;
 
       // Match cText against options if cIdx is invalid or out of bounds
       if (cIdx < 0 || cIdx >= options.length) {
