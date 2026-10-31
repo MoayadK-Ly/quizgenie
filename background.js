@@ -540,6 +540,13 @@ ${langDesc}`;
 4. الخيار الصحيح هو الخيار المطابق بنسبة 100% في نوع العلاقة واتجاهها.`;
   }
 
+  const isSequenceQuestion = /(?:رتب|ترتيب|تسلسل|التسلسل|مرتبة|بالترتيب|الخطوات التالية|ترتيب الأحداث|الترتيب الزمني|الترتيب المنطقي|الترتيب التصاعدي|الترتيب التنازلي|order|sequence|chronological|arrange|ranking)/i.test(cleanText);
+  if (isSequenceQuestion) {
+    systemPrompt += `\n\n🔢 تنبيه خاص بأسئلة الترتيب والتسلسل (Ordering / Sequence):
+هذا السؤال يتطلب ترتيب خطوات أو أحداث زمنياً أو منطقياً.
+المطلوب الإلزامي: اذكر التسلسل والترتيب الصحيح بدقة ووضوح مع ترقيم كل خطوة (1️⃣، 2️⃣، 3️⃣...) وتوضيح سبب هذا الترتيب.`;
+  }
+
   let finalAnswer = '';
 
   try {
@@ -608,7 +615,7 @@ async function solveExamScanDispatcher(questionText, options, mode, subject, tar
 3. مهمتك هي قراءة رأس السؤال وفهمه، ثم مطابقة خيارات الإجابة واختيار الخيار الوحيد المطابق والصحيح أكاديمياً.
 4. إذا كان السؤال عبارة أو جملة والمطلوب الحكم على صحتها بخيارات صح/خطأ أو صواب/خطأ (True/False)، تحقق بدقة لغوية وعلمية من صحة العبارة: إن كانت غير صحيحة اختر (False / خطأ)، وإن كانت صحيحة اختر (True / صح).
 5. إذا كان السؤال أو الخيارات باللغة الإنجليزية (English Grammar, Vocabulary, Reading Comprehension): قم بحل السؤال بالدقة اللغوية الإنجليزية الكاملة وحدد الحرف (A, B, C, D) والنص الإنجليزي المطابق للخيار الصحيح بدقة 100%.
-${isSequenceQuestion ? '6. تنبيه لأسئلة الترتيب والتسلسل (Ordering/Sequence): السؤال يتطلب ترتيب عناصر أو خطوات زمنياً أو منطقياً، اضبط isSequence: true وأعد مصفوفة sequence تضم الترتيب التسلسلي الصحيح (1, 2, 3...) لكل خيار بحسب تسلسله المنطقي من البداية للنهاية.' : ''}
+${isSequenceQuestion ? '6. تنبيه حاسم لأسئلة الترتيب والتسلسل (Ordering/Sequence): السؤال يتطلب ترتيب خطوات أو عناصر زمنياً أو منطقياً. اضبط isSequence: true وأعد مصفوفة sequence تضم رقم الخطوة (1 للخطوة الأولى، 2 للثانية، 3 للثالثة...) المقابل لكل خيار بنفس ترتيب ظهوره. مثال: إذا كان الخيار رقم 0 هو الخطوة 3، والخيار رقم 1 هو الخطوة 1، والخيار رقم 2 هو الخطوة 2، والخيار رقم 3 هو الخطوة 4، تكون sequence هي [3, 1, 2, 4].' : ''}
 
 رأس السؤال الرئيسي:
 "${cleanQ}"
@@ -630,7 +637,7 @@ ${isSequenceQuestion ? 'ملاحظة: هذا السؤال هو سؤال ترتي
   "correctText": "نص الخيار الصحيح",
   "confidence": "99.4%",
   "isSequence": ${isSequenceQuestion ? 'true' : 'false'},
-  "sequence": ${isSequenceQuestion ? '[2, 1, 3, 4]' : '[]'},
+  "sequence": ${isSequenceQuestion ? '[3, 1, 2, 4]' : '[]'},
   "relation": "نوع العلاقة أو الفكرة المركزية",
   "explanation": "${isConcise ? 'الخيار الصحيح مباشرة' : 'شرح توضيحي مركز لسبب صحة هذا الخيار واستبعاد البقية'}"
 }`;
@@ -664,18 +671,27 @@ ${isSequenceQuestion ? 'ملاحظة: هذا السؤال هو سؤال ترتي
   function deduceSequenceHelper(opts, text) {
     if (!opts || !opts.length) return null;
     const res = new Array(opts.length).fill(0);
-    const lowerTxt = (text || '').toLowerCase();
+    function normSimple(str) {
+      return (str || '').toLowerCase()
+        .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+        .replace(/[أإآ]/g, 'ا').replace(/[ىي]/g, 'ي').replace(/ة/g, 'ه')
+        .replace(/^[\(\[\{]?[a-dأ-د1-4][\)\]\}]?[\.\-\:\s]\s*/, '')
+        .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
+        .replace(/\s+/g, ' ').trim();
+    }
+    const cleanTxt = normSimple(text);
     for (let i = 0; i < opts.length; i++) {
-      const optStr = opts[i] || '';
-      const cleanSnippet = optStr.substring(0, 35).trim().toLowerCase();
+      const optStr = normSimple(opts[i] || '');
+      const cleanSnippet = optStr.substring(0, 30).trim();
+      if (!cleanSnippet) continue;
       const esc = cleanSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const pats = [
-        new RegExp(`(?:الخطوة|المرحلة|الترتيب|رقم|Step)?\\s*([1-9])\\s*[:\\-–\\)]\\s*[^\\n]*${esc}`, 'i'),
-        new RegExp(`${esc}[^\\n]*\\(?(?:الخطوة|الترتيب)?\\s*([1-9])\\)?`, 'i'),
+        new RegExp(`(?:الخطوه|المرحله|الترتيب|رقم|step)?\\s*([1-9])\\s*[:\\-–\\)]\\s*[^\\n]*${esc}`, 'i'),
+        new RegExp(`${esc}[^\\n]*\\(?(?:الخطوه|الترتيب)?\\s*([1-9])\\)?`, 'i'),
         new RegExp(`(?:^|[\\s،,])([1-9])\\s*[:\\-–\\)]\\s*[^\\n]*${esc}`, 'i')
       ];
       for (const p of pats) {
-        const m = lowerTxt.match(p);
+        const m = cleanTxt.match(p);
         if (m && m[1]) {
           res[i] = parseInt(m[1], 10);
           break;
@@ -715,8 +731,25 @@ ${isSequenceQuestion ? 'ملاحظة: هذا السؤال هو سؤال ترتي
 
       // دعم أسئلة الترتيب والتسلسل المنطقي والزمني (Feature #7)
       let isSeq = (parsed.isSequence === true) || isSequenceQuestion;
-      let seq = (Array.isArray(parsed.sequence) && parsed.sequence.length === options.length) ? parsed.sequence : null;
-      if (isSeq && (!seq || seq.length !== options.length)) {
+      let seq = null;
+      if (Array.isArray(parsed.sequence) && parsed.sequence.length === options.length) {
+        let rawSeq = parsed.sequence.map(n => parseInt(n, 10));
+        // فحص ما إذا كان النموذج أرجع مصفوفة فهارس الخيارات المرتبة (مثل [1, 2, 0, 3])
+        const minVal = Math.min(...rawSeq);
+        const maxVal = Math.max(...rawSeq);
+        if (minVal === 0 && maxVal === options.length - 1) {
+          // تحويل فهارس الخيارات إلى رقم ترتيب الخطوة لكل خيار
+          seq = new Array(options.length).fill(0);
+          rawSeq.forEach((optIdx, stepIdx) => {
+            if (optIdx >= 0 && optIdx < options.length) {
+              seq[optIdx] = stepIdx + 1;
+            }
+          });
+        } else if (minVal === 1 && maxVal === options.length) {
+          seq = rawSeq;
+        }
+      }
+      if (isSeq && (!seq || seq.length !== options.length || seq.some(n => !n || n < 1))) {
         seq = deduceSequenceHelper(options, rawResponse);
       }
 
