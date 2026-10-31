@@ -1495,6 +1495,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ميزة النقر التلقائي فائق الدقة (ميزة رقم 2)
+  const liveAutoClickToggle = document.getElementById('liveAutoClickToggle');
+  let currentLiveAutoClick = false;
+
+  chrome.storage.local.get({ liveAutoClickEnabled: false }, (res) => {
+    if (chrome.runtime.lastError || !res) res = { liveAutoClickEnabled: false };
+    currentLiveAutoClick = !!res.liveAutoClickEnabled;
+    if (liveAutoClickToggle) {
+      liveAutoClickToggle.checked = currentLiveAutoClick;
+    }
+  });
+
+  if (liveAutoClickToggle) {
+    liveAutoClickToggle.addEventListener('change', () => {
+      currentLiveAutoClick = liveAutoClickToggle.checked;
+      chrome.storage.local.set({ liveAutoClickEnabled: currentLiveAutoClick }, () => {
+        if (chrome.runtime.lastError) {}
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0] && tabs[0].id) {
+            safeSendTabMessage(tabs[0].id, {
+              action: 'UPDATE_LIVE_AUTO_CLICK',
+              enabled: currentLiveAutoClick
+            });
+          }
+        });
+      });
+    });
+  }
+
   function launchLiveDirectSolver(isFullScreen) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       checkLastError();
@@ -1527,7 +1556,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         action: 'START_LIVE_DIRECT_SOLVER',
         isFullScreen: (isFullScreen !== false),
-        mode: selectedLiveMode || currentDefaultMode || 'concise'
+        mode: selectedLiveMode || currentDefaultMode || 'concise',
+        autoClick: currentLiveAutoClick
       };
 
       safeSendTabMessage(tabId, payload, (success) => {
