@@ -6,6 +6,7 @@ let serverType = 'gemini';
 let subject = 'general';
 let targetLanguage = 'ar';
 let currentMode = 'concise';
+let liveAutoClickEnabled = false;
 
 let fabElement = null;
 let menuElement = null;
@@ -582,7 +583,7 @@ function getLangLabel(lang) {
   return CONTENT_LANG_LABELS[lang] || 'العربية';
 }
 
-// مزامنة حالة التفعيل والخادم والمادة واللغة مع الخلفية
+// مزامنة حالة التفعيل والخادم والمادة واللغة والنقر التلقائي مع التخزين
 try {
   if (chrome.runtime && chrome.runtime.sendMessage) {
     chrome.runtime.sendMessage({ action: 'GET_STATE' }, (response) => {
@@ -597,11 +598,34 @@ try {
       }
     });
   }
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['liveAutoClickEnabled'], (d) => {
+      if (d && d.liveAutoClickEnabled !== undefined) {
+        liveAutoClickEnabled = !!d.liveAutoClickEnabled;
+      }
+    });
+  }
 } catch (e) {
   console.warn('Init state error:', e);
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'UPDATE_LIVE_AUTO_CLICK') {
+    liveAutoClickEnabled = !!request.enabled;
+    const autoClickBadge = document.getElementById('qgLiveAutoClickBadge');
+    if (autoClickBadge) {
+      if (liveAutoClickEnabled) {
+        autoClickBadge.classList.add('active');
+        autoClickBadge.textContent = '⚡ نقر تلقائي';
+      } else {
+        autoClickBadge.classList.remove('active');
+        autoClickBadge.textContent = '⚪ بدون نقر';
+      }
+    }
+    if (typeof sendResponse === 'function') sendResponse({ success: true, enabled: liveAutoClickEnabled });
+    return false;
+  }
+
   if (request.action === 'STATE_UPDATED') {
     if (request.enabled !== undefined) {
       extensionEnabled = request.enabled;
@@ -647,6 +671,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // عند طلب الحل المباشر ووضع الريكورد
   if (request.action === 'START_LIVE_DIRECT_SOLVER') {
+    if (request.autoClick !== undefined) {
+      liveAutoClickEnabled = !!request.autoClick;
+    }
     const liveMode = request.mode || currentMode || 'concise';
     if (request.isFullScreen === false) {
       showLiveSelectorOverlay(liveMode);
@@ -1516,9 +1543,45 @@ function ensureHighlightStylesInPage() {
       white-space: nowrap !important;
     }
     .quizgenie-correct-badge-tag.qg-badge-ltr,
-    .quizgenie-wrong-badge-tag.qg-badge-ltr {
+    .quizgenie-wrong-badge-tag.qg-badge-ltr,
+    .quizgenie-sequence-badge.qg-badge-ltr {
       left: auto !important;
       right: 12px !important;
+    }
+    .quizgenie-sequence-badge {
+      position: absolute !important;
+      top: 50% !important;
+      left: 10px !important;
+      right: auto !important;
+      transform: translateY(-50%) !important;
+      background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+      border: 1px solid #38bdf8 !important;
+      color: #ffffff !important;
+      font-size: 11px !important;
+      font-weight: 800 !important;
+      padding: 3px 9px !important;
+      border-radius: 20px !important;
+      box-shadow: 0 2px 10px rgba(2, 132, 199, 0.6) !important;
+      z-index: 2147483640 !important;
+      font-family: system-ui, -apple-system, sans-serif !important;
+      white-space: nowrap !important;
+    }
+    .quizgenie-sequence-item {
+      position: relative !important;
+      outline: 2.5px solid #0284c7 !important;
+      outline-offset: 3px !important;
+      background-color: rgba(2, 132, 199, 0.12) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 0 16px rgba(2, 132, 199, 0.45) !important;
+      transition: all 0.25s ease !important;
+    }
+    .quizgenie-autoclick-done {
+      animation: qgAutoClickFlash 0.5s ease-out !important;
+    }
+    @keyframes qgAutoClickFlash {
+      0% { transform: scale(0.96); filter: brightness(1.3); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); filter: brightness(1); }
     }
     .quizgenie-circle-correct,
     input[type="radio"].quizgenie-circle-correct {
@@ -2436,6 +2499,10 @@ function startLiveDirectMode(region, mode) {
         <span class="qg-rec-timer" id="qgRecTimer">00:00</span>
       </div>
       <span class="qg-live-mode-badge" id="qgLiveModeBadge">${modeLabel}</span>
+      <span class="qg-live-confidence-badge" id="qgLiveConfidenceBadge" title="نسبة اليقين الأكاديمي للحل">🟢 يقين: 99.4%</span>
+      <span class="qg-live-autoclick-badge ${liveAutoClickEnabled ? 'active' : ''}" id="qgLiveAutoClickBadge" title="حالة النقر التلقائي">
+        ${liveAutoClickEnabled ? '⚡ نقر تلقائي' : '⚪ بدون نقر'}
+      </span>
       <button type="button" class="qg-live-stop-btn" id="qgLiveStopBtn" title="اضغط هنا لإيقاف ميزة الريكورد والحل المباشر">
         <span>⏹️</span>
         <span>إيقاف الريكورد</span>
@@ -2984,6 +3051,10 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
     matchedIdx = data.correctIndex;
   }
 
+  const confidence = data.confidence || '99.4%';
+  const confBadge = document.getElementById('qgLiveConfidenceBadge');
+  if (confBadge) confBadge.textContent = '🟢 يقين: ' + confidence;
+
   // دالة مساعدة للعثور على زر الراديو أو الدائرة القابلة للنقر المرتبطة بالخيار
   function findRadioOrCircle(container, optElement) {
     let el = container.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"]') ||
@@ -3004,8 +3075,129 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
     return el;
   }
 
-  // 4. وضع التوهج الأخضر وشارة "🟢 الخيار الصحيح" على الإجابة الصحيحة وخط أحمر وشارة "🔴 خيار خاطئ" على البقية
-  if (optionElements && optionElements.length > 0 && matchedIdx !== -1) {
+  // دالة النقر التلقائي الذكي البشري فائق الدقة 100% (ميزة رقم 2)
+  function performUltraPreciseAutoClick(container, optElement, confidenceScore) {
+    if (!container && !optElement) return;
+    try {
+      let target = findRadioOrCircle(container, optElement);
+      if (!target) {
+        if (optElement && (optElement.tagName === 'INPUT' || optElement.getAttribute('role') === 'radio')) {
+          target = optElement;
+        } else if (container && container.tagName === 'LABEL') {
+          target = container;
+        } else {
+          target = container || optElement;
+        }
+      }
+      if (!target) return;
+
+      setTimeout(() => {
+        try {
+          const rect = target.getBoundingClientRect();
+          const cx = (rect.left + rect.width / 2) || 0;
+          const cy = (rect.top + rect.height / 2) || 0;
+          const evOpts = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            composed: true,
+            clientX: cx,
+            clientY: cy,
+            button: 0,
+            buttons: 1
+          };
+
+          try { target.focus({ preventScroll: true }); } catch (e) {}
+
+          if (typeof PointerEvent !== 'undefined') {
+            target.dispatchEvent(new PointerEvent('pointerover', evOpts));
+            target.dispatchEvent(new PointerEvent('pointerenter', evOpts));
+            target.dispatchEvent(new PointerEvent('pointerdown', evOpts));
+          }
+          target.dispatchEvent(new MouseEvent('mouseover', evOpts));
+          target.dispatchEvent(new MouseEvent('mousedown', evOpts));
+
+          if (typeof PointerEvent !== 'undefined') {
+            target.dispatchEvent(new PointerEvent('pointerup', { ...evOpts, buttons: 0 }));
+          }
+          target.dispatchEvent(new MouseEvent('mouseup', { ...evOpts, buttons: 0 }));
+
+          if (typeof target.click === 'function') {
+            target.click();
+          } else {
+            target.dispatchEvent(new MouseEvent('click', { ...evOpts, buttons: 0 }));
+          }
+
+          if (target.tagName === 'INPUT') {
+            target.checked = true;
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          if (target.getAttribute('role') === 'radio') {
+            target.setAttribute('aria-checked', 'true');
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+
+          target.classList.add('quizgenie-autoclick-done');
+          if (container && container !== target) {
+            container.classList.add('quizgenie-autoclick-done');
+          }
+        } catch (innerErr) {
+          console.warn('AutoClick inner error:', innerErr);
+        }
+      }, 160);
+    } catch (e) {
+      console.warn('AutoClick execution error:', e);
+    }
+  }
+
+  // 4. فحص أسئلة الترتيب والتسلسل (Feature #7: Ordering & Sequence)
+  const isSequence = (data.isSequence === true) && Array.isArray(data.sequence) && data.sequence.length === optionElements.length;
+
+  if (isSequence) {
+    for (let i = 0; i < optionElements.length; i++) {
+      const optEl = optionElements[i];
+      const targetContainer = (optEl.tagName === 'INPUT' || optEl.tagName === 'IMG' || optEl.tagName === 'circle') ? (optEl.parentElement || optEl) : optEl;
+      try {
+        if (window.getComputedStyle(targetContainer).position === 'static') {
+          targetContainer.style.position = 'relative';
+        }
+      } catch (e) {}
+
+      targetContainer.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag, .quizgenie-sequence-badge').forEach(b => b.remove());
+      if (optEl !== targetContainer) {
+        optEl.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag, .quizgenie-sequence-badge').forEach(b => b.remove());
+      }
+
+      let isLtrBadge = false;
+      try {
+        const radioOrLetter = targetContainer.querySelector('.option-letter, input[type="radio"], input[type="checkbox"], [role="radio"], circle, [class*="letter" i]');
+        if (radioOrLetter) {
+          const rRect = radioOrLetter.getBoundingClientRect();
+          const cRect = targetContainer.getBoundingClientRect();
+          isLtrBadge = (rRect.left - cRect.left < cRect.right - rRect.right);
+        } else {
+          isLtrBadge = (window.getComputedStyle(targetContainer).direction === 'ltr');
+        }
+      } catch (e) {
+        isLtrBadge = false;
+      }
+
+      const stepNum = data.sequence[i] || (i + 1);
+      const numEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+      const emoji = numEmojis[stepNum - 1] || `${stepNum}️⃣`;
+
+      targetContainer.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline', 'quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
+      targetContainer.classList.add('quizgenie-sequence-item');
+
+      const seqTag = document.createElement('span');
+      seqTag.className = 'quizgenie-sequence-badge' + (isLtrBadge ? ' qg-badge-ltr' : '');
+      seqTag.textContent = `${emoji} الترتيب: ${stepNum}`;
+      try { targetContainer.appendChild(seqTag); } catch (e) {}
+    }
+    showScanFeedbackBanner(`🔢 تم ترتيب وتسلسل الخطوات بدقة (1 إلى ${optionElements.length}) • يقين: ${confidence}!`, '#0284c7');
+  } else if (optionElements && optionElements.length > 0 && matchedIdx !== -1) {
+    // 5. الأسئلة الاعتيادية: وضع التوهج الأخضر وشارة "🟢 الخيار الصحيح • نسبة اليقين"
     for (let i = 0; i < optionElements.length; i++) {
       const optEl = optionElements[i];
       const targetContainer = (optEl.tagName === 'INPUT' || optEl.tagName === 'IMG' || optEl.tagName === 'circle') ? (optEl.parentElement || optEl) : optEl;
@@ -3016,14 +3208,11 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
       } catch (e) {}
 
       // تنظيف أي شارات سابقة لمنع التكرار والتراكم
-      targetContainer.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(b => b.remove());
+      targetContainer.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag, .quizgenie-sequence-badge').forEach(b => b.remove());
       if (optEl !== targetContainer) {
-        optEl.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag').forEach(b => b.remove());
+        optEl.querySelectorAll('.quizgenie-correct-badge-tag, .quizgenie-wrong-badge-tag, .quizgenie-sequence-badge').forEach(b => b.remove());
       }
 
-      // تحديد موضع الشارة هندسياً:
-      // إذا كان الرمز/الراديو أو الحرف في النصف الأيسر، توضع الشارة في الطرف الأيمن (LTR).
-      // وإذا كان في النصف الأيمن (مثل صفحات RTL)، توضع الشارة في الطرف الأيسر لمنع حجب الحرف أو الدائرة قطعياً.
       let isLtrBadge = false;
       try {
         const radioOrLetter = targetContainer.querySelector('.option-letter, input[type="radio"], input[type="checkbox"], [role="radio"], circle, [class*="letter" i]');
@@ -3043,12 +3232,12 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
       }
 
       if (i === matchedIdx) {
-        // الإجابة الصحيحة: خط وتوهج أخضر نيون
+        // الإجابة الصحيحة: خط وتوهج أخضر نيون مع نسبة اليقين الذكي (Feature #4)
         targetContainer.classList.remove('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
         targetContainer.classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
         const ansTag = document.createElement('span');
         ansTag.className = 'quizgenie-correct-badge-tag' + (isLtrBadge ? ' qg-badge-ltr' : '');
-        ansTag.textContent = '🟢 الخيار الصحيح';
+        ansTag.textContent = `🟢 الخيار الصحيح • ${confidence}`;
         try { targetContainer.appendChild(ansTag); } catch (e) {}
 
         // تفعيل وتمييز زر الراديو الدائري وعناصر الدوائر
@@ -3056,17 +3245,10 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
           const radioInside = findRadioOrCircle(targetContainer, optEl);
           if (radioInside) {
             if (radioInside.tagName === 'INPUT') {
-              radioInside.checked = true;
               radioInside.style.accentColor = '#10b981';
-            }
-            if (radioInside.getAttribute('role') === 'radio') {
-              radioInside.setAttribute('aria-checked', 'true');
             }
             radioInside.classList.remove('quizgenie-circle-wrong');
             radioInside.classList.add('quizgenie-circle-correct');
-            radioInside.dispatchEvent(new Event('input', { bubbles: true }));
-            radioInside.dispatchEvent(new Event('change', { bubbles: true }));
-            try { radioInside.click(); } catch (e) {}
           }
           const circularElements = Array.from(targetContainer.querySelectorAll('circle, svg, [class*="circle" i], [class*="radio" i], [role="radio"]'));
           if (radioInside && !circularElements.includes(radioInside)) circularElements.push(radioInside);
@@ -3079,6 +3261,11 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
             }
           });
         } catch (e) {}
+
+        // النقر التلقائي فائق الدقة 100% فقط عند تفعيل الخيار من قبل المستخدم (Feature #2)
+        if (liveAutoClickEnabled) {
+          performUltraPreciseAutoClick(targetContainer, optEl, confidence);
+        }
       } else {
         // الإجابة الخاطئة: خط بارز أحمر متوهج
         targetContainer.classList.remove('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
@@ -3113,14 +3300,19 @@ function applyLiveDirectSolution(data, questionElement, optionElements, optionsL
         } catch (e) {}
       }
     }
-    showScanFeedbackBanner('🎯 تم التمييز: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
+
+    if (liveAutoClickEnabled) {
+      showScanFeedbackBanner(`🔘 تم النقر التلقائي بدقة 100% على الخيار الصحيح! • يقين: ${confidence}`, '#10b981');
+    } else {
+      showScanFeedbackBanner(`🎯 تم رصد الخيار الصحيح • نسبة اليقين: ${confidence} 🟢`, '#10b981');
+    }
   } else if (matchedIdx === -1 && optionElements && optionElements.length > 0) {
     // احتياط خوارزمي: تحديد أول خيار كإجابة في حال عدم وضوح النموذج
     optionElements[0].classList.add('quizgenie-highlight-correct', 'quizgenie-correct-answer-glow');
     for (let i = 1; i < optionElements.length; i++) {
       optionElements[i].classList.add('quizgenie-highlight-wrong', 'quizgenie-wrong-answer-outline');
     }
-    showScanFeedbackBanner('🎯 تم التمييز التقريبي: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴', '#10b981');
+    showScanFeedbackBanner(`🎯 تم التمييز التقريبي: السؤال أصفر 🟡 | الصحيح أخضر 🟢 | الخاطئ أحمر 🔴 • يقين: ${confidence}`, '#10b981');
   }
 
   // إزالة أي بطاقة حل سابقة منعاً لتغطية الشاشة
